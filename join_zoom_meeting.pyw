@@ -7,8 +7,8 @@ import os
 import sys
 
 # get today's meetings from Outlook calendar
-today = datetime.today() - timedelta(days=100)
-tomorrow = today + timedelta(days=100)
+today = datetime.today()
+tomorrow = today + timedelta(days=1)
 appointments = win32com.client.Dispatch('Outlook.Application').GetNamespace('MAPI').GetDefaultFolder(9).Items
 appointments.Sort("[Start]")
 appointments.IncludeRecurrences = True
@@ -42,4 +42,4 @@ for appointmentItem in appointments.Restrict(restriction):
 
 appdata_exe = r'C:\Users\bjs54\AppData\Roaming\Zoom\bin\Zoom.exe'
 program_files_exe = r'C:\Program Files (x86)\Zoom\bin\Zoom.exe'
-# subprocess.call([appdata_exe if os.path.exists(appdata_exe) else program_files_exe, f"--url={url}"])
+subprocess.call([appdata_exe if os.path.exists(appdata_exe) else program_files_exe, f"--url={url}"])
