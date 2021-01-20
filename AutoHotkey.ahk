@@ -49,6 +49,8 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 
 ;launch the Zoom meeting that's nearest to now in the calendar
 #^z::Run C:\Users\bjs54\Miniconda3\pythonw.exe C:\Users\bjs54\Documents\Scripts\join_zoom_meeting.pyw
+;if there are two at the same time, join the second one
+#^+z::Run C:\Users\bjs54\Miniconda3\pythonw.exe C:\Users\bjs54\Documents\Scripts\join_zoom_meeting.pyw second
 
 ;Ctrl-Win-` to toggle window always on top
 #^`::
