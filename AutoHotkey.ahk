@@ -51,6 +51,10 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 #^z::Run C:\Users\bjs54\Miniconda3\pythonw.exe C:\Users\bjs54\Documents\Scripts\join_zoom_meeting.pyw
 ;if there are two at the same time, join the second one
 #^+z::Run C:\Users\bjs54\Miniconda3\pythonw.exe C:\Users\bjs54\Documents\Scripts\join_zoom_meeting.pyw second
+;write notes for the Zoom meeting that's nearest to now in the calendar
+#^n::Run C:\Users\bjs54\Miniconda3\pythonw.exe C:\Users\bjs54\Documents\Scripts\join_zoom_meeting.pyw notes
+;if there are two at the same time, join the second one
+#^+n::Run C:\Users\bjs54\Miniconda3\pythonw.exe C:\Users\bjs54\Documents\Scripts\join_zoom_meeting.pyw second notes
 
 ;Ctrl-Win-` to toggle window always on top
 #^`::
