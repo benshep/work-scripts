@@ -1,4 +1,4 @@
-﻿ProgramFilesx86 = C:\Program Files (x86)
+﻿ProgramFilesX86 = C:\Program Files (x86)
 SetTitleMatchMode, 2
 
 DocsDir = %UserProfile%\Documents
@@ -53,7 +53,7 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 #^+z::Run C:\Users\bjs54\Miniconda3\pythonw.exe C:\Users\bjs54\Documents\Scripts\join_zoom_meeting.pyw second
 ;write notes for the Zoom meeting that's nearest to now in the calendar
 #^n::Run C:\Users\bjs54\Miniconda3\pythonw.exe C:\Users\bjs54\Documents\Scripts\join_zoom_meeting.pyw notes
-;if there are two at the same time, join the second one
+;if there are two at the same time, make notes for the second one
 #^+n::Run C:\Users\bjs54\Miniconda3\pythonw.exe C:\Users\bjs54\Documents\Scripts\join_zoom_meeting.pyw second notes
 
 ;Ctrl-Win-` to toggle window always on top
@@ -75,14 +75,12 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 #b::Run %UserProfile%
 #1::Run C:\
 #2::Run %DocsDir%
-;#3::Run D:\
 #+w::Run mailto:
 #i::Run %ProgramFiles%\irfanview\i_view64.exe
 ;#v::Run %ProgramFiles%\irfanview\i_view64.exe ;Win-I is Settings on Win10
 #n::Run C:\ProgramData\chocolatey\lib\metapad\tools\metapad.exe
 #^p::Run cmd.exe
 #c::Run cmd.exe "/K" C:\Users\bjs54\Miniconda3\Scripts\activate.bat C:\Users\bjs54\Miniconda3
-;#+c::Run %DocsDir%\Scripts\rename calendar entry.au3
 #t::Run taskmgr.exe
 #+r::Run C:\Users\bjs54\Miniconda3\python.exe %UserProfile%\Misc\scripts\random_cd.py
 #o::Run OUTLOOK.EXE
@@ -150,7 +148,6 @@ return
 FormatTime, CurrentDateTime,, yyyy-MM-dd
 SendInput %CurrentDateTime%
 return
-
 
 ;Shift + Windows + Up (maximize a window across all displays) https://stackoverflow.com/a/9830200/470749
 +#Up::

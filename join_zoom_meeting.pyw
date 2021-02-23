@@ -1,3 +1,15 @@
+#!python3
+# -*- coding: utf-8 -*-
+
+"""join_zoom_meeting
+Ben Shepherd, 2020
+Look through today's events in an Outlook calendar, and follow the Zoom link contained within the subject or body
+of the closest one to the current time.
+Command line arguments:
+    second      find the second meeting if there are more than one starting at the same time (order is arbitrary)
+    notes       start a Markdown notes file instead of joining the meeting
+"""
+
 from datetime import datetime, timedelta
 import win32com.client
 import pywintypes
@@ -13,7 +25,7 @@ appointments = win32com.client.Dispatch('Outlook.Application').GetNamespace('MAP
 appointments.Sort("[Start]")
 appointments.IncludeRecurrences = True
 d_m_y = "%#d/%#m/%Y"  # no leading zeros
-yyyy_mm_dd = '%y-%m-%d'
+yyyy_mm_dd = '%Y-%m-%d'
 restriction = f"[Start] >= '{today.strftime(d_m_y)}' AND [End] <= '{tomorrow.strftime(d_m_y)}'"
 min_dt = None
 # Try to capture all possible subdomains
