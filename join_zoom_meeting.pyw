@@ -69,7 +69,7 @@ if 'notes' in sys.argv:
             folder = '.'  # couldn't work out what folder based on subject or body: put in root folder
     os.chdir(folder)
     names = []
-    name_format = re.compile(r'(\w+), (\w+) \(\w+,\w+,\w+\)')
+    name_format = re.compile(r'([\w-]+), ([\w-]+) \(\w+,\w+,\w+\)')
     for person in meeting.Recipients:
         person_name = person.Name
         match = name_format.match(person_name)
