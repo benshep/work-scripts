@@ -49,7 +49,7 @@ for appointmentItem in appointments.Restrict(restriction):
         print(f'closest: {meeting.Subject}, {min_dt}')
         # look for a join URL in the body or the subject
         try:
-            url = zoom_url.search(f'{meeting.Body}\r\n{meeting.Subject}').group()
+            url = zoom_url.search(f'{meeting.Body}\r\n{meeting.Location}').group()
             print(f'{url=}')
         except AttributeError:  # not found in string
             pass
