@@ -86,9 +86,9 @@ if 'notes' in sys.argv:
     for c in illegal_chars:
         subject = subject.replace(c, ' ')
     filename = f'{start.strftime(yyyy_mm_dd)} {subject}.md'
-    open(filename, 'a').write(text)
+    open(filename, 'a', encoding='utf-8').write(text)
     os.startfile(filename)
 else:
     appdata_exe = os.path.join(user_profile, r'AppData\Roaming\Zoom\bin\Zoom.exe')
-    program_files_exe = r'C:\Program Files (x86)\Zoom\bin\Zoom.exe'
+    program_files_exe = r'C:\Program Files\Zoom\bin\Zoom.exe'
     subprocess.call([appdata_exe if os.path.exists(appdata_exe) else program_files_exe, f"--url={url}"])
