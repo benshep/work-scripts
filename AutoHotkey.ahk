@@ -17,7 +17,7 @@ Esc::!F4
 #x::WinActivate
 #IfWinExist ahk_class MozillaWindowClass
 #a::WinActivate
-#IfWinExist ben.shepherd@stfc.ac.uk - Outlook
+#IfWinExist - Outlook
 #o::WinActivate
 #IfWinExist ahk_class OpusApp
 #w::WinActivate
