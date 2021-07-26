@@ -1,22 +1,29 @@
 import time
+import win32com.client as win32
 from datetime import datetime
 from webbot import Browser
 from pushbullet import Pushbullet  # to show notifications
 from pushbullet_api_key import api_key  # local file, keep secret!
 from oracle_credentials import username, password  # local file, keep secret!
 
+name_translate = {'Alexander': 'Alex'}
+
+print('Starting Chrome')
 web = Browser(showWindow=False)
-# log in to Oracle
+print('Logging in to Oracle')
 web.go_to('https://ebs.ssc.rcuk.ac.uk/OA_HTML/AppsLogin')
 web.type(username, 'username')
 web.type(password, 'password')
 web.click('Login')
 
+page_name = 'STFC OTL Supervisor'
+print(f'Going to {page_name} page')
 time.sleep(2)
 # web.refresh()  # sometimes fails to load home page
-web.click('STFC OTL Supervisor')
+web.click(page_name)
 
 # expand all rows
+print('Fetching list of staff')
 i = 0
 while True:
     i += 1
@@ -26,8 +33,9 @@ while True:
         break
     web.click(id=f'N3:hgi:{i}')
 
-# go to recent timecards for each one
+print('Finding recent timecards for each staff member')
 toast = ''
+outlook = win32.Dispatch('outlook.application')
 for i in range(1, len(rows) - 5):  # table has a few extra rows!
     # time.sleep(1)
     web.click(id=f'N3:Y:{i}')
@@ -40,6 +48,7 @@ for i in range(1, len(rows) - 5):  # table has a few extra rows!
         first, middles = first.split(' ', 1)
     except ValueError:  # some people have no middle name!
         pass
+    first = name_translate[first] if first in name_translate.keys() else first
     # show latest first (only need to do once?)
     if i == 1:
         web.click('Period Starting')  # sort ascending
@@ -52,12 +61,25 @@ for i in range(1, len(rows) - 5):  # table has a few extra rows!
         delta = datetime.today() - datetime.strptime(last_card_date, '%d-%b-%Y')  # e.g. 12-Jul-2021
         weeks = delta.days // 7
         if weeks >= 1:
-            toast += f'{first} {surname}: last card {last_card_date}'
+            toast += f'{first} {surname}: last card {last_card_date}\n'
+        if weeks >= 2:
+            mail = outlook.CreateItem(0)
+            mail.To = f'{first}.{surname}@stfc.ac.uk'
+            mail.Subject = 'OTL Reminder'
+            mail.Body = f"""{first},
+
+This is your automated reminder to bring your OTL timecards up to date. Your last card was dated {last_card_date}, and so you're {weeks} weeks behind.
+
+Thanks very much.
+
+Ben Shepherd (via a bot)"""
+            mail.Send()
 
     web.click('Return to Hierarchy')
 
 web.close_current_tab()
 
 if toast:
+    print('\nLate timecards:')
     print(toast)
     Pushbullet(api_key).push_note('📅 OTL Timecards', toast)
