@@ -6,19 +6,11 @@ from time import sleep
 from webbot import Browser
 from oracle_credentials import username, password  # local file, keep secret!
 
-user_profile = os.environ['UserProfile']
-downloads_folder = os.path.join(user_profile, 'Downloads')
-documents_folder = os.path.join(user_profile, 'Documents')
-
-
-class NoResultsError(Exception):
-    pass
-
-
 def search_via_prompt(index, search_term):
     """Search using the dropdown box and the pop-up prompt."""
     sleep(5)
     print(f'Searching for {search_term} in box {index}')
+    # Sometimes webbot takes ages to find the elements - base Selenium is much quicker
     web.driver.find_elements_by_class_name('promptTextField')[index].click()
     web.click('Search...')
     sleep(3)
@@ -31,10 +23,11 @@ def search_via_prompt(index, search_term):
     sleep(2)
 
 
-csv_filename = os.path.join(downloads_folder, 'Detailed Cost by project.csv')
+user_profile = os.environ['UserProfile']
+csv_filename = os.path.join(os.path.join(user_profile, 'Downloads'), 'Detailed Cost by project.csv')
 today = datetime.today()
 fy = today.year - (1 if today.month < 4 else 0)  # last calendar year if before April
-excel_filename = os.path.join(documents_folder, 'Budgets', f'Budget summaries {fy}.xlsx')
+excel_filename = os.path.join(user_profile, 'Documents', 'Budgets', f'Budget summaries {fy}.xlsx')
 projects = pandas.read_excel(excel_filename, sheet_name='Index', dtype='string')
 for name, project_code, task in zip(projects['Name'], projects['Project'], projects['Task']):
     print('Starting Chrome')
@@ -48,7 +41,7 @@ for name, project_code, task in zip(projects['Name'], projects['Project'], proje
     try:
         search_via_prompt(1, project_code)  # Project Number
         search_via_prompt(8, task)  # Task Number
-    except selenium.common.exceptions.NoSuchElementException:
+    except selenium.common.exceptions.NoSuchElementException:  # no results for this project/task combination
         web.quit()
         continue
     print('Getting results')

@@ -1,57 +1,29 @@
 import os
 import time
-
-import win32com.client
 import pandas
-from webbot import Browser
-from oracle_credentials import username, password  # local file, keep secret!
+from oracle import type_into, go_to_oracle_page
 from datetime import datetime, timedelta
 from pushbullet import Pushbullet  # to show notifications
 from pushbullet_api_key import api_key  # local file, keep secret!
-
-user_profile = os.path.join(os.environ['UserProfile'], 'Documents')
+from outlook import get_appointments_in_range
 
 # get standard bookings
-filename = os.path.join(user_profile, r'Budgets\MaRS Staff Booking 2021.xlsx')
+filename = os.path.join(os.environ['UserProfile'], 'Documents', 'Budgets', 'MaRS Staff Booking 2021.xlsx')
 booking_plan = pandas.read_excel(filename, header=[3, 4], index_col=0)
 ftes = booking_plan.loc['Ben Shepherd']
 ftes = ftes.iloc[:-1]  # remove total column
 ftes = ftes.dropna()  # get rid of projects with zero hours
 hours = ftes * 7.4  # hours per day for each project
 
-# find out of office dates
-today = datetime.today()
-in_three_months = today + timedelta(days=90)
-appointments = win32com.client.Dispatch('Outlook.Application').GetNamespace('MAPI').GetDefaultFolder(9).Items
-appointments.Sort("[Start]")
-appointments.IncludeRecurrences = True
-d_m_y = "%#d/%#m/%Y"  # no leading zeros
-yyyy_mm_dd = '%Y-%m-%d'
-restriction = f"[Start] >= '{today.strftime(d_m_y)}' AND [End] <= '{in_three_months.strftime(d_m_y)}'"
+# find out of office dates in the next 3 months
 days_away = []
-for appointment in appointments.Restrict(restriction):
+for appointment in get_appointments_in_range(0, 90):
     if appointment.BusyStatus == 3:  # out of office
         days = appointment.End - appointment.Start
         days_away += [appointment.Start + timedelta(days=i) for i in range(days.days)]
 days_away = [date.replace(tzinfo=None) for date in days_away]  # ignore time zone info
 
-web = Browser(showWindow=True)
-web.go_to('https://ebs.ssc.rcuk.ac.uk/OA_HTML/AppsLogin')
-web.type(username, 'username')
-web.type(password, 'password')
-web.click('Login')
-
-time.sleep(2)
-web.click('STFC OTL Timecards')
-web.click('Time')
-
-
-def type_into(element, text):
-    """Type this text into a given element. After finding the elements, it seems faster than webbot's 'type' method."""
-    element.click()
-    web.press(web.Key.CONTROL + 'a')  # select all
-    web.type(text)
-    time.sleep(0.5)
+web = go_to_oracle_page(('STFC OTL Timecards', 'Time'))
 
 toast = ''
 while True:
@@ -65,41 +37,42 @@ while True:
         if not card_label.endswith('~'):  # not entered yet
             option.click()
             wb_date = datetime.strptime(card_label.split(' - ')[0], '%B %d, %Y')  # e.g. August 16, 2021
+            on_holiday = [wb_date + timedelta(days=day) in days_away for day in range(5)]  # list of True/False for on holiday that day
 
             # enter hours
-            for row, ((project, task), daily_hours) in enumerate(hours.items()):
-                web.click('Add Another Row')
-                time.sleep(2)
+            if not all(on_holiday):
+                for row, ((project, task), daily_hours) in enumerate(hours.items()):
+                    web.click('Add Another Row')
+                    time.sleep(2)
+                    hours_boxes = web.find_elements(classname='x1v')  # 7x6 of these
+                    project_boxes = web.find_elements(xpath='//*[@class="x8" and @title="Project"]')
+                    task_boxes = web.find_elements(xpath='//*[@class="x8" and @title="Task"]')
+                    type_boxes = web.find_elements(xpath='//*[@class="x8" and @title="Type"]')
+                    type_into(web, project_boxes[row], project.strip())
+                    type_into(web, task_boxes[row], task.strip())
+                    type_into(web, type_boxes[row], 'Labour - (Straight Time)')
+                    for day in range(5):
+                        i = row * 7 + day
+                        hrs = '0' if on_holiday[day] else f'{daily_hours:.2f}'
+                        type_into(web, hours_boxes[i], hrs)
+            else:
+                hours = []
                 hours_boxes = web.find_elements(classname='x1v')  # 7x6 of these
                 project_boxes = web.find_elements(xpath='//*[@class="x8" and @title="Project"]')
                 task_boxes = web.find_elements(xpath='//*[@class="x8" and @title="Task"]')
                 type_boxes = web.find_elements(xpath='//*[@class="x8" and @title="Type"]')
-                type_into(project_boxes[row], project.strip())
-                type_into(task_boxes[row], task.strip())
-                type_into(type_boxes[row], 'Labour - (Straight Time)')
-                for day in range(5):
-                    i = row * 7 + day
-                    hrs = '0' if wb_date + timedelta(days=day) in days_away else f'{daily_hours:.2f}'
-                    type_into(hours_boxes[i], hrs)
-            # do a row for leave and holidays
-            row = len(hours)
-            type_into(project_boxes[row], 'STRA00009')
-            type_into(task_boxes[row], '01.01')
-            type_into(type_boxes[row], 'Labour - (Straight Time)')
-            days_off = 0
-            for day in range(5):
-                i = row * 7 + day
-                if wb_date + timedelta(days=day) in days_away:
-                    days_off += 1
-                    hrs = '7.4'
-                else:
-                    hrs = '0'
-                type_into(hours_boxes[i], hrs)
+            if any(on_holiday):
+                # do a row for leave and holidays
+                row = len(hours)
+                type_into(web, project_boxes[row], 'STRA00009')
+                type_into(web, task_boxes[row], '01.01')
+                type_into(web, type_boxes[row], 'Labour - (Straight Time)')
+                [type_into(web, hours_boxes[row * 7 + day], '7.4' if on_holiday[day] else '0') for day in range(5)]
 
             web.click(id='review')  # Continue button
             web.click(id='HxcSubmit')  # Submit button
             toast += f'Submitted timecard for {card_label}'
-            if days_off:
+            if days_off := sum(on_holiday):
                 toast += f' (with {days_off} days off)'
             toast += '\n'
             break

@@ -10,23 +10,19 @@ Command line arguments:
     notes       start a Markdown notes file instead of joining the meeting
 """
 
-from datetime import datetime, timedelta
-import win32com.client
-import pywintypes
-import subprocess
-import re
 import os
+import re
+import subprocess
 import sys
+import pywintypes
+from datetime import datetime
+from outlook import get_appointments_in_range
+
 
 # get today's meetings from Outlook calendar
-today = datetime.today()
-tomorrow = today + timedelta(days=1)
-appointments = win32com.client.Dispatch('Outlook.Application').GetNamespace('MAPI').GetDefaultFolder(9).Items
-appointments.Sort("[Start]")
-appointments.IncludeRecurrences = True
 d_m_y = "%#d/%#m/%Y"  # no leading zeros
 yyyy_mm_dd = '%Y-%m-%d'
-restriction = f"[Start] >= '{today.strftime(d_m_y)}' AND [End] <= '{tomorrow.strftime(d_m_y)}'"
+
 min_dt = None
 # Try to capture all possible subdomains
 # j is join - w seems to be webinar
@@ -35,7 +31,7 @@ min_dt = None
 zoom_url = re.compile(r'(https://(?:[\w\-]+.)?zoom.us/[wj]/\d{9,11}(\?[\w=&\.\-]+)?)')
 
 # try to find the closest to now
-for appointmentItem in appointments.Restrict(restriction):
+for appointmentItem in get_appointments_in_range(0, 1):
     try:
         # print(appointmentItem.Start)
         start = datetime.fromtimestamp(appointmentItem.StartUTC.timestamp())
