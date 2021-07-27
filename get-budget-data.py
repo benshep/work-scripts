@@ -29,6 +29,8 @@ csv_filename = os.path.join(os.path.join(user_profile, 'Downloads'), 'Detailed C
 today = datetime.today()
 fy = today.year - (1 if today.month < 4 else 0)  # last calendar year if before April
 excel_filename = os.path.join(user_profile, 'Documents', 'Budgets', f'Budget summaries {fy}.xlsx')
+# The Index sheet here must have columns Name, Project and Task at least.
+# Budget data will be placed into sheets named after the Name column, overwriting anything already in there.
 projects = pandas.read_excel(excel_filename, sheet_name='Index', dtype='string')
 for name, project_code, task in zip(projects['Name'], projects['Project'], projects['Task']):
     print('Starting Chrome')
