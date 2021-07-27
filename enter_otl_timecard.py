@@ -8,7 +8,8 @@ from pushbullet_api_key import api_key  # local file, keep secret!
 from outlook import get_appointments_in_range
 
 # get standard bookings
-filename = os.path.join(os.environ['UserProfile'], 'Documents', 'Budgets', 'MaRS Staff Booking 2021.xlsx')
+fy = pandas.Timestamp(datetime.today()).to_period('Q-MAR').qyear  # e.g. 2022 for FY21/22
+filename = os.path.join(os.environ['UserProfile'], 'Documents', 'Budgets', f'MaRS Staff Booking {fy - 1}.xlsx')
 booking_plan = pandas.read_excel(filename, header=[3, 4], index_col=0)
 ftes = booking_plan.loc['Ben Shepherd']
 ftes = ftes.iloc[:-1]  # remove total column
@@ -18,7 +19,7 @@ hours = ftes * 7.4  # hours per day for each project
 # find out of office dates in the next 3 months
 days_away = []
 for appointment in get_appointments_in_range(0, 90):
-    if appointment.BusyStatus == 3:  # out of office
+    if appointment.AllDayEvent and appointment.BusyStatus == 3:  # out of office
         days = appointment.End - appointment.Start
         days_away += [appointment.Start + timedelta(days=i) for i in range(days.days)]
 days_away = [date.replace(tzinfo=None) for date in days_away]  # ignore time zone info
@@ -37,6 +38,8 @@ while True:
         if not card_label.endswith('~'):  # not entered yet
             option.click()
             wb_date = datetime.strptime(card_label.split(' - ')[0], '%B %d, %Y')  # e.g. August 16, 2021
+            if pandas.Timestamp(wb_date + timedelta(days=5)).to_period('Q-MAR').qyear != fy:
+                raise NotImplementedError('Going into new financial year not supported yet')
             on_holiday = [wb_date + timedelta(days=day) in days_away for day in range(5)]  # list of True/False for on holiday that day
 
             # enter hours
