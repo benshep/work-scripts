@@ -9,7 +9,7 @@ def go_to_oracle_page(links):
     """Open a webbot instance and log in to Oracle, opening the link(s) specified therein.
     links can be a string or a list of strings.
     Returns the webbot instance so you can do more things with it."""
-    web = Browser(showWindow=True)
+    web = Browser(showWindow=False)
     web.go_to('https://ebs.ssc.rcuk.ac.uk/OA_HTML/AppsLogin')
     web.type(username, 'username')
     web.type(password, 'password')

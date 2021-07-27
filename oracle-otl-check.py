@@ -1,26 +1,12 @@
-import time
 import win32com.client as win32
 from datetime import datetime
-from webbot import Browser
 from pushbullet import Pushbullet  # to show notifications
 from pushbullet_api_key import api_key  # local file, keep secret!
-from oracle_credentials import username, password  # local file, keep secret!
+from oracle import go_to_oracle_page
 
 name_translate = {'Alexander': 'Alex'}
 
-print('Starting Chrome')
-web = Browser(showWindow=False)
-print('Logging in to Oracle')
-web.go_to('https://ebs.ssc.rcuk.ac.uk/OA_HTML/AppsLogin')
-web.type(username, 'username')
-web.type(password, 'password')
-web.click('Login')
-
-page_name = 'STFC OTL Supervisor'
-print(f'Going to {page_name} page')
-time.sleep(2)
-# web.refresh()  # sometimes fails to load home page
-web.click(page_name)
+web = go_to_oracle_page('STFC OTL Supervisor')
 
 # expand all rows
 print('Fetching list of staff')
@@ -82,4 +68,4 @@ web.close_current_tab()
 if toast:
     print('\nLate timecards:')
     print(toast)
-    Pushbullet(api_key).push_note('📅 OTL Timecards', toast)
+    Pushbullet(api_key).push_note('👔 Group Timecards', toast)

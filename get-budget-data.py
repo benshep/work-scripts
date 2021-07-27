@@ -6,6 +6,7 @@ from time import sleep
 from webbot import Browser
 from oracle_credentials import username, password  # local file, keep secret!
 
+
 def search_via_prompt(index, search_term):
     """Search using the dropdown box and the pop-up prompt."""
     sleep(5)
