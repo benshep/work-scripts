@@ -34,7 +34,8 @@ excel_filename = os.path.join(user_profile, 'Documents', 'Budgets', f'Budget sum
 projects = pandas.read_excel(excel_filename, sheet_name='Index', dtype='string')
 for name, project_code, task in zip(projects['Name'], projects['Project'], projects['Task']):
     print('Starting Chrome')
-    web = Browser()
+    web = Browser(showWindow=True)
+    web.driver.maximize_window()
     print('Logging in to Oracle')
     web.go_to('https://obi.ssc.rcuk.ac.uk/analytics/saw.dll?dashboard&PortalPath=%2Fshared%2FSTFC%20Shared%2F_portal%2FSTFC%20Projects')
     web.type(username, 'username')
@@ -45,6 +46,7 @@ for name, project_code, task in zip(projects['Name'], projects['Project'], proje
         search_via_prompt(1, project_code)  # Project Number
         search_via_prompt(8, task)  # Task Number
     except selenium.common.exceptions.NoSuchElementException:  # no results for this project/task combination
+        print('No results')
         web.quit()
         continue
     print('Getting results')
@@ -62,7 +64,14 @@ for name, project_code, task in zip(projects['Name'], projects['Project'], proje
     web.click('Export', loose_match=False, number=2)  # there are two tables to export, we want the lower one
     web.click('Data', loose_match=False)
     web.click('CSV', loose_match=False)
-    sleep(5)
+    for i in range(30):
+        sleep(1)
+        if os.path.exists(csv_filename):
+            break
+    else:
+        print('Data export not successful')
+        web.quit()
+        continue
     csv_data = pandas.read_csv(csv_filename)
 
     with pandas.ExcelWriter(excel_filename, mode='a', if_sheet_exists='replace') as writer:
