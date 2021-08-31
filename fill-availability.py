@@ -27,6 +27,10 @@ for event in get_appointments_in_range(0, 7 * weeks):
 print('\nLooking for changes')
 spreadsheet_xlsx = os.path.join(os.environ['UserProfile'], 'OneDrive - Science and Technology Facilities Council',
                                 'CLARA_Shifts_rota', 'Ben.xlsx')
+# alternative sync location (laptop)
+if not os.path.exists(spreadsheet_xlsx):
+    spreadsheet_xlsx = os.path.join(os.environ['UserProfile'], 'Science and Technology Facilities Council',
+                                    'CLARA Workflow - CLARA_Shifts_rota', 'Ben.xlsx')
 mod_time = pandas.to_datetime(os.path.getmtime(spreadsheet_xlsx), unit='s')
 old_end_date = mod_time + pandas.to_timedelta(weeks, 'W')
 column_name = 'available'
@@ -46,8 +50,8 @@ new_free_dates = new_free_dates[new_free_dates < old_end_date]
 print(f'Ignoring dates in new list after {old_end_date.strftime(d_mon)} - reduced to {len(new_free_dates)} entries')
 old_free_dates = set(old_free_dates)
 new_free_dates = set(new_free_dates)
-changed_to_yes = new_free_dates - old_free_dates
-changed_to_no = old_free_dates - new_free_dates
+changed_to_yes = sorted(list(new_free_dates - old_free_dates))
+changed_to_no = sorted(list(old_free_dates - new_free_dates))
 toast = ''
 if changed_to_yes:
     toast += '👍 ' + ', '.join(date.strftime(d_mon) for date in changed_to_yes) + '\n'
