@@ -46,6 +46,7 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 
 #z::Send {Media_Play_Pause}
 #+z::Send {Media_Next}
+!F1::Send {Volume_Mute}
 
 ;launch the Zoom meeting that's nearest to now in the calendar
 #^z::Run C:\Users\bjs54\Miniconda3\pythonw.exe C:\Users\bjs54\Documents\Scripts\join_zoom_meeting.pyw
