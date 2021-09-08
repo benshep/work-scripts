@@ -22,10 +22,10 @@ while True:
 print('Finding recent timecards for each staff member')
 toast = ''
 outlook = win32.Dispatch('outlook.application')
+recent = 'Recent Timecards: '
 for i in range(1, len(rows) - 5):  # table has a few extra rows!
     # time.sleep(1)
     web.click(id=f'N3:Y:{i}')
-    recent = 'Recent Timecards: '
     name = web.find_elements(recent)[0].text
     name = name[len(recent):]
     surname, first, number = name.split(', ')  # e.g. 'Bainbridge, Doctor Alexander Robert, 155807'
@@ -34,7 +34,7 @@ for i in range(1, len(rows) - 5):  # table has a few extra rows!
         first, middles = first.split(' ', 1)
     except ValueError:  # some people have no middle name!
         pass
-    first = name_translate[first] if first in name_translate.keys() else first
+    first = name_translate[first] if first in name_translate else first
     # show latest first (only need to do once?)
     if i == 1:
         web.click('Period Starting')  # sort ascending
