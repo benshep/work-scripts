@@ -1,16 +1,16 @@
 import time
-
 from webbot import Browser
-
 from oracle_credentials import username, password
 
 
-def go_to_oracle_page(links):
+def go_to_oracle_page(links, show_window=False):
     """Open a webbot instance and log in to Oracle, opening the link(s) specified therein.
     links can be a string or a list of strings.
     Returns the webbot instance so you can do more things with it."""
-    web = Browser(showWindow=False)
+    web = Browser(showWindow=show_window)
     web.go_to('https://ebs.ssc.rcuk.ac.uk/OA_HTML/AppsLogin')
+    if not web.exists('Enter your Single Sign-On credentials below'):
+        raise RuntimeError('Failed to load Oracle login page')
     web.type(username, 'username')
     web.type(password, 'password')
     web.click('Login')
@@ -20,6 +20,7 @@ def go_to_oracle_page(links):
         links = [links, ]
     for link in links:
         web.click(link)
+        time.sleep(2)
     return web
 
 
