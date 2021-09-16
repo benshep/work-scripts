@@ -7,84 +7,39 @@ Look through today's events in an Outlook calendar, and follow the Zoom link con
 of the closest one to the current time.
 Command line arguments:
     second      find the second meeting if there are more than one starting at the same time (order is arbitrary)
-    notes       start a Markdown notes file instead of joining the meeting
 """
 
 import os
 import re
 import subprocess
 import sys
-import pywintypes
-from datetime import datetime
-from outlook import get_appointments_in_range
+import outlook
+
+user_profile = os.environ['UserProfile']
 
 
-# get today's meetings from Outlook calendar
-d_m_y = "%#d/%#m/%Y"  # no leading zeros
-yyyy_mm_dd = '%Y-%m-%d'
+def join_zoom_meeting(skip_one=False):
+    """Look through today's events in an Outlook calendar, and follow the Zoom link contained within the subject or body
+    of the closest one to the current time."""
 
-min_dt = None
-# Try to capture all possible subdomains
-# j is join - w seems to be webinar
-# 9-11 digits for the meeting ID
-# Following that, URL params with alphanumeric, =&.- (any more required?)
-zoom_url = re.compile(r'(https://(?:[\w\-]+.)?zoom.us/[wj]/\d{9,11}(\?[\w=&\.\-]+)?)')
+    # Zoom regex: try to capture all possible subdomains
+    # j is join - w seems to be webinar
+    # 9-11 digits for the meeting ID
+    # Following that, URL params with alphanumeric, =&.- (any more required?)
+    zoom_url = re.compile(r'(https://(?:[\w\-]+.)?zoom.us/[wj]/\d{9,11}(\?[\w=&\.\-]+)?)')
+    current_events = outlook.get_current_events()
+    print('Current events:', [event.Subject for event in current_events])
+    for meeting in current_events:
+        match = zoom_url.search(f'{meeting.Body}\r\n{meeting.Location}')
+        if match:
+            if skip_one:
+                skip_one = False
+                continue
+            url = match.group()
+            appdata_exe = os.path.join(user_profile, r'AppData\Roaming\Zoom\bin\Zoom.exe')
+            program_files_exe = r'C:\Program Files\Zoom\bin\Zoom.exe'
+            subprocess.call([appdata_exe if os.path.exists(appdata_exe) else program_files_exe, f"--url={url}"])
 
-# try to find the closest to now
-for appointmentItem in get_appointments_in_range(0, 1):
-    try:
-        # print(appointmentItem.Start)
-        start = datetime.fromtimestamp(appointmentItem.StartUTC.timestamp())
-    except (OSError, pywintypes.com_error):  # appointments with weird dates!
-        continue
-    dt = int(abs(start - datetime.now()).seconds / 60)  # nearest minute, otherwise we get clashes
-    print(f'{start:} ({dt=}) {appointmentItem.Subject}')
-    if min_dt is None or dt < min_dt or ('second' in sys.argv and dt == min_dt):
-        meeting = appointmentItem
-        min_dt = dt
-        print(f'closest: {meeting.Subject}, {min_dt}')
-        # look for a join URL in the body or the subject
-        try:
-            url = zoom_url.search(f'{meeting.Body}\r\n{meeting.Location}').group()
-            print(f'{url=}')
-        except AttributeError:  # not found in string
-            pass
 
-user_profile = os.environ['USERPROFILE']
-if 'notes' in sys.argv:
-    # start a file for notes
-    os.chdir(os.path.join(user_profile, 'Documents'))
-    folders = next(os.walk('.'))[1]
-    subject = meeting.Subject
-    try:
-        folder = next(folder for folder in folders if folder.lower() in subject.lower())
-    except StopIteration:
-        try:
-            folder = next(folder for folder in folders if folder.lower() in meeting.Body.lower())
-        except StopIteration:
-            folder = '.'  # couldn't work out what folder based on subject or body: put in root folder
-    os.chdir(folder)
-    names = []
-    name_format = re.compile(r'([\w-]+), ([\w-]+) \(\w+,\w+,\w+\)')
-    for person in meeting.Recipients:
-        person_name = person.Name
-        match = name_format.match(person_name)
-        if match:  # matches "Surname, Firstname (ORG,DEPT,GROUP)"
-            names.append(f'{match.group(2)} {match.group(1)}')
-        elif '@' in person_name:  # email address
-            name, domain = person_name.split('@')
-            names.append(name.title().replace('.', ' '))
-        else:
-            names.append(person_name.title())
-    people_list = ', '.join(names)
-    text = f'# {subject}\n\n*{start.strftime(d_m_y)}. {people_list}*\n\n'
-    illegal_chars = '*?/\\<>:|"'
-    for c in illegal_chars:
-        subject = subject.replace(c, ' ')
-    filename = f'{start.strftime(yyyy_mm_dd)} {subject}.md'
-    open(filename, 'a', encoding='utf-8').write(text)
-    os.startfile(filename)
-else:
-    appdata_exe = os.path.join(user_profile, r'AppData\Roaming\Zoom\bin\Zoom.exe')
-    program_files_exe = r'C:\Program Files\Zoom\bin\Zoom.exe'
-    subprocess.call([appdata_exe if os.path.exists(appdata_exe) else program_files_exe, f"--url={url}"])
+if __name__ == '__main__':
+    join_zoom_meeting('second' in sys.argv)
