@@ -4,20 +4,18 @@ from datetime import datetime, timedelta
 
 
 def get_appointments_in_range(start=0, end=30):
-    """Get a set of appointments in the given range. start and end are relative days from today, or datetimes."""
-    start_is_int = isinstance(start, int)
-    from_date = datetime.today() + timedelta(days=start) if start_is_int else start - timedelta(days=1)
-    end_is_int = isinstance(end, int)
-    to_date = datetime.today() + timedelta(days=end) if end_is_int else end
+    """Get a list of appointments in the given range. start and end are relative days from today, or datetimes."""
+    from_date = datetime.today() + timedelta(days=start) if isinstance(start, int) else start - timedelta(days=1)
+    to_date = datetime.today() + timedelta(days=end) if isinstance(end, int) else end
+    return get_appointments(f"[Start] >= '{datetime_text(from_date)}' AND [Start] <= '{datetime_text(to_date)}'")
+
+
+def get_appointments(restriction, sort_order='Start'):
+    """Get a list of calendar appointments with the given Outlook filter."""
     outlook = win32com.client.Dispatch('Outlook.Application')
-    calendar = outlook.GetNamespace('MAPI').GetDefaultFolder(9)
-    appointments = calendar.Items
-    appointments.Sort("[Start]")
+    appointments = outlook.GetNamespace('MAPI').GetDefaultFolder(9).Items
+    appointments.Sort(f"[{sort_order}]")
     appointments.IncludeRecurrences = True
-    d_m_y = "%#d/%#m/%Y"  # no leading zeros
-    from_date_text = from_date.strftime(d_m_y)
-    to_date_text = to_date.strftime(d_m_y)
-    restriction = f"[Start] >= '{from_date_text}' AND [Start] <= '{to_date_text}'"
     return appointments.Restrict(restriction)
 
 
@@ -46,3 +44,5 @@ def get_current_events():
     return current_events
 
 
+def datetime_text(advance_time):
+    return advance_time.strftime('%#d/%#m/%Y %H:%M')
