@@ -45,11 +45,12 @@ def create_note_file(skip_one=False):
     folder = next(chain(filter_subject, filter_body, ['.']))
     os.chdir(folder)
     names = []
-    name_format = re.compile(r'([\w-]+), ([\w-]+) \(\w+,\w+,\w+\)')
+    # match "Surname, Firstname (ORG,DEPT,GROUP)" - last bit in brackets is optional
+    name_format = re.compile(r'(.+?), ([^ ]+)( \(.+?,.+?,.+?\))?')
     for person in meeting.Recipients:
         person_name = person.Name
-        if match := name_format.match(person_name):  # matches "Surname, Firstname (ORG,DEPT,GROUP)"
-            names.append(f'{match.group(2)} {match.group(1)}')
+        if match := name_format.match(person_name):
+            names.append(f'{match.group(2)} {match.group(1)}')  # Firstname Surname
         elif '@' in person_name:  # email address
             name, domain = person_name.split('@')
             names.append(name.title().replace('.', ' '))
