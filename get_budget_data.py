@@ -36,10 +36,11 @@ def get_budget_data():
     # The Index sheet here must have columns Name, Project and Task at least.
     # Budget data will be placed into sheets named after the Name column, overwriting anything already in there.
     csv_filename = os.path.join(user_profile, 'Downloads', 'Detailed Cost by project.csv')
-    for project in pandas.read_excel(excel_filename, sheet_name='Index', dtype='string'):
+    table = pandas.read_excel(excel_filename, sheet_name='Index', dtype='string')
+    for project, task in zip(table['Project'], table['Task']):
+        web = obi_login()
         try:
-            web = obi_login()
-            get_task_data(web, project.Project, project.Task)
+            get_task_data(web, project, task)
             export_csv(csv_filename, web)
             with pandas.ExcelWriter(excel_filename, mode='a', if_sheet_exists='replace') as writer:
                 pandas.read_csv(csv_filename).to_excel(writer, sheet_name=project.Name)
@@ -75,7 +76,12 @@ def get_task_data(web, project_code, task):
     web.driver.find_element_by_name('gobtn').click()  # Apply
     sleep(5)  # wait for results to be returned
     print('Going to transactions page')
-    web.driver.find_element_by_xpath('//div[@title="Transactions"]').click()
+    overflows = web.driver.find_elements_by_class_name('obipsTabBarOverflow')
+    for element in overflows:
+        if element.is_displayed():
+            element.click()
+            break
+    web.click('Transactions')
     sleep(5)
     return True
 
