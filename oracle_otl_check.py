@@ -77,7 +77,8 @@ This is your automated reminder to bring your OTL timecards up to date. Your las
 Thanks very much.
 
 Ben Shepherd (via a bot)"""
-    mail.Send()
+    # mail.Send()
+    mail.Display()
 
 
 def last_card_age(last_card_date):

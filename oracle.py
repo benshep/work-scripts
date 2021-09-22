@@ -2,6 +2,12 @@ import time
 from webbot import Browser
 from oracle_credentials import username, password
 
+# If this is run from a Python instance with no console, it will show a console window with Chrome messages.
+# To prevent this, go into the site-packages\selenium\webdriver\common\service.py. At the top, add:
+# from win32process import CREATE_NO_WINDOW
+# In the Service.start() function, add the argument creationflags=CREATE_NO_WINDOW to the subprocess.Popen call
+# See https://stackoverflow.com/questions/33983860/hide-chromedriver-console-in-python
+
 
 def go_to_oracle_page(links, show_window=False):
     """Open a webbot instance and log in to Oracle, opening the link(s) specified therein.
@@ -30,3 +36,7 @@ def type_into(web, element, text):
     web.press(web.Key.CONTROL + 'a')  # select all
     web.type(text)
     time.sleep(0.5)
+
+
+if __name__ == '__main__':
+    go_to_oracle_page(())
