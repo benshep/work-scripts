@@ -20,43 +20,34 @@ user_profile = os.environ['UserProfile']
 
 def folder_match(name: str, test_against: str):
     """Case-insensitive string comparison. Checks that name is a folder as well."""
-    return name.casefold() in test_against.casefold() and os.path.isdir(name)
+    return name.casefold() in test_against.casefold() and os.path.isdir(name) and name != 'Zoom'
 
 
 def create_note_file(skip_one=False):
     """Start a file for notes relating to the given meeting. Find a relevant folder in the user's Documents folder,
-     searching first the subject then the body of the meeting for a folder name. Use the Documents root if none found.
+     searching first the subject then the body of the meeting for a folder name. Use Other if none found.
+     Don't use the Zoom folder (this is often found in the meeting body).
      The file is in Markdown format, with the meeting title, date and attendees filled in at the top."""
 
     current_events = outlook.get_current_events()
     print('Current events:', [event.Subject for event in current_events])
 
-    try:
-        meeting = current_events[1 if skip_one else 0]
-    except IndexError:  # nothing found
+    index = 1 if skip_one else 0
+    if len(current_events) <= index:
         return
+    meeting = current_events[index]
 
     os.chdir(os.path.join(user_profile, 'Documents'))
     files = os.listdir()
     subject = meeting.Subject
     filter_subject = filter(lambda file: folder_match(file, subject), files)
     filter_body = filter(lambda file: folder_match(file, meeting.Body), files)
-    # If we can't work out what folder based on subject or body: put in root folder
-    folder = next(chain(filter_subject, filter_body, ['.']))
+    # If we can't work out what folder based on subject or body: put in Other folder
+    folder = next(chain(filter_subject, filter_body, ['Other']))
     os.chdir(folder)
-    names = []
-    # match "Surname, Firstname (ORG,DEPT,GROUP)" - last bit in brackets is optional
-    name_format = re.compile(r'(.+?), ([^ ]+)( \(.+?,.+?,.+?\))?')
-    for person in meeting.Recipients:
-        person_name = person.Name
-        if match := name_format.match(person_name):
-            names.append(f'{match.group(2)} {match.group(1)}')  # Firstname Surname
-        elif '@' in person_name:  # email address
-            name, domain = person_name.split('@')
-            names.append(name.title().replace('.', ' '))
-        else:
-            names.append(person_name.title())
-    people_list = ', '.join(names)
+    attendees = '; '.join([meeting.RequiredAttendees, meeting.OptionalAttendees])
+    print(attendees)
+    people_list = ', '.join(format_name(person_name) for person_name in filter(None, attendees.split('; ')))
     start = outlook.get_meeting_time(meeting)
     meeting_date = start.strftime("%#d/%#m/%Y")  # no leading zeros
     text = f'# {subject}\n\n*{meeting_date}. {people_list}*\n\n'
@@ -64,6 +55,22 @@ def create_note_file(skip_one=False):
     filename = f'{start.strftime("%Y-%m-%d")} {subject.translate(bad_chars)}.md'
     open(filename, 'a', encoding='utf-8').write(text)
     os.startfile(filename)
+
+
+# match "Surname, Firstname (ORG,DEPT,GROUP)" - last bit in brackets is optional
+name_format = re.compile(r'(.+?), ([^ ]+)( \(.+?,.+?,.+?\))?')
+
+
+def format_name(person_name):
+    """Convert display name to more readable Firstname Surname format. Works with Surname, Firstname (ORG,DEPT,GROUP)
+    or firstname.surname@company.com."""
+    if match := name_format.match(person_name):
+        return f'{match.group(2)} {match.group(1)}'  # Firstname Surname
+    elif '@' in person_name:  # email address
+        name, domain = person_name.split('@')
+        return name.title().replace('.', ' ')
+    else:
+        return person_name.title()
 
 
 if __name__ == '__main__':
