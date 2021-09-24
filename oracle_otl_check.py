@@ -41,25 +41,27 @@ def oracle_otl_check():
     toast = ''
     outlook = win32.Dispatch('outlook.application')
     return_button_text = 'Return to Hierarchy'
-    for i in range(1, row_count):  # first one is mine - ignore this
-        web.click(return_button_text)
-        # time.sleep(1)
-        web.click(id=f'N3:Y:{i}')  # link from 'Action' column at far right
-        # show latest first (only need to do once)
-        if i == 1:
-            web.click('Period Starting')  # sort ascending
-            web.click('Period Starting')  # sort descending
-        first, surname = get_name(web)
-        last_card_date = web.find_elements(id='Hxctcarecentlist:Hxctcaperiodstarts:0')[0].text
-        print(f'{first} {surname}: {last_card_date}')
-        if last_card_date == return_button_text:  # some staff (e.g. Hon Sci) don't have timecards
-            continue
-        weeks = last_card_age(last_card_date)
-        if weeks >= 1:
-            toast += f'{first} {surname}: last card {last_card_date}\n'
-        if weeks >= 2:
-            send_reminder(outlook, first, surname, last_card_date, weeks)
-    web.close_current_tab()
+    try:
+        for i in range(1, row_count):  # first one is mine - ignore this
+            web.click(return_button_text)
+            # time.sleep(1)
+            web.click(id=f'N3:Y:{i}')  # link from 'Action' column at far right
+            # show latest first (only need to do once)
+            if i == 1:
+                web.click('Period Starting')  # sort ascending
+                web.click('Period Starting')  # sort descending
+            first, surname = get_name(web)
+            last_card_date = web.find_elements(id='Hxctcarecentlist:Hxctcaperiodstarts:0')[0].text
+            print(f'{first} {surname}: {last_card_date}')
+            if last_card_date == return_button_text:  # some staff (e.g. Hon Sci) don't have timecards
+                continue
+            weeks = last_card_age(last_card_date)
+            if weeks >= 1:
+                toast += f'{first} {surname}: last card {last_card_date}\n'
+            if weeks >= 2:
+                send_reminder(outlook, first, surname, last_card_date, weeks)
+    finally:
+        web.driver.quit()
     if toast:
         print('\nLate timecards:')
         print(toast)
@@ -67,6 +69,8 @@ def oracle_otl_check():
 
 
 def send_reminder(outlook, first, surname, last_card_date, weeks):
+    if surname == 'Dunning':
+        return  # Sep 2021: don't send reminders to Dave
     mail = outlook.CreateItem(0)
     mail.To = f'{first}.{surname}@stfc.ac.uk'
     mail.Subject = 'OTL Reminder'

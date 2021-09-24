@@ -47,7 +47,7 @@ def get_budget_data():
         except InformationFetchFailure as e:
             print(e)
         finally:
-            web.quit()
+            web.driver.quit()
 
 
 def export_csv(csv_filename, web):

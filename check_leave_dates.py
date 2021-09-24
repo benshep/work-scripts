@@ -40,8 +40,11 @@ def check_leave_dates():
 
 
 def get_oracle_off_dates():
-    web = go_to_oracle_page(('RCUK Self-Service Employee', 'Attendance Management'))
-    cells = web.driver.find_elements_by_class_name('x1w')
+    try:
+        web = go_to_oracle_page(('RCUK Self-Service Employee', 'Attendance Management'))
+        cells = web.driver.find_elements_by_class_name('x1w')
+    finally:
+        web.driver.quit()
     start_dates = cells[::8]
     end_dates = cells[1::8]
     return to_set(get_date_list(start.text, end.text) for start, end in zip(start_dates, end_dates))
