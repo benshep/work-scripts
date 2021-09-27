@@ -3,8 +3,8 @@ import pandas
 import selenium.common
 from datetime import datetime
 from time import sleep
-from webbot import Browser
-from oracle_credentials import username, password  # local file, keep secret!
+
+from oracle import go_to_oracle_page
 
 
 class InformationFetchFailure(Exception):
@@ -38,7 +38,7 @@ def get_budget_data():
     csv_filename = os.path.join(user_profile, 'Downloads', 'Detailed Cost by project.csv')
     table = pandas.read_excel(excel_filename, sheet_name='Index', dtype='string')
     for project, task in zip(table['Project'], table['Task']):
-        web = obi_login()
+        web = go_to_oracle_page(use_obi=True)
         try:
             get_task_data(web, project, task)
             export_csv(csv_filename, web)
@@ -84,20 +84,6 @@ def get_task_data(web, project_code, task):
     web.click('Transactions')
     sleep(5)
     return True
-
-
-def obi_login():
-    """Login to Oracle Business Intelligence website."""
-    print('Starting Chrome')
-    web = Browser(showWindow=False)
-    web.driver.maximize_window()
-    print('Logging in to Oracle')
-    web.go_to(
-        'https://obi.ssc.rcuk.ac.uk/analytics/saw.dll?dashboard&PortalPath=%2Fshared%2FSTFC%20Shared%2F_portal%2FSTFC%20Projects')
-    web.type(username, 'username')
-    web.type(password, 'password')
-    web.click('Login')
-    return web
 
 
 if __name__ == '__main__':

@@ -9,12 +9,14 @@ from oracle_credentials import username, password
 # See https://stackoverflow.com/questions/33983860/hide-chromedriver-console-in-python
 
 
-def go_to_oracle_page(links, show_window=False):
+def go_to_oracle_page(links, show_window=False, use_obi=False):
     """Open a webbot instance and log in to Oracle, opening the link(s) specified therein.
     links can be a string or a list of strings.
     Returns the webbot instance so you can do more things with it."""
     web = Browser(showWindow=show_window)
-    web.go_to('https://ebs.ssc.rcuk.ac.uk/OA_HTML/AppsLogin')
+    obi_url = 'https://obi.ssc.rcuk.ac.uk/analytics/saw.dll?dashboard&PortalPath=%2Fshared%2FSTFC%20Shared%2F_portal%2FSTFC%20Projects'
+    ebs_url = 'https://ebs.ssc.rcuk.ac.uk/OA_HTML/AppsLogin'
+    web.go_to(obi_url if use_obi else ebs_url)
     if not web.exists('Enter your Single Sign-On credentials below'):
         raise RuntimeError('Failed to load Oracle login page')
     web.type(username, 'username')
