@@ -20,7 +20,7 @@ user_profile = os.environ['UserProfile']
 
 def folder_match(name: str, test_against: str):
     """Case-insensitive string comparison. Checks that name is a folder as well."""
-    return name.casefold() in test_against.casefold() and os.path.isdir(name) and name != 'Zoom'
+    return re.search(fr'\b{name}\b', test_against) is not None and name != 'Zoom'
 
 
 def create_note_file(skip_one=False):
