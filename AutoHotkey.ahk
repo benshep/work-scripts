@@ -49,13 +49,13 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 !F1::Send {Volume_Mute}
 
 ;launch the Zoom meeting that's nearest to now in the calendar
-#^z::Run C:\Users\bjs54\Miniconda3\pythonw.exe C:\Users\bjs54\Documents\Scripts\join_zoom_meeting.pyw
+#^z::Run C:\Users\bjs54\Miniconda3\envs\py39\pythonw.exe C:\Users\bjs54\Documents\Scripts\join_zoom_meeting.pyw
 ;if there are two at the same time, join the second one
-#^+z::Run C:\Users\bjs54\Miniconda3\pythonw.exe C:\Users\bjs54\Documents\Scripts\join_zoom_meeting.pyw second
+#^+z::Run C:\Users\bjs54\Miniconda3\envs\py39\pythonw.exe C:\Users\bjs54\Documents\Scripts\join_zoom_meeting.pyw second
 ;write notes for the Zoom meeting that's nearest to now in the calendar
-#^n::Run C:\Users\bjs54\Miniconda3\pythonw.exe C:\Users\bjs54\Documents\Scripts\start_meeting_notes.pyw
+#^n::Run C:\Users\bjs54\Miniconda3\envs\py39\pythonw.exe C:\Users\bjs54\Documents\Scripts\start_meeting_notes.pyw
 ;if there are two at the same time, make notes for the second one
-#^+n::Run C:\Users\bjs54\Miniconda3\pythonw.exe C:\Users\bjs54\Documents\Scripts\start_meeting_notes.pyw second
+#^+n::Run C:\Users\bjs54\Miniconda3\envs\py39\pythonw.exe C:\Users\bjs54\Documents\Scripts\start_meeting_notes.pyw second
 
 ;Ctrl-Win-` to toggle window always on top
 #^`::
