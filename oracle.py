@@ -9,7 +9,7 @@ from oracle_credentials import username, password
 # See https://stackoverflow.com/questions/33983860/hide-chromedriver-console-in-python
 
 
-def go_to_oracle_page(links, show_window=False, use_obi=False):
+def go_to_oracle_page(links=[], show_window=False, use_obi=False):
     """Open a webbot instance and log in to Oracle, opening the link(s) specified therein.
     links can be a string or a list of strings.
     Returns the webbot instance so you can do more things with it."""
