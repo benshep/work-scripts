@@ -1,3 +1,4 @@
+import pandas
 import win32com.client
 import pywintypes
 from datetime import datetime, timedelta
@@ -46,3 +47,18 @@ def get_current_events():
 
 def datetime_text(advance_time):
     return advance_time.strftime('%#d/%#m/%Y %H:%M')
+
+
+def is_annual_leave(event):
+    """Check whether a given Outlook event is an annual leave booking."""
+    return all([event.AllDayEvent, event.BusyStatus == 3, event.Subject == 'Annual Leave'])
+
+
+def get_outlook_leave_dates(start=-30, end=90):
+    al_events = filter(is_annual_leave, get_appointments_in_range(start, end))
+    return [get_date_list(event.Start.date(), event.End.date(), closed='left') for event in al_events]
+
+
+def get_date_list(start, end, **kwargs):
+    """Return a list of business dates (i.e. Mon-Fri) in a given date range, inclusive."""
+    return pandas.bdate_range(start, end, **kwargs).to_pydatetime().tolist()

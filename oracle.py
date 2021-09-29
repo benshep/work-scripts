@@ -41,4 +41,4 @@ def type_into(web, element, text):
 
 
 if __name__ == '__main__':
-    go_to_oracle_page(())
+    go_to_oracle_page()

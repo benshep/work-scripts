@@ -1,6 +1,8 @@
 import os
 import time
 import pandas
+
+import outlook
 from oracle import type_into, go_to_oracle_page
 from datetime import datetime, timedelta
 from pushbullet import Pushbullet  # to show notifications
@@ -26,6 +28,9 @@ def enter_otl_timecard():
             days_away += [appointment.Start + timedelta(days=i) for i in range(days.days)]
     days_away = [date.replace(tzinfo=None) for date in days_away]  # ignore time zone info
     print('Out of office days', days_away)
+    # days_away = outlook.get_outlook_leave_dates(-30, 90)
+    # print('Out of office days', days_away)
+    # return
 
     web = go_to_oracle_page(('STFC OTL Timecards', 'Time'), show_window=False)
 
