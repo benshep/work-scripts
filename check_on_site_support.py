@@ -1,5 +1,6 @@
 import os
 import pandas
+import re
 from datetime import datetime
 import outlook
 from pushbullet import Pushbullet  # to show notifications
@@ -15,7 +16,8 @@ def check_on_site_support():
     # get row labels
     row_labels = [row[0] for row in sheet.values]
     months = [label for label in row_labels if isinstance(label, datetime)]
-    spreadsheet_support_days = set()
+    me = 'BS'
+    spreadsheet_support_days = {me: set(), 'AB': set(), 'AH': set()}
     for month in months:
         month_text = month.strftime('%b-%y')  # e.g. Oct-21
         # which row do we need to look at to find the date numbers?
@@ -25,9 +27,11 @@ def check_on_site_support():
         # find my name in the list
         row = row_labels.index(month)
         for i, initials in enumerate(sheet.values[row][col:]):
-            if initials == 'BS':
-                spreadsheet_support_days.add(datetime(month.year, month.month, i + 1))
-    print('From spreadsheet', spreadsheet_support_days)
+            if initials in spreadsheet_support_days:
+                spreadsheet_support_days[initials].add(datetime(month.year, month.month, i + 1))
+    print('From spreadsheet')
+    for initials, support_days in spreadsheet_support_days.items():
+        print(initials, format_date_list(support_days))
 
     # final month of this calendar is the first cell of the last row
     final_month = months[-1]
@@ -37,14 +41,10 @@ def check_on_site_support():
     events = outlook.get_appointments_in_range(0, last_day)
     support_subject = '🧲 CLARA magnets on-site support'
     outlook_support_days = {outlook.get_meeting_time(event) for event in events if event.Subject == support_subject}
-    wfh_subject = '🏠 Working from home'
-    wfh_days = {outlook.get_meeting_time(event) for event in events if event.Subject == wfh_subject}
-    print('From Outlook', outlook_support_days)
+    print('From Outlook', format_date_list(outlook_support_days))
 
     # any days marked for me missing from my calendar?
-    not_in_outlook = sorted(list(spreadsheet_support_days - outlook_support_days))
-    print('Not in Outlook', not_in_outlook)
-
+    not_in_outlook = sorted(list(spreadsheet_support_days[me] - outlook_support_days))
     for missing_day in not_in_outlook:
         outlook_app = outlook.get_outlook()
         event = outlook_app.CreateItem(1)  # AppointmentItem
@@ -56,8 +56,7 @@ def check_on_site_support():
     toast = ['📅 Added to Outlook: ' + format_date_list(not_in_outlook)] if not_in_outlook else []
 
     # any days marked in calendar missing from spreadsheet?
-    not_in_sheet = sorted(list(outlook_support_days - spreadsheet_support_days))
-    print('Not in spreadsheet', not_in_sheet)
+    not_in_sheet = outlook_support_days - spreadsheet_support_days[me]
     for missing_day in not_in_sheet:
         for event in events:
             if outlook.get_meeting_time(event) == missing_day and event.Subject == support_subject:
@@ -65,10 +64,15 @@ def check_on_site_support():
     if not_in_sheet:
         toast.append('🗑️ Removed from Outlook: ' + format_date_list(not_in_sheet))
 
-    wfh_clashes = sorted(list(wfh_days & spreadsheet_support_days))
-    if wfh_clashes:
-        toast.append('🏠 WFH clashes: ' + format_date_list(wfh_clashes))
-    print('WFH clashes', wfh_clashes)
+    for initials, support_days in spreadsheet_support_days.items():
+        user = {me: 'me', 'AB': 'alex.bainbridge@stfc.ac.uk', 'AH': 'alex.hinton@stfc.ac.uk'}[initials]
+        wfh_days = outlook.get_away_dates(0, last_day, user=user, wfh=True)
+        leave_days = outlook.get_away_dates(0, last_day, user=user)
+        off_days = wfh_days | leave_days
+        print(f'{initials} off days', format_date_list(off_days))
+        clashes = off_days & support_days
+        if clashes:
+            toast.append(f'🏠 {initials} out of office clashes: ' + format_date_list(clashes))
 
     if toast:
         print(toast)
@@ -77,7 +81,7 @@ def check_on_site_support():
 
 def format_date_list(date_list):
     """Return a comma-separated formatted string list of the dates in date_list."""
-    return ', '.join(day.strftime('%#d %b') for day in date_list)
+    return ', '.join(day.strftime('%#d %b') for day in sorted(list(date_list)))
 
 
 if __name__ == '__main__':

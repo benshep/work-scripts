@@ -1,22 +1,35 @@
 import pandas
 import win32com.client
 import pywintypes
+import re
 from datetime import datetime, timedelta
 
 
-def get_appointments_in_range(start=0, end=30):
+def get_appointments_in_range(start=0, end=30, user='me'):
     """Get a list of appointments in the given range. start and end are relative days from today, or datetimes."""
     from_date = datetime.today() + timedelta(days=start) if isinstance(start, int) else start - timedelta(days=1)
     to_date = datetime.today() + timedelta(days=end) if isinstance(end, int) else end
-    return get_appointments(f"[Start] >= '{datetime_text(from_date)}' AND [Start] <= '{datetime_text(to_date)}'")
+    return get_appointments(f"[Start] >= '{datetime_text(from_date)}' AND [Start] <= '{datetime_text(to_date)}'", user=user)
 
 
-def get_appointments(restriction, sort_order='Start'):
+def get_appointments(restriction, sort_order='Start', user='me'):
     """Get a list of calendar appointments with the given Outlook filter."""
-    appointments = get_outlook().GetNamespace('MAPI').GetDefaultFolder(9).Items
+    calendar = get_calendar(user)
+    appointments = calendar.Items
     appointments.Sort(f"[{sort_order}]")
     appointments.IncludeRecurrences = True
     return appointments.Restrict(restriction)
+
+
+def get_calendar(user='me'):
+    """Return the calendar folder for a given user. If none supplied, default to my calendar."""
+    namespace = get_outlook().GetNamespace('MAPI')
+    if user == 'me':
+        return namespace.GetDefaultFolder(9)
+    recipient = namespace.CreateRecipient(user)
+    if not recipient.Resolve():
+        raise RuntimeError(f'User "{user}" not found.')
+    return namespace.GetSharedDefaultFolder(recipient, 9)
 
 
 def get_outlook():
@@ -41,9 +54,9 @@ def happening_now(event):
         return False
 
 
-def get_current_events():
+def get_current_events(user='me'):
     """Return a list of current events from Outlook, sorted by subject."""
-    current_events = filter(happening_now, get_appointments_in_range(-7, 1))
+    current_events = filter(happening_now, get_appointments_in_range(-7, 1, user=user))
     # Sort by subject so we have a predictable order for events to be returned
     current_events = sorted(current_events, key=lambda event: event.Subject)
     return current_events
@@ -55,14 +68,31 @@ def datetime_text(advance_time):
 
 def is_annual_leave(event):
     """Check whether a given Outlook event is an annual leave booking."""
-    return all([event.AllDayEvent, event.BusyStatus == 3, event.Subject == 'Annual Leave'])
+    return all([event.AllDayEvent,
+                event.BusyStatus == 3,  # out of office
+                len(event.Recipients) == 1,  # not sent by someone else
+                event.Subject.endswith('Annual Leave') or re.search(r'\bAL$', event.Subject)])  # e.g. "ARB AL" but not "INTERNAL"
 
 
-def get_outlook_leave_dates(start=-30, end=90):
-    al_events = filter(is_annual_leave, get_appointments_in_range(start, end))
-    return [get_date_list(event.Start.date(), event.End.date(), closed='left') for event in al_events]
+def is_wfh(event):
+    """Check whether a given Outlook event is a work from home day."""
+    return all([event.AllDayEvent,
+                event.BusyStatus == 4,  # working elsewhere
+                len(event.Recipients) == 1,  # not sent by someone else
+                re.search(r'\bWork(ing)? from home$', event.Subject) or re.search(r'\bWFH$', event.Subject)])
+
+
+def get_away_dates(start=-30, end=90, user='me', wfh=False):
+    """Return a set of the days in the given range that the user is on annual leave or WFH. Default to annual leave."""
+    al_events = filter(is_wfh if wfh else is_annual_leave, get_appointments_in_range(start, end, user=user))
+    return to_set([get_date_list(event.Start.date(), event.End.date(), closed='left') for event in al_events])
 
 
 def get_date_list(start, end, **kwargs):
     """Return a list of business dates (i.e. Mon-Fri) in a given date range, inclusive."""
     return pandas.bdate_range(start, end, **kwargs).to_pydatetime().tolist()
+
+
+def to_set(date_lists):
+    """Convert a list of date lists to a flat set."""
+    return set(sum(date_lists, []))
