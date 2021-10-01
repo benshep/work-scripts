@@ -13,11 +13,15 @@ def get_appointments_in_range(start=0, end=30):
 
 def get_appointments(restriction, sort_order='Start'):
     """Get a list of calendar appointments with the given Outlook filter."""
-    outlook = win32com.client.Dispatch('Outlook.Application')
-    appointments = outlook.GetNamespace('MAPI').GetDefaultFolder(9).Items
+    appointments = get_outlook().GetNamespace('MAPI').GetDefaultFolder(9).Items
     appointments.Sort(f"[{sort_order}]")
     appointments.IncludeRecurrences = True
     return appointments.Restrict(restriction)
+
+
+def get_outlook():
+    """Return a reference to the Outlook application."""
+    return win32com.client.Dispatch('Outlook.Application')
 
 
 def get_meeting_time(event, get_end=False):
