@@ -1,6 +1,5 @@
 import os
 import pandas
-import re
 from datetime import datetime
 import outlook
 from pushbullet import Pushbullet  # to show notifications
@@ -8,15 +7,11 @@ from pushbullet_api_key import api_key  # local file, keep secret!
 
 
 def check_on_site_support():
-    # read in data from CLARA support calendar
-    user_profile = os.environ['UserProfile']
-    spreadsheet_filename = os.path.join(user_profile, r"Science and Technology Facilities Council",
-                                        'ASTeC-RTF Safety - General', "CLARA NWH Support Calendar.xlsx")
-    sheet = pandas.read_excel(spreadsheet_filename, sheet_name='Magnets')
+    sheet = get_spreadsheet_data()
+    me = 'BS'
     # get row labels
     row_labels = [row[0] for row in sheet.values]
     months = [label for label in row_labels if isinstance(label, datetime)]
-    me = 'BS'
     spreadsheet_support_days = {me: set(), 'AB': set(), 'AH': set()}
     for month in months:
         month_text = month.strftime('%b-%y')  # e.g. Oct-21
@@ -45,14 +40,7 @@ def check_on_site_support():
 
     # any days marked for me missing from my calendar?
     not_in_outlook = sorted(list(spreadsheet_support_days[me] - outlook_support_days))
-    for missing_day in not_in_outlook:
-        outlook_app = outlook.get_outlook()
-        event = outlook_app.CreateItem(1)  # AppointmentItem
-        event.Subject = support_subject
-        event.Start = missing_day.strftime('%Y-%m-%d')
-        event.AllDayEvent = True
-        event.Duration = 24 * 60
-        event.Save()  # shows as free by default
+    create_support_events(not_in_outlook, support_subject)
     toast = ['📅 Added to Outlook: ' + format_date_list(not_in_outlook)] if not_in_outlook else []
 
     # any days marked in calendar missing from spreadsheet?
@@ -64,8 +52,9 @@ def check_on_site_support():
     if not_in_sheet:
         toast.append('🗑️ Removed from Outlook: ' + format_date_list(not_in_sheet))
 
+    user_dict = {me: 'me', 'AB': 'alex.bainbridge@stfc.ac.uk', 'AH': 'alex.hinton@stfc.ac.uk'}
     for initials, support_days in spreadsheet_support_days.items():
-        user = {me: 'me', 'AB': 'alex.bainbridge@stfc.ac.uk', 'AH': 'alex.hinton@stfc.ac.uk'}[initials]
+        user = user_dict[initials]
         wfh_days = outlook.get_away_dates(0, last_day, user=user, wfh=True)
         leave_days = outlook.get_away_dates(0, last_day, user=user)
         off_days = wfh_days | leave_days
@@ -77,6 +66,28 @@ def check_on_site_support():
     if toast:
         print(toast)
         Pushbullet(api_key).push_note(support_subject, '\n'.join(toast))
+
+
+def create_support_events(not_in_outlook, support_subject):
+    """Go through a list of missing days and create a support event for each one in Outlook."""
+    if not not_in_outlook:
+        return
+    outlook_app = outlook.get_outlook()
+    for missing_day in not_in_outlook:
+        event = outlook_app.CreateItem(1)  # AppointmentItem
+        event.Subject = support_subject
+        event.Start = missing_day.strftime('%Y-%m-%d')
+        event.AllDayEvent = True
+        event.Duration = 24 * 60
+        event.Save()  # shows as free by default
+
+
+def get_spreadsheet_data():
+    """Read in data from CLARA support calendar."""
+    user_profile = os.environ['UserProfile']
+    spreadsheet_filename = os.path.join(user_profile, r"Science and Technology Facilities Council",
+                                        'ASTeC-RTF Safety - General', "CLARA NWH Support Calendar.xlsx")
+    return pandas.read_excel(spreadsheet_filename, sheet_name='Magnets')
 
 
 def format_date_list(date_list):
