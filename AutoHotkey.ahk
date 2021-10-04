@@ -17,7 +17,7 @@ Esc::!F4
 #x::WinActivate
 #IfWinExist ahk_class MozillaWindowClass
 #a::WinActivate
-#IfWinExist - Outlook
+#IfWinExist ahk_exe OUTLOOK.EXE
 #o::WinActivate
 #IfWinExist ahk_class OpusApp
 #w::WinActivate
