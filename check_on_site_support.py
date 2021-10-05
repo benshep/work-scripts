@@ -33,7 +33,7 @@ def check_on_site_support():
     # find the last day of this month
     last_day = final_month + pandas.DateOffset(months=1) + pandas.DateOffset(days=-1)
     # get events from my calendar
-    events = outlook.get_appointments_in_range(0, last_day)
+    events = outlook.get_appointments_in_range(-1, last_day)
     support_subject = '🧲 CLARA magnets on-site support'
     outlook_support_days = {outlook.get_meeting_time(event) for event in events if event.Subject == support_subject}
     print('From Outlook', format_date_list(outlook_support_days))
