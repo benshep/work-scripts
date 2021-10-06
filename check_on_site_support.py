@@ -19,11 +19,10 @@ def check_on_site_support():
         row = next(i for i, label in enumerate(row_labels) if isinstance(label, str) and label.startswith(month_text))
         # now find the column with the first day of the month
         col = list(sheet.values[row]).index(1)
-        # find my name in the list
         row = row_labels.index(month)
         for i, initials in enumerate(sheet.values[row][col:]):
-            if initials in spreadsheet_support_days:
-                spreadsheet_support_days[initials].add(datetime(month.year, month.month, i + 1))
+            if initials in spreadsheet_support_days and (date := datetime(month.year, month.month, i + 1)) >= datetime.today():
+                spreadsheet_support_days[initials].add(date)
     print('From spreadsheet')
     for initials, support_days in spreadsheet_support_days.items():
         print(initials, format_date_list(support_days))
@@ -33,7 +32,7 @@ def check_on_site_support():
     # find the last day of this month
     last_day = final_month + pandas.DateOffset(months=1) + pandas.DateOffset(days=-1)
     # get events from my calendar
-    events = outlook.get_appointments_in_range(-1, last_day)
+    events = outlook.get_appointments_in_range(0, last_day)
     support_subject = '🧲 CLARA magnets on-site support'
     outlook_support_days = {outlook.get_meeting_time(event) for event in events if event.Subject == support_subject}
     print('From Outlook', format_date_list(outlook_support_days))
