@@ -16,6 +16,7 @@ def remove_bad_chars(filename: str):
 
 
 def get_risk_assessments():
+    """Open the SHE Assure website, and bulk-download project risk assessments to the local file system."""
     user_profile = os.environ['UserProfile']
     downloads_folder = os.path.join(user_profile, 'Downloads')
     ras_folder = os.path.join(user_profile, 'Documents', 'Safety', 'RAs')
@@ -48,7 +49,8 @@ def get_risk_assessments():
             values = [tag.get_attribute('title') for tag in info.find_elements_by_tag_name('a')]
             info_dict = {attribute.rstrip(':'): value for attribute, value in zip(attributes, values)}
             reference_number = info_dict['Reference']
-            title = remove_bad_chars(info_dict['Assessment Title'].split('\n')[0])  # just take first line
+            title = info_dict['Assessment Title'].split('\n')[0]  # just take first line
+            title = remove_bad_chars(title).strip()  # remove whitespace from start and end
             attachment_links = web.find_elements(tag='span', classname='fa-file')
             folder_name = f'{reference_number} {title}'
             print(folder_name)
