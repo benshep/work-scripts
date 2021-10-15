@@ -1,0 +1,7 @@
+webbot
+requests
+pandas
+python-dateutil
+pillow
+selenium
+pushbullet-py
