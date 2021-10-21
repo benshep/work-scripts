@@ -16,7 +16,8 @@ password = input('Enter Oracle password: ')
 ```
 7. I use [Pushbullet](https://www.pushbullet.com/) for notifications. Create `pushbullet_api_key.py` containing `api_key` definition
 
-Alternatively, just remove the lines that reference this. For instance, in `oracle_staff_check.py`, at the top of the file, remove the `from pushbullet_api_key import api_key` line. About halfway through the code (line 73), remove the `Pushbullet(api_key).push_note(toast_title, toast)` line. 
+Alternatively, just remove the lines that reference this. For instance, in `oracle_staff_check.py`, at the top of the file, remove the `from pushbullet_api_key import api_key` line. About halfway through the code (line 73), remove the `Pushbullet(api_key).push_note(toast_title, toast)` line.
+
 8. Open Anaconda Prompt
 9. Install required packages: `pip install pandas pushbullet.py pywin32 webbot` 
 10. Navigate to the folder containing the code: `cd C:\Users\<username>\Documents\work-scripts` (or wherever you unzipped the code)
