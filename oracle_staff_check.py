@@ -62,7 +62,6 @@ def check_staff_list(page, check_function, return_button_text, toast_title):
     try:
         for i in range(1, row_count):  # first one is mine - ignore this
             web.click(return_button_text)
-            # time.sleep(1)
             web.click(id=f'N3:Y:{i}')  # link from 'Action' column at far right
             toast.append(check_function(return_button_text, web))
     finally:
@@ -75,7 +74,7 @@ def check_staff_list(page, check_function, return_button_text, toast_title):
 
 
 def check_al_page(return_button_text, web):
-    """On an individual annual leave balance page, check the remaining balcnce, and return toast text."""
+    """On an individual annual leave balance page, check the remaining balance, and return toast text."""
     if web.exists('The selected action is not available'):  # not available for honorary scientists
         web.go_back()
         return None
@@ -84,8 +83,9 @@ def check_al_page(return_button_text, web):
     spans = web.find_elements(tag='span', classname='x2')
     name = spans[0].text
     surname, first = name.split(', ')
-    remaining_days = spans[-1].text
-    return f'{first} {surname}: {remaining_days} days'
+    remaining_days = float(spans[-1].text)  # can have half-days too
+    # Only show if more than 10 days remaining (max carry over)
+    return f'{first} {surname}: {remaining_days:g} days' if remaining_days > 10 else None
 
 
 def check_otl_page(return_button_text, web):
@@ -104,7 +104,7 @@ def check_otl_page(return_button_text, web):
     weeks = last_card_age(last_card_date)
     toast = None
     if weeks >= 1:
-        toast = f'{first} {surname}: last card {last_card_date}\n'
+        toast = f'{first} {surname}: last card {last_card_date}'
     if weeks >= 2:
         send_reminder(outlook, first, surname, last_card_date, weeks)
     return toast
