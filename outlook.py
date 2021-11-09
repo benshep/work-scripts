@@ -71,7 +71,8 @@ def is_annual_leave(event):
     return all([event.AllDayEvent,
                 event.BusyStatus == 3,  # out of office
                 len(event.Recipients) == 1,  # not sent by someone else
-                event.Subject.endswith('Annual Leave') or re.search(r'\bAL$', event.Subject)])  # e.g. "ARB AL" but not "INTERNAL"
+                event.Subject.lower().endswith('annual leave') or event.Subject == 'Off'
+                or re.search(r'\bAL$', event.Subject)])  # e.g. "ARB AL" but not "INTERNAL"
 
 
 def is_wfh(event):
