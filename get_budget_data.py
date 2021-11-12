@@ -17,18 +17,22 @@ def search_via_prompt(web, index, search_term):
     print(f'Searching for {search_term} in box {index}')
     # Sometimes webbot takes ages to find the elements - base Selenium is much quicker
     web.driver.find_elements_by_class_name('promptTextField')[index].click()
+    sleep(1)
     web.click('Search...')
     sleep(3)
     web.driver.find_element_by_xpath('//*[@id="choiceListSearchString_D"]').send_keys(search_term)  # search box
+    sleep(1)
     web.driver.find_element_by_name('searchButton').click()
     sleep(2)
     web.driver.find_element_by_class_name('searchHighlightedText')  # raises NoSuchElementException if no results
+    sleep(1)
     web.click(id='idMoveAllButton')
+    sleep(1)
     web.driver.find_element_by_name('OK').click()
     sleep(2)
 
 
-def get_budget_data():
+def get_budget_data(show_window):
     user_profile = os.environ['UserProfile']
     today = datetime.today()
     fy = today.year - (1 if today.month < 4 else 0)  # last calendar year if before April
@@ -37,12 +41,13 @@ def get_budget_data():
     # Budget data will be placed into sheets named after the Name column, overwriting anything already in there.
     csv_filename = os.path.join(user_profile, 'Downloads', 'Detailed Cost by project.csv')
     for line in pandas.read_excel(excel_filename, sheet_name='Index', dtype='string').itertuples():
-        web = go_to_oracle_page(use_obi=True)
+        web = go_to_oracle_page(use_obi=True, show_window=show_window)
         try:
             get_task_data(web, line.Project, line.Task)
             export_csv(csv_filename, web)
             with pandas.ExcelWriter(excel_filename, mode='a', if_sheet_exists='replace') as writer:
-                pandas.read_csv(csv_filename).to_excel(writer, sheet_name=line.Name)
+                data = pandas.read_csv(csv_filename, parse_dates=['Date', 'Fiscal Date', 'Fiscal Period'])
+                data.to_excel(writer, sheet_name=line.Name)
         except InformationFetchFailure as e:
             print(e)
         finally:
@@ -86,4 +91,4 @@ def get_task_data(web, project_code, task):
 
 
 if __name__ == '__main__':
-    get_budget_data()
+    get_budget_data(True)
