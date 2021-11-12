@@ -89,7 +89,7 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 ;#+a::Run C:\Windows\SystemApps\Microsoft.MicrosoftEdge_8wekyb3d8bbwe\MicrosoftEdge.exe
 #q::Run POWERPNT.EXE /s
 #x::Run EXCEL.EXE /e
-#g::Run %MusicDir%
+#+g::Run %MusicDir%
 ; jump through some hoops to get Remote Desktop app working (scaling works better with this than mstsc)
 ; see https://answers.microsoft.com/en-us/windows/forum/windows_10-windows_store/starting-windows-10-store-app-from-the-command/836354c5-b5af-4d6c-b414-80e40ed14675
 #+x::Run explorer.exe shell:appsFolder\Microsoft.RemoteDesktop_8wekyb3d8bbwe!App
