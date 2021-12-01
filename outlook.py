@@ -66,26 +66,38 @@ def datetime_text(advance_time):
     return advance_time.strftime('%#d/%#m/%Y %H:%M')
 
 
+def is_my_all_day_event(event):
+    """Check whether a given Outlook event is the user's own all day event."""
+    return event.AllDayEvent and len(event.Recipients) <= 1  # not sent by someone else
+
+
+def is_out_of_office(event):
+    """Check whether a given Outlook event is an out of office booking."""
+    return is_my_all_day_event(event) and event.BusyStatus == 3  # out of office
+
+
 def is_annual_leave(event):
     """Check whether a given Outlook event is an annual leave booking."""
-    return all([event.AllDayEvent,
-                event.BusyStatus == 3,  # out of office
-                len(event.Recipients) == 1,  # not sent by someone else
-                event.Subject.lower().endswith('annual leave') or event.Subject == 'Off'
-                or re.search(r'\bAL$', event.Subject)])  # e.g. "ARB AL" but not "INTERNAL"
+    return is_out_of_office(event) and any([event.Subject.lower().endswith('annual leave'), event.Subject == 'Off',
+                                           re.search(r'\bAL$', event.Subject)])  # e.g. "ARB AL" but not "INTERNAL"
 
 
 def is_wfh(event):
     """Check whether a given Outlook event is a work from home day."""
-    return all([event.AllDayEvent,
+    return all([is_my_all_day_event(event),
                 event.BusyStatus == 4,  # working elsewhere
-                len(event.Recipients) == 1,  # not sent by someone else
                 re.search(r'\bWork(ing)? from home$', event.Subject) or re.search(r'\bWFH$', event.Subject)])
 
 
-def get_away_dates(start=-30, end=90, user='me', wfh=False):
-    """Return a set of the days in the given range that the user is on annual leave or WFH. Default to annual leave."""
-    al_events = filter(is_wfh if wfh else is_annual_leave, get_appointments_in_range(start, end, user=user))
+def get_away_dates(start=-30, end=90, user='me', look_for=is_out_of_office):
+    """Return a set of the days in the given range that the user is away from the office.
+    The look_for parameter can be:
+     - is_my_all_day_event: look for any all day event with only the user as an attendee
+     - is_out_of_office (default): as above, but set to out of office
+     - is_annual_leave: as above, but subject is "Annual Leave" or "AL"
+     - is_wfh: set to out of office, and subject is "Work(ing) from home" or "WFH"
+     """
+    al_events = filter(look_for, get_appointments_in_range(start, end, user=user))
     return to_set([get_date_list(event.Start.date(), event.End.date(), closed='left') for event in al_events])
 
 

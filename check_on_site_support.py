@@ -54,7 +54,7 @@ def check_on_site_support():
     user_dict = {me: 'me', 'AB': 'alex.bainbridge@stfc.ac.uk', 'AH': 'alex.hinton@stfc.ac.uk'}
     for initials, support_days in spreadsheet_support_days.items():
         user = user_dict[initials]
-        wfh_days = outlook.get_away_dates(0, last_day, user=user, wfh=True)
+        wfh_days = outlook.get_away_dates(0, last_day, user=user, look_for=outlook.is_wfh)
         leave_days = outlook.get_away_dates(0, last_day, user=user)
         off_days = wfh_days | leave_days
         print(f'{initials} off days', format_date_list(off_days))

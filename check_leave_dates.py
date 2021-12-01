@@ -12,7 +12,7 @@ def list_missing(date_set):
 def check_leave_dates():
     """Compare annual leave dates in an Outlook calendar and in the list submitted to Oracle."""
     oracle_off_dates = get_oracle_off_dates()
-    outlook_off_dates = outlook.get_away_dates(min(oracle_off_dates), 0)
+    outlook_off_dates = outlook.get_away_dates(min(oracle_off_dates), 0, look_for=outlook.is_annual_leave)
 
     not_in_outlook = oracle_off_dates - outlook_off_dates
     toast = ''
