@@ -80,7 +80,7 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 #2::Run %DocsDir%
 #+w::Run mailto:
 #i::Run %ProgramFiles%\irfanview\i_view64.exe
-;#v::Run %ProgramFiles%\irfanview\i_view64.exe ;Win-I is Settings on Win10
+#v::Run RASDial "RAL VPN"
 #n::Run C:\ProgramData\chocolatey\lib\metapad\tools\metapad.exe
 #^p::Run cmd.exe
 #c::Run cmd.exe "/K" C:\Users\bjs54\Miniconda3\Scripts\activate.bat C:\Users\bjs54\Miniconda3
