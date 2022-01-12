@@ -2,14 +2,16 @@ import pandas
 import win32com.client
 import pywintypes
 import re
-from datetime import datetime, timedelta
+import datetime
 
 
 def get_appointments_in_range(start=0, end=30, user='me'):
     """Get a list of appointments in the given range. start and end are relative days from today, or datetimes."""
-    from_date = datetime.today() + timedelta(days=start) if isinstance(start, int) else start - timedelta(days=1)
-    to_date = datetime.today() + timedelta(days=end) if isinstance(end, int) else end
-    return get_appointments(f"[Start] >= '{datetime_text(from_date)}' AND [Start] <= '{datetime_text(to_date)}'", user=user)
+    today = datetime.date.today()
+    from_date = today + datetime.timedelta(days=start) if isinstance(start, int) else start - datetime.timedelta(days=1)
+    to_date = today + datetime.timedelta(days=end) if isinstance(end, int) else end
+    date_filter = f"[Start] >= '{datetime_text(from_date)}' AND [Start] <= '{datetime_text(to_date)}'"
+    return get_appointments(date_filter, user=user)
 
 
 def get_appointments(restriction, sort_order='Start', user='me'):
@@ -40,7 +42,7 @@ def get_outlook():
 def get_meeting_time(event, get_end=False):
     """Return the start or end time of the meeting (in UTC) as a Python datetime."""
     meeting_time = event.EndUTC if get_end else event.StartUTC
-    return datetime.fromtimestamp(meeting_time.timestamp())
+    return datetime.datetime.fromtimestamp(meeting_time.timestamp())
 
 
 def happening_now(event):
@@ -49,7 +51,7 @@ def happening_now(event):
         # print(appointmentItem.Start)
         start_time = get_meeting_time(event)
         end_time = get_meeting_time(event, get_end=True)
-        return start_time - timedelta(hours=0.5) <= datetime.now() <= end_time
+        return start_time - datetime.timedelta(hours=0.5) <= datetime.datetime.now() <= end_time
     except (OSError, pywintypes.com_error):  # appointments with weird dates!
         return False
 
@@ -57,7 +59,7 @@ def happening_now(event):
 def get_current_events(user='me'):
     """Return a list of current events from Outlook, sorted by subject."""
     current_events = filter(happening_now, get_appointments_in_range(-7, 1, user=user))
-    # Sort by subject so we have a predictable order for events to be returned
+    # Sort by subject, so we have a predictable order for events to be returned
     current_events = sorted(current_events, key=lambda event: event.Subject)
     return current_events
 

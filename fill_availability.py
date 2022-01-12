@@ -9,12 +9,13 @@ def fill_availability():
     weeks = 8
     available_dates = get_available_dates(weeks)
 
-    spreadsheet_xlsx = os.path.join(os.environ['UserProfile'], 'OneDrive - Science and Technology Facilities Council',
-                                    'CLARA_Shifts_rota', 'Ben.xlsx')
-    # alternative sync location (laptop)
-    if not os.path.exists(spreadsheet_xlsx):
-        spreadsheet_xlsx = os.path.join(os.environ['UserProfile'], 'Science and Technology Facilities Council',
-                                        'CLARA Workflow - CLARA_Shifts_rota', 'Ben.xlsx')
+    user_profile = os.environ['UserProfile']
+    stfc = 'Science and Technology Facilities Council'
+    rota = 'CLARA_Shifts_rota'
+    file = 'Ben.xlsx'
+    spreadsheet_xlsx = os.path.join(user_profile, f'OneDrive - {stfc}', rota, file)
+    if not os.path.exists(spreadsheet_xlsx):  # alternative sync location (laptop)
+        spreadsheet_xlsx = os.path.join(user_profile, stfc, f'CLARA Workflow - {rota}', file)
     mod_time = pandas.to_datetime(os.path.getmtime(spreadsheet_xlsx), unit='s')
     old_end_date = mod_time + pandas.to_timedelta(weeks, 'W') - pandas.to_timedelta(1, 'd')
     column_name = 'available'
@@ -67,10 +68,10 @@ def get_available_dates(weeks):
         fixed_event = (away or (busy and not weekly)) and (people < 2 or people > 5 or hours >= 2)
         if fixed_event:
             all_day = event.AllDayEvent
-            true_values = ', '.join(var for var, value in locals().items() if value is True)
+            true_values = ', '.join(var for var, value in locals().items() if value is True and var != 'fixed_event')
             duration = f"{days=}" if all_day else f"{hours=:.1f}"
             start = format_date(event.Start, not all_day)
-            print(event.Subject, start, true_values, f"{people=}", duration)
+            print(start, event.Subject, true_values, f"{people=}", duration)
             available_dates -= bdate_set(event.Start.date(), event.End.date())
     return available_dates
 
