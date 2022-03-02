@@ -12,14 +12,15 @@ def check_on_site_support():
     # get row labels
     row_labels = [row[0] for row in sheet.values]
     months = [label for label in row_labels if isinstance(label, datetime)]
+    months = sorted(list(set(months)))  # remove duplicates
     spreadsheet_support_days = {me: set(), 'AB': set(), 'AH': set()}
     for month in months:
-        month_text = month.strftime('%b-%y')  # e.g. Oct-21
         # which row do we need to look at to find the date numbers?
-        row = next(i for i, label in enumerate(row_labels) if isinstance(label, str) and label.startswith(month_text))
+        row = row_labels.index(month)
         # now find the column with the first day of the month
         col = list(sheet.values[row]).index(1)
-        row = row_labels.index(month)
+        # further down, the months are repeated with rows for initials - find the corresponding one
+        row = row_labels.index(month, row + 1)
         for i, initials in enumerate(sheet.values[row][col:]):
             if initials in spreadsheet_support_days and (date := datetime(month.year, month.month, i + 1)) >= datetime.today():
                 spreadsheet_support_days[initials].add(date)
