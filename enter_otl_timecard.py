@@ -7,13 +7,12 @@ from oracle import type_into, go_to_oracle_page
 from datetime import datetime, timedelta
 from pushbullet import Pushbullet  # to show notifications
 from pushbullet_api_key import api_key  # local file, keep secret!
-from outlook import get_appointments_in_range
 
 
-def enter_otl_timecard():
+def enter_otl_timecard(show_window=False):
     # get standard bookings
     fy = pandas.Timestamp('today').to_period('Q-MAR').qyear  # e.g. 2022 for FY21/22
-    hours = get_project_hours(fy)
+    hours = get_project_hours_new()
 
     # find out of office dates in the next 3 months (and previous 1)
     # days_away = []
@@ -26,7 +25,7 @@ def enter_otl_timecard():
     # print('Out of office days', days_away)
     # return
 
-    web = go_to_oracle_page(('STFC OTL Timecards', 'Time'), show_window=False)
+    web = go_to_oracle_page(('STFC OTL Timecards', 'Time'), show_window=show_window)
 
     toast = ''
     try:
@@ -51,7 +50,8 @@ def enter_otl_timecard():
 
                 # enter hours
                 if not all(on_holiday):
-                    for row, ((project, task), daily_hours) in enumerate(hours.items()):
+                    for row, ((project_task, _), daily_hours) in enumerate(hours.items()):
+                        project, task = project_task.split(' ')
                         web.click('Add Another Row')
                         time.sleep(2)
                         hours_boxes = web.find_elements(classname='x1v')  # 7x6 of these
@@ -106,5 +106,15 @@ def get_project_hours(fy):
     return ftes * 7.4
 
 
+def get_project_hours_new():
+    """Fetch the standard hours worked on each project from a spreadsheet."""
+    filename = os.path.join(os.environ['UserProfile'], 'Documents', 'Managing', 'MaRS staff and projects.xlsx')
+    booking_plan = pandas.read_excel(filename, sheet_name='Book', header=0, index_col=[2, 3])
+    ftes = booking_plan['Ben']
+    ftes = ftes.iloc[:-2]  # remove "not on code" and total rows
+    ftes = ftes.dropna()  # get rid of projects with zero hours
+    return ftes * 7.4
+
+
 if __name__ == '__main__':
-    enter_otl_timecard()
+    enter_otl_timecard(show_window=True)
