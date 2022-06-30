@@ -22,7 +22,7 @@ def check_on_site_support():
         # further down, the months are repeated with rows for initials - find the corresponding one
         row = row_labels.index(month, row + 1)
         for i, initials in enumerate(sheet.values[row][col:]):
-            if initials in spreadsheet_support_days and (date := datetime(month.year, month.month, i + 1)) >= datetime.today():
+            if initials in spreadsheet_support_days and (date := datetime(month.year, month.month, i + 1)) >= datetime.now():
                 spreadsheet_support_days[initials].add(date)
     print('From spreadsheet')
     for initials, support_days in spreadsheet_support_days.items():
@@ -59,8 +59,7 @@ def check_on_site_support():
         leave_days = outlook.get_away_dates(0, last_day, user=user)
         off_days = wfh_days | leave_days
         print(f'{initials} off days', format_date_list(off_days))
-        clashes = off_days & support_days
-        if clashes:
+        if clashes := off_days & support_days:
             toast.append(f'🏠 {initials} out of office clashes: ' + format_date_list(clashes))
 
     if toast:
