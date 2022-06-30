@@ -55,7 +55,7 @@ def otl_check():
 
 def check_staff_list(page, check_function, return_button_text, toast_title):
     """Go to a specific page for each staff member and perform a function."""
-    web = go_to_oracle_page(page)
+    web = go_to_oracle_page(page, show_window=False)
     row_count = get_staff_table(web)
 
     toast = []
@@ -66,8 +66,7 @@ def check_staff_list(page, check_function, return_button_text, toast_title):
             toast.append(check_function(return_button_text, web))
     finally:
         web.driver.quit()
-    toast = '\n'.join(filter(None, toast))  # remove None - any left?
-    if toast:
+    if toast := '\n'.join(filter(None, toast)):
         print(toast_title)
         print(toast)
         Pushbullet(api_key).push_note(toast_title, toast)
@@ -105,7 +104,7 @@ def check_otl_page(return_button_text, web):
     toast = None
     if weeks >= 1:
         toast = f'{first} {surname}: last card {last_card_date}'
-    if weeks >= 2:
+    if weeks >= 3:
         send_reminder(outlook, first, surname, last_card_date, weeks)
     return toast
 
@@ -126,9 +125,9 @@ Ben Shepherd (via a bot)"""
 
 
 def last_card_age(last_card_date):
-    delta = datetime.today() - datetime.strptime(last_card_date, '%d-%b-%Y')  # e.g. 12-Jul-2021
+    delta = datetime.now() - datetime.strptime(last_card_date, '%d-%b-%Y') # e.g. 12-Jul-2021
     return delta.days // 7
 
 
 if __name__ == '__main__':
-    annual_leave_check()
+    otl_check()

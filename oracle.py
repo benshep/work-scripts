@@ -10,10 +10,10 @@ from oracle_credentials import username, password
 # See https://stackoverflow.com/questions/33983860/hide-chromedriver-console-in-python
 
 
-def go_to_oracle_page(links=[], show_window=False, use_obi=False):
+def go_to_oracle_page(links=(), show_window=False, use_obi=False):
     """Open a webbot instance and log in to Oracle, opening the link(s) specified therein.
     links can be a string or a list of strings.
-    Returns the webbot instance so you can do more things with it."""
+    Returns the webbot instance, so you can do more things with it."""
     web = Browser(showWindow=show_window)
     obi_url = 'https://obi.ssc.rcuk.ac.uk/analytics/saw.dll?dashboard&PortalPath=%2Fshared%2FSTFC%20Shared%2F_portal%2FSTFC%20Projects'
     ebs_url = 'https://ebs.ssc.rcuk.ac.uk/OA_HTML/AppsLogin'
@@ -42,7 +42,7 @@ def go_to_oracle_page(links=[], show_window=False, use_obi=False):
 def type_into(web, element, text):
     """Type this text into a given element. After finding the elements, it seems faster than webbot's 'type' method."""
     element.click()
-    web.press(web.Key.CONTROL + 'a')  # select all
+    web.press(f'{web.Key.CONTROL}a')  # select all
     web.type(text)
     time.sleep(0.5)
 
