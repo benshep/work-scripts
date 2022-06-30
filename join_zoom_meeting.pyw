@@ -30,8 +30,7 @@ def join_zoom_meeting(skip_one=False):
     current_events = outlook.get_current_events()
     print('Current events:', [event.Subject for event in current_events])
     for meeting in current_events:
-        match = zoom_url.search(f'{meeting.Body}\r\n{meeting.Location}')
-        if match:
+        if match := zoom_url.search(f'{meeting.Body}\r\n{meeting.Location}'):
             if skip_one:
                 skip_one = False
                 continue
