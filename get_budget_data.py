@@ -79,10 +79,12 @@ def search_via_prompt_using_poll(web, index, search_term, check_in_dropdown=Fals
     sleep(10)
 
 
-def get_budget_data(show_window=False, project_names='all'):
+def get_budget_data(project_names='all', show_window=True):
+    if project_names != 'all' and isinstance(project_names, str):  # just one project name supplied, wrap it in a list
+        project_names = [project_names, ]
     user_profile = os.environ['UserProfile']
-    today = datetime.today()
-    fy = today.year - (1 if today.month < 4 else 0)  # last calendar year if before April
+    today = datetime.now()
+    fy = today.year - (today.month < 4)  # last calendar year if before April
     excel_filename = os.path.join(user_profile, 'Documents', 'Budgets', f'Budget summaries {fy}.xlsx')
     # The Index sheet here must have columns Name, Project and Task at least.
     # Budget data will be placed into sheets named after the Name column, overwriting anything already in there.
@@ -141,4 +143,4 @@ def get_task_data(web, project_code, task):
 
 
 if __name__ == '__main__':
-    get_budget_data(True)
+    get_budget_data(project_names='Software', show_window=True)
