@@ -65,8 +65,7 @@ def get_available_dates(weeks):
         people = len(event.RequiredAttendees.split('; '))
         hours = event.Duration / 60
         days = hours / 24
-        fixed_event = (away or (busy and not weekly)) and (people < 2 or people > 5 or hours >= 2)
-        if fixed_event:
+        if fixed_event := (away or (busy and not weekly)) and (people < 2 or people > 5 or hours >= 2):
             all_day = event.AllDayEvent
             true_values = ', '.join(var for var, value in locals().items() if value is True and var != 'fixed_event')
             duration = f"{days=}" if all_day else f"{hours=:.1f}"
