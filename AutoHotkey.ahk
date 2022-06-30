@@ -57,7 +57,7 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 ;if there are two at the same time, make notes for the second one
 #^+n::Run C:\Users\bjs54\Miniconda3\envs\py39\pythonw.exe C:\Users\bjs54\Documents\Scripts\start_meeting_notes.pyw second
 
-#+o::Run C:\Users\bjs54\Miniconda3\envs\py39\pythonw.exe C:/Users/bjs54/Documents/Scripts/event_from_email.py
+#+o::Run C:\Users\bjs54\Miniconda3\envs\py39\python.exe C:/Users/bjs54/Documents/Scripts/event_from_email.py
 
 ;Ctrl-Win-` to toggle window always on top
 #^`::
