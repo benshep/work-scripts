@@ -49,15 +49,9 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 !F1::Send {Volume_Mute}
 
 ;launch the Zoom meeting that's nearest to now in the calendar
-#^z::Run C:\Users\bjs54\Miniconda3\envs\py39\pythonw.exe C:\Users\bjs54\Documents\Scripts\join_zoom_meeting.pyw
-;if there are two at the same time, join the second one
-#^+z::Run C:\Users\bjs54\Miniconda3\envs\py39\pythonw.exe C:\Users\bjs54\Documents\Scripts\join_zoom_meeting.pyw second
+#^z::Run %ProgramData%\Miniconda3\python.exe %UserProfile%\Miniconda3\cwp.py %UserProfile%\Miniconda3\envs\py39 %UserProfile%\Miniconda3\envs\py39\python.exe %DocsDir%\Scripts\join_zoom_meeting.pyw
 ;write notes for the Zoom meeting that's nearest to now in the calendar
-#^n::Run C:\Users\bjs54\Miniconda3\envs\py39\pythonw.exe C:\Users\bjs54\Documents\Scripts\start_meeting_notes.pyw
-;if there are two at the same time, make notes for the second one
-#^+n::Run C:\Users\bjs54\Miniconda3\envs\py39\pythonw.exe C:\Users\bjs54\Documents\Scripts\start_meeting_notes.pyw second
-
-#+o::Run C:\Users\bjs54\Miniconda3\envs\py39\python.exe C:/Users/bjs54/Documents/Scripts/event_from_email.py
+#^n::Run %ProgramData%\Miniconda3\python.exe %UserProfile%\Miniconda3\cwp.py %UserProfile%\Miniconda3\envs\py39 %UserProfile%\Miniconda3\envs\py39\python.exe %DocsDir%\Scripts\start_meeting_notes.pyw
 
 ;Ctrl-Win-` to toggle window always on top
 #^`::
@@ -73,7 +67,7 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 
 ;Win-` to move window to other monitor
 ^`::Send #+{Left}{Ctrl Up}
-#^\::Run c:\users\bjs54\Links\Recent Places.lnk
+#^\::Run %UserProfile%\Links\Recent Places.lnk
 ;#a::Run %ProgramFilesx86%\Mozilla Firefox\firefox.exe
 #b::Run %UserProfile%
 #1::Run C:\
@@ -83,9 +77,9 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 #v::Run RASDial "RAL VPN"
 #n::Run C:\ProgramData\chocolatey\lib\metapad\tools\metapad.exe
 #^p::Run cmd.exe
-#c::Run cmd.exe "/K" C:\Users\bjs54\Miniconda3\Scripts\activate.bat C:\Users\bjs54\Miniconda3
+#c::Run cmd.exe "/K" %UserProfile%\Miniconda3\Scripts\activate.bat %UserProfile%\Miniconda3
 #t::Run taskmgr.exe
-#+r::Run C:\Users\bjs54\Miniconda3\python.exe %UserProfile%\Misc\scripts\random_cd.py
+#+r::Run %UserProfile%\Miniconda3\python.exe %UserProfile%\Misc\scripts\random_cd.py
 #o::Run OUTLOOK.EXE
 #w::Run WINWORD.EXE /q
 ;#+a::Run C:\Windows\SystemApps\Microsoft.MicrosoftEdge_8wekyb3d8bbwe\MicrosoftEdge.exe

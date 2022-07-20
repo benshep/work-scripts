@@ -4,15 +4,13 @@
 """start_meeting_notes
 Ben Shepherd, 2021
 Look through today's events in an Outlook calendar,
-and start a Markdown notes file for  the closest one to the current time.
-Command line arguments:
-    second      find the second meeting if there are more than one starting at the same time (order is arbitrary)
+and start a Markdown notes file for the closest one to the current time.
 """
 
 import os
 import re
-import sys
 from itertools import chain
+from time import sleep
 import outlook
 
 user_profile = os.environ['UserProfile']
@@ -23,19 +21,29 @@ def folder_match(name: str, test_against: str):
     return re.search(fr'\b{name}\b', test_against) is not None and name != 'Zoom'
 
 
-def create_note_file(skip_one=False):
+def create_note_file():
     """Start a file for notes relating to the given meeting. Find a relevant folder in the user's Documents folder,
      searching first the subject then the body of the meeting for a folder name. Use Other if none found.
      Don't use the Zoom folder (this is often found in the meeting body).
      The file is in Markdown format, with the meeting title, date and attendees filled in at the top."""
 
+    os.system('title 📓 Start meeting notes')
     current_events = outlook.get_current_events()
-    print('Current events:', [event.Subject for event in current_events])
-
-    index = 1 if skip_one else 0
-    if len(current_events) <= index:
+    meeting_count = len(current_events)
+    if meeting_count == 1:
+        i = 0
+    elif meeting_count > 1:
+        [print(f'{i}. {subject}') for i, subject in enumerate(event.Subject for event in current_events)]
+        try:
+            i = min(int(input('Choose meeting for note file [0]: ')), meeting_count - 1)
+        except ValueError:
+            i = 0
+    else:
+        print('No current meetings found')
+        sleep(10)
         return
-    meeting = current_events[index]
+
+    meeting = current_events[i]
 
     os.chdir(os.path.join(user_profile, 'Documents'))
     files = os.listdir()
@@ -46,7 +54,7 @@ def create_note_file(skip_one=False):
     folder = next(chain(filter_subject, filter_body, ['Other']))
     os.chdir(folder)
     attendees = '; '.join([meeting.RequiredAttendees, meeting.OptionalAttendees])
-    print(attendees)
+    # print(attendees)
     people_list = ', '.join(format_name(person_name) for person_name in filter(None, attendees.split('; ')))
     start = outlook.get_meeting_time(meeting)
     meeting_date = start.strftime("%#d/%#m/%Y")  # no leading zeros
@@ -74,4 +82,4 @@ def format_name(person_name):
 
 
 if __name__ == '__main__':
-    create_note_file('second' in sys.argv)
+    create_note_file()
