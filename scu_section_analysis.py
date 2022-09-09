@@ -6,7 +6,7 @@ from math import pi
 from random import randint
 
 # Load image, grayscale, Gaussian blur, Otsu's threshold
-folder = os.path.join(os.environ('UserProfile'), 'Documents', 'SCU', '2022-08 Sectioned former')
+folder = os.path.join(os.environ['UserProfile'], 'Documents', 'SCU', '2022-08 Sectioned former')
 os.chdir(folder)
 image = cv2.imread('1.jpg')[714:1844, 303:1895]
 height, width, _ = image.shape
