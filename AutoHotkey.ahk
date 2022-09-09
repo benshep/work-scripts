@@ -49,9 +49,9 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 !F1::Send {Volume_Mute}
 
 ;launch the Zoom meeting that's nearest to now in the calendar
-#^z::Run %ProgramData%\Miniconda3\python.exe %UserProfile%\Miniconda3\cwp.py %UserProfile%\Miniconda3\envs\py39 %UserProfile%\Miniconda3\envs\py39\python.exe %DocsDir%\Scripts\join_zoom_meeting.pyw
+#^z::Run %UserProfile%\Miniconda3\python.exe %UserProfile%\Miniconda3\cwp.py %UserProfile%\Miniconda3\envs\py39 %UserProfile%\Miniconda3\envs\py39\python.exe %DocsDir%\Scripts\join_zoom_meeting.pyw
 ;write notes for the Zoom meeting that's nearest to now in the calendar
-#^n::Run %ProgramData%\Miniconda3\python.exe %UserProfile%\Miniconda3\cwp.py %UserProfile%\Miniconda3\envs\py39 %UserProfile%\Miniconda3\envs\py39\python.exe %DocsDir%\Scripts\start_meeting_notes.pyw
+#^n::Run %UserProfile%\Miniconda3\python.exe %UserProfile%\Miniconda3\cwp.py %UserProfile%\Miniconda3\envs\py39 %UserProfile%\Miniconda3\envs\py39\python.exe %DocsDir%\Scripts\start_meeting_notes.pyw
 
 ;Ctrl-Win-` to toggle window always on top
 #^`::
@@ -77,7 +77,7 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 #v::Run RASDial "RAL VPN"
 #n::Run C:\ProgramData\chocolatey\lib\metapad\tools\metapad.exe
 #^p::Run cmd.exe
-#c::Run cmd.exe "/K" %UserProfile%\Miniconda3\Scripts\activate.bat %UserProfile%\Miniconda3
+#c::Run cmd.exe "/K" cd %UserProfile%\Misc\Scripts & %UserProfile%\Miniconda3\Scripts\activate.bat %UserProfile%\Miniconda3\envs\py39
 #t::Run taskmgr.exe
 #+r::Run %UserProfile%\Miniconda3\python.exe %UserProfile%\Misc\scripts\random_cd.py
 #o::Run OUTLOOK.EXE
