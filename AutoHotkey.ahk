@@ -67,8 +67,6 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 
 ;Win-` to move window to other monitor
 ^`::Send #+{Left}{Ctrl Up}
-#^\::Run %UserProfile%\Links\Recent Places.lnk
-;#a::Run %ProgramFilesx86%\Mozilla Firefox\firefox.exe
 #b::Run %UserProfile%
 #1::Run C:\
 #2::Run %DocsDir%
