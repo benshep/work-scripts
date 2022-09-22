@@ -51,7 +51,7 @@ def join_zoom_meeting():
         return
     appdata_exe = os.path.join(user_profile, r'AppData\Roaming\Zoom\bin\Zoom.exe')
     program_files_exe = r'C:\Program Files\Zoom\bin\Zoom.exe'
-    subprocess.call([appdata_exe if os.path.exists(appdata_exe) else program_files_exe, f"--url={url}"])
+    subprocess.Popen([appdata_exe if os.path.exists(appdata_exe) else program_files_exe, f"--url={url}"])
     sleep(5)
 
 
