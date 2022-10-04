@@ -20,10 +20,10 @@ def dmy(date, time=True):
 def events_to_spreadsheet(user='me'):
     """Fetch a list of events from Outlook, and drop it into a spreadsheet."""
     events = outlook.get_appointments_in_range(user=user)
-    sheet_data = [[dmy(event.Start), dmy(event.End), event.Subject, event.Location,
-                   event.BusyStatus, event.AllDayEvent] for event in events]
-    print(*sheet_data, sep='\n')
-    google_sheets.update_cells(sheet_id[user], 'Events', f'A2:F{len(sheet_data) + 1}', sheet_data)
+    if sheet_data := [[dmy(event.Start), dmy(event.End), event.Subject,
+                       event.Location, event.BusyStatus, event.AllDayEvent] for event in events]:
+        print(f'Found {len(sheet_data)} events, starting with {sheet_data[0][2]} at {sheet_data[0][0]}')
+        google_sheets.update_cells(sheet_id[user], 'Events', f'A2:F{len(sheet_data) + 1}', sheet_data)
 
 
 def set_pc_unlocked_flag(user='me'):
