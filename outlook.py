@@ -1,4 +1,4 @@
-import pandas
+# import pandas
 import win32com.client
 import pywintypes
 import re
@@ -99,15 +99,21 @@ def get_away_dates(start=-30, end=90, user='me', look_for=is_out_of_office):
      - is_annual_leave: as above, but subject is "Annual Leave" or "AL"
      - is_wfh: set to out of office, and subject is "Work(ing) from home" or "WFH"
      """
-    al_events = filter(look_for, get_appointments_in_range(start, end, user=user))
-    return to_set([get_date_list(event.Start.date(), event.End.date(), closed='left') for event in al_events])
+    events = filter(look_for, get_appointments_in_range(start, end, user=user))
+    # Need to subtract a day here since the end time of an all-day event is 00:00 on the next day
+    return to_set([get_date_list(event.Start.date(), event.End.date() - datetime.timedelta(days=1)) for event in events])
 
 
-def get_date_list(start, end, **kwargs):
+def get_date_list(start, end):
     """Return a list of business dates (i.e. Mon-Fri) in a given date range, inclusive."""
-    return pandas.bdate_range(start, end, **kwargs).to_pydatetime().tolist()
+    date_list = [start + datetime.timedelta(days=d) for d in range((end - start).days + 1)]
+    return list(filter(lambda date: date.weekday() < 5, date_list))
 
 
 def to_set(date_lists):
     """Convert a list of date lists to a flat set."""
     return set(sum(date_lists, []))
+
+
+if __name__ == '__main__':
+    print(sorted(list(get_away_dates())))

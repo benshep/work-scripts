@@ -1,3 +1,4 @@
+from datetime import datetime
 from oracle import go_to_oracle_page
 import outlook
 from pushbullet import Pushbullet  # to show notifications
@@ -14,12 +15,11 @@ def check_leave_dates():
     oracle_off_dates = get_oracle_off_dates()
     outlook_off_dates = outlook.get_away_dates(min(oracle_off_dates), 0, look_for=outlook.is_annual_leave)
 
-    not_in_outlook = oracle_off_dates - outlook_off_dates
-    toast = ''
-    if not_in_outlook:
+    if not_in_outlook := oracle_off_dates - outlook_off_dates:
         toast = f'Missing from Outlook: {list_missing(not_in_outlook)}\n'
-    not_in_oracle = outlook_off_dates - oracle_off_dates
-    if not_in_oracle:
+    else:
+        toast = ''
+    if not_in_oracle := outlook_off_dates - oracle_off_dates:
         toast += f'Missing from Oracle: {list_missing(not_in_oracle)}'
     if toast:
         print(toast)
@@ -34,11 +34,17 @@ def get_oracle_off_dates():
         end_dates = cells[1::8]
         absence_type = cells[2::8]
 
-        off_dates = outlook.to_set(outlook.get_date_list(start.text, end.text) if 'Leave' in ab_type.text else []
+        off_dates = outlook.to_set(outlook.get_date_list(from_dmy(start.text), from_dmy(end.text))
+                                   if 'Leave' in ab_type.text else []
                                    for start, end, ab_type in zip(start_dates, end_dates, absence_type))
     finally:
         web.driver.quit()
     return off_dates
+
+
+def from_dmy(text):
+    """Convert a date in the format 31-Oct-2022 to a datetime."""
+    return datetime.strptime(text, '%d-%b-%Y')
 
 
 if __name__ == '__main__':

@@ -17,14 +17,8 @@ def go_to_oracle_page(links=(), show_window=False, use_obi=False):
     web = Browser(showWindow=show_window)
     obi_url = 'https://obi.ssc.rcuk.ac.uk/analytics/saw.dll?dashboard&PortalPath=%2Fshared%2FSTFC%20Shared%2F_portal%2FSTFC%20Projects'
     ebs_url = 'https://ebs.ssc.rcuk.ac.uk/OA_HTML/AppsLogin'
-    for _ in range(2):
-        # first try without VPN connection
-        web.go_to(obi_url if use_obi else ebs_url)
-        if web.exists('Enter your Single Sign-On credentials below'):
-            break
-        # failed? try connecting to VPN
-        subprocess.call('RASDial "RAL VPN"')
-    else:
+    web.go_to(obi_url if use_obi else ebs_url)
+    if not web.exists('Enter your Single Sign-On credentials below'):
         raise RuntimeError('Failed to load Oracle login page')
     web.type(username, 'username')
     web.type(password, 'password')

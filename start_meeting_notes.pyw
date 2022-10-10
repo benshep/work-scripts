@@ -27,6 +27,21 @@ def create_note_file():
      Don't use the Zoom folder (this is often found in the meeting body).
      The file is in Markdown format, with the meeting title, date and attendees filled in at the top."""
 
+    meeting = target_meeting()
+    go_to_folder(meeting)
+    attendees = '; '.join([meeting.RequiredAttendees, meeting.OptionalAttendees])
+    # print(attendees)
+    people_list = ', '.join(format_name(person_name) for person_name in filter(None, attendees.split('; ')))
+    start = outlook.get_meeting_time(meeting)
+    meeting_date = start.strftime("%#d/%#m/%Y")  # no leading zeros
+    text = f'# {meeting.Subject}\n\n*{meeting_date}. {people_list}*\n\n'
+    bad_chars = str.maketrans({char: ' ' for char in '*?/\\<>:|"'})  # can't use these in filenames
+    filename = f'{start.strftime("%Y-%m-%d")} {meeting.Subject.translate(bad_chars)}.md'
+    open(filename, 'a', encoding='utf-8').write(text)
+    os.startfile(filename)
+
+
+def target_meeting():
     os.system('title 📓 Start meeting notes')
     current_events = outlook.get_current_events()
     meeting_count = len(current_events)
@@ -41,10 +56,12 @@ def create_note_file():
     else:
         print('No current meetings found')
         sleep(10)
-        return
+        return None
+    return current_events[i]
 
-    meeting = current_events[i]
 
+def go_to_folder(meeting):
+    """Pick a folder in which to place the meeting notes, looking at the subject and the body."""
     os.chdir(os.path.join(user_profile, 'Documents'))
     files = os.listdir()
     subject = meeting.Subject
@@ -53,16 +70,6 @@ def create_note_file():
     # If we can't work out what folder based on subject or body: put in Other folder
     folder = next(chain(filter_subject, filter_body, ['Other']))
     os.chdir(folder)
-    attendees = '; '.join([meeting.RequiredAttendees, meeting.OptionalAttendees])
-    # print(attendees)
-    people_list = ', '.join(format_name(person_name) for person_name in filter(None, attendees.split('; ')))
-    start = outlook.get_meeting_time(meeting)
-    meeting_date = start.strftime("%#d/%#m/%Y")  # no leading zeros
-    text = f'# {subject}\n\n*{meeting_date}. {people_list}*\n\n'
-    bad_chars = str.maketrans({char: ' ' for char in '*?/\\<>:|"'})  # can't use these in filenames
-    filename = f'{start.strftime("%Y-%m-%d")} {subject.translate(bad_chars)}.md'
-    open(filename, 'a', encoding='utf-8').write(text)
-    os.startfile(filename)
 
 
 # match "Surname, Firstname (ORG,DEPT,GROUP)" - last bit in brackets is optional
