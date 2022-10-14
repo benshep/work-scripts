@@ -44,8 +44,8 @@ def get_oracle_off_dates():
 
 def from_dmy(text):
     """Convert a date in the format 31-Oct-2022 to a datetime."""
-    return datetime.strptime(text, '%d-%b-%Y')
+    return datetime.strptime(text, '%d-%b-%Y').date()
 
 
 if __name__ == '__main__':
-    print(sorted(list(get_oracle_off_dates())))
+    check_leave_dates()
