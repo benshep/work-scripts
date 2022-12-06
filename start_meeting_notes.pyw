@@ -44,6 +44,9 @@ def create_note_file():
 def target_meeting():
     os.system('title 📓 Start meeting notes')
     current_events = outlook.get_current_events()
+    current_events = filter(lambda event: not outlook.is_wfh(event), current_events)
+    current_events = filter(lambda event: event.Subject != 'ASTeC/CI Coffee', current_events)
+    current_events = list(current_events)
     meeting_count = len(current_events)
     if meeting_count == 1:
         i = 0
