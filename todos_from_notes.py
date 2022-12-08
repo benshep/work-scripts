@@ -2,7 +2,7 @@ import os
 import re
 import win32com.client as win32
 from datetime import datetime
-from trello import email_to_board
+from trello_auth import email_to_board
 
 
 def todos_from_notes():
