@@ -25,7 +25,7 @@ def join_zoom_meeting():
     # j is join - w seems to be webinar
     # 9-11 digits for the meeting ID
     # Following that, URL params with alphanumeric, =&.- (any more required?)
-    zoom_url = re.compile(r'(https://(?:[\w\-]+.)?zoom.us/[wj]/\d{9,11}(\?[\w=&\.\-]+)?)')
+    zoom_url = re.compile(r'https://(?:[\w\-]+.)?zoom.us/[\w/\?=&\-]+\b')  # simpler regex
     current_events = outlook.get_current_events()
     print('Current events:', [event.Subject for event in current_events])
     joinable_meetings = {}
