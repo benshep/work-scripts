@@ -17,8 +17,9 @@ user_profile = os.environ['UserProfile']
 
 
 def folder_match(name: str, test_against: str):
-    """Case-insensitive string comparison. Checks that name is a folder as well."""
-    return re.search(fr'\b{name}\b', test_against) is not None and name != 'Zoom'
+    """Case-insensitive string comparison."""
+    # Add optional 's' to end of keyword - sometimes the folder contains a plural of a name
+    return re.search(fr'\b{re.escape(name)}s?\b', test_against, re.IGNORECASE) is not None
 
 
 def create_note_file():
@@ -63,16 +64,51 @@ def target_meeting():
     return current_events[i]
 
 
+def walk(top, max_depth):
+    """Pared-down version of os.walk that just lists folders and is limited to a given max depth."""
+    # https://stackoverflow.com/questions/35315873/travel-directory-tree-with-limited-recursion-depth
+    dirs = [name for name in os.listdir(top) if os.path.isdir(os.path.join(top, name))]
+    yield top, dirs
+    if max_depth > 1:
+        for name in dirs:
+            yield from walk(os.path.join(top, name), max_depth - 1)
+
+
+def find_folder_from_text(text):
+    """Choose an appropriate folder based on some text. Traverse the first-level folders, then the second level."""
+    for path, folders in walk(os.getcwd(), 2):
+        if is_banned(os.path.split(path)[1]):
+            continue
+        for folder in folders:
+            if is_banned(folder):
+                continue
+            if folder_match(folder, text):
+                return os.path.join(path, folder)
+    return False
+
+
+def is_banned(name):
+    return name in ('Zoom', 'Other', 'Old work') or name.lower() == name  # disallow lower case only folders!
+
+
 def go_to_folder(meeting):
     """Pick a folder in which to place the meeting notes, looking at the subject and the body."""
     os.chdir(os.path.join(user_profile, 'Documents'))
-    files = os.listdir()
-    subject = meeting.Subject
-    filter_subject = filter(lambda file: folder_match(file, subject), files)
-    filter_body = filter(lambda file: folder_match(file, meeting.Body), files)
-    # If we can't work out what folder based on subject or body: put in Other folder
-    folder = next(chain(filter_subject, filter_body, ['Other']))
+    folder = find_folder_from_text(meeting.Subject)
+    if not folder:
+        folder = find_folder_from_text(meeting.Body)
+    if not folder:
+        folder = 'Other'
+
+    # folders = list(filter(os.path.isdir, os.listdir()))
+    #
+    # subject = meeting.Subject
+    # filter_subject = filter(lambda file: folder_match(file, subject), folders)
+    # filter_body = filter(lambda file: folder_match(file, meeting.Body), folders)
+    # # If we can't work out what folder based on subject or body: put in Other folder
+    # folder = next(chain(filter_subject, filter_body, ['Other']))
     os.chdir(folder)
+    return folder
 
 
 # match "Surname, Firstname (ORG,DEPT,GROUP)" - last bit in brackets is optional
@@ -92,4 +128,5 @@ def format_name(person_name):
 
 
 if __name__ == '__main__':
-    create_note_file()
+    for meeting in outlook.get_appointments_in_range(-30, 30):
+        print(meeting.Subject, go_to_folder(meeting), sep='; ')
