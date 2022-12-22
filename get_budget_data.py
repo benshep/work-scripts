@@ -1,3 +1,4 @@
+import ctypes
 import os
 import pandas
 import selenium.common
@@ -80,8 +81,12 @@ def search_via_prompt_using_poll(web, index, search_term, check_in_dropdown=Fals
 
 
 def get_budget_data(project_names='all', show_window=True):
+    """Fetch data on spending on one or more projects from Oracle."""
     if project_names != 'all' and isinstance(project_names, str):  # just one project name supplied, wrap it in a list
         project_names = [project_names, ]
+    user32 = ctypes.windll.User32
+    if user32.GetForegroundWindow() % 10 != 0:  # workstation not locked
+        return False  # for run_tasks, so we know it should retry the task but not report an error
     user_profile = os.environ['UserProfile']
     today = datetime.now()
     fy = today.year - (today.month < 4)  # last calendar year if before April
