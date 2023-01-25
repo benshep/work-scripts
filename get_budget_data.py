@@ -1,8 +1,9 @@
-import ctypes
 import os
+
 import pandas
 import selenium.common
 import polling2
+from subprocess import check_output
 from datetime import datetime
 from time import sleep
 
@@ -84,8 +85,8 @@ def get_budget_data(project_names='all', show_window=True):
     """Fetch data on spending on one or more projects from Oracle."""
     if project_names != 'all' and isinstance(project_names, str):  # just one project name supplied, wrap it in a list
         project_names = [project_names, ]
-    user32 = ctypes.windll.User32
-    if user32.GetForegroundWindow() % 10 != 0:  # workstation not locked
+
+    if b'LogonUI.exe' not in check_output('TASKLIST'):  # workstation not locked
         return False  # for run_tasks, so we know it should retry the task but not report an error
     user_profile = os.environ['UserProfile']
     today = datetime.now()
