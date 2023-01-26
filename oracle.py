@@ -1,5 +1,7 @@
+import os
 import time
 import subprocess
+from datetime import datetime
 from webbot import Browser
 from oracle_credentials import username, password
 
@@ -41,5 +43,31 @@ def type_into(web, element, text):
     time.sleep(0.5)
 
 
+def get_payslips():
+    """Download all my payslips."""
+    web = go_to_oracle_page(['RCUK Self-Service Employee', 'Payslip'], show_window=True)
+
+    def get_options():
+        dropdown = web.find_elements(id='AdvicePicker')[0]
+        return dropdown.find_elements_by_tag_name('option')
+
+    payslip_count = len(get_options())
+    os.chdir(os.path.join(os.environ['UserProfile'], 'Downloads'))
+    for i in range(payslip_count):
+        option = get_options()[i]
+        name = option.text
+        print(name)
+        option.click()
+        time.sleep(2)
+        for _ in range(2):  # doesn't work first time!
+            web.click('Go')
+            time.sleep(5)
+        old_files = set(os.listdir())
+        web.click('Export')
+        time.sleep(2)
+        new_file = (set(os.listdir()) - old_files).pop()
+        os.rename(new_file, datetime.strptime(name.split(' - ')[0], '%d %b %Y').strftime('%Y-%m') + '.pdf')
+
+
 if __name__ == '__main__':
-    go_to_oracle_page()
+    get_payslips()
