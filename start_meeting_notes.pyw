@@ -9,6 +9,8 @@ and start a Markdown notes file for the closest one to the current time.
 
 import os
 import re
+import requests
+from icalendar import Calendar, Event
 from itertools import chain
 from time import sleep
 import outlook
@@ -76,6 +78,7 @@ def walk(top, max_depth):
 
 def find_folder_from_text(text):
     """Choose an appropriate folder based on some text. Traverse the first-level folders, then the second level."""
+
     for path, folders in walk(os.getcwd(), 2):
         if is_banned(os.path.split(path)[1]):
             continue
@@ -127,6 +130,23 @@ def format_name(person_name):
         return person_name.title()
 
 
+def ical_to_markdown():
+    url = 'https://indico.desy.de/event/35655/event.ics?scope=contribution'
+    event = Calendar.from_ical(requests.get(url).text)
+    prefix = 'Speakers: '
+    for component in sorted(event.walk('VEVENT'), key=lambda c: c.decoded('dtstart')):
+        print(f"## [{component.get('summary')}]({component.get('url')})")
+        # print(component.get("description", ''))
+        description = component.get("description", '').splitlines()
+        speakers = description[0]
+        abstract = description[2] if len(description) > 2 else ''
+        if speakers.startswith(prefix):
+            print(f'*{speakers[len(prefix):]}*')
+        if abstract:
+            print(abstract)
+
+
 if __name__ == '__main__':
-    for meeting in outlook.get_appointments_in_range(-30, 30):
-        print(meeting.Subject, go_to_folder(meeting), sep='; ')
+    # for meeting in outlook.get_appointments_in_range(-30, 30):
+    #     print(meeting.Subject, go_to_folder(meeting), sep='; ')
+    ical_to_markdown()
