@@ -10,8 +10,7 @@ and start a Markdown notes file for the closest one to the current time.
 import os
 import re
 import requests
-from icalendar import Calendar, Event
-from itertools import chain
+from icalendar import Calendar
 from time import sleep
 import outlook
 
@@ -29,17 +28,25 @@ def create_note_file():
      searching first the subject then the body of the meeting for a folder name. Use Other if none found.
      Don't use the Zoom folder (this is often found in the meeting body).
      The file is in Markdown format, with the meeting title, date and attendees filled in at the top."""
-
-    meeting = target_meeting()
+    if not (meeting := target_meeting()):
+        return  # no current meeting
     go_to_folder(meeting)
     attendees = '; '.join([meeting.RequiredAttendees, meeting.OptionalAttendees])
     # print(attendees)
     people_list = ', '.join(format_name(person_name) for person_name in filter(None, attendees.split('; ')))
     start = outlook.get_meeting_time(meeting)
     meeting_date = start.strftime("%#d/%#m/%Y")  # no leading zeros
-    text = f'# {meeting.Subject}\n\n*{meeting_date}. {people_list}*\n\n'
+    subject = meeting.Subject
+    subtitle = f'*{meeting_date}. {people_list}*'
+    if match := re.search(r'https://indico[\w\.]+/event/\d+', meeting.Body):  # Indico link: look for an agenda
+        url = match[0]
+        agenda = ical_to_markdown(url)
+        text = f'# [{subject}]({url})\n\n{subtitle}\n\n{agenda}\n\n'
+    else:
+        text = f'# {subject}\n\n{subtitle}\n\n'
+
     bad_chars = str.maketrans({char: ' ' for char in '*?/\\<>:|"'})  # can't use these in filenames
-    filename = f'{start.strftime("%Y-%m-%d")} {meeting.Subject.translate(bad_chars)}.md'
+    filename = f'{start.strftime("%Y-%m-%d")} {subject.translate(bad_chars)}.md'
     open(filename, 'a', encoding='utf-8').write(text)
     os.startfile(filename)
 
@@ -49,6 +56,7 @@ def target_meeting():
     current_events = outlook.get_current_events()
     current_events = filter(lambda event: not outlook.is_wfh(event), current_events)
     current_events = filter(lambda event: event.Subject != 'ASTeC/CI Coffee', current_events)
+
     current_events = list(current_events)
     meeting_count = len(current_events)
     if meeting_count == 1:
@@ -78,7 +86,6 @@ def walk(top, max_depth):
 
 def find_folder_from_text(text):
     """Choose an appropriate folder based on some text. Traverse the first-level folders, then the second level."""
-
     for path, folders in walk(os.getcwd(), 2):
         if is_banned(os.path.split(path)[1]):
             continue
@@ -102,27 +109,16 @@ def go_to_folder(meeting):
         folder = find_folder_from_text(meeting.Body)
     if not folder:
         folder = 'Other'
-
-    # folders = list(filter(os.path.isdir, os.listdir()))
-    #
-    # subject = meeting.Subject
-    # filter_subject = filter(lambda file: folder_match(file, subject), folders)
-    # filter_body = filter(lambda file: folder_match(file, meeting.Body), folders)
-    # # If we can't work out what folder based on subject or body: put in Other folder
-    # folder = next(chain(filter_subject, filter_body, ['Other']))
     os.chdir(folder)
     return folder
-
-
-# match "Surname, Firstname (ORG,DEPT,GROUP)" - last bit in brackets is optional
-name_format = re.compile(r'(.+?), ([^ ]+)( \(.+?,.+?,.+?\))?')
 
 
 def format_name(person_name):
     """Convert display name to more readable Firstname Surname format. Works with Surname, Firstname (ORG,DEPT,GROUP)
     or firstname.surname@company.com."""
-    if match := name_format.match(person_name):
-        return f'{match.group(2)} {match.group(1)}'  # Firstname Surname
+    # match "Surname, Firstname (ORG,DEPT,GROUP)" - last bit in brackets is optional
+    if match := re.match(r'(.+?), ([^ ]+)( \(.+?,.+?,.+?\))?', person_name):
+        return f'{match[2]} {match[1]}'  # Firstname Surname
     elif '@' in person_name:  # email address
         name, domain = person_name.split('@')
         return name.title().replace('.', ' ')
@@ -130,23 +126,28 @@ def format_name(person_name):
         return person_name.title()
 
 
-def ical_to_markdown():
-    url = 'https://indico.desy.de/event/35655/event.ics?scope=contribution'
-    event = Calendar.from_ical(requests.get(url).text)
+def ical_to_markdown(url):
+    """Given an Indico event URL, return a Markdown agenda."""
+    # url = 'https://indico.desy.de/event/35655/event.ics?scope=contribution'
+    if not url.endswith('/'):
+        url += '/'
+    event = Calendar.from_ical(requests.get(f'{url}event.ics?scope=contribution').text)
     prefix = 'Speakers: '
+    agenda = ''
     for component in sorted(event.walk('VEVENT'), key=lambda c: c.decoded('dtstart')):
-        print(f"## [{component.get('summary')}]({component.get('url')})")
+        agenda += f"## [{component.get('summary')}]({component.get('url')})\n"
         # print(component.get("description", ''))
         description = component.get("description", '').splitlines()
         speakers = description[0]
         abstract = description[2] if len(description) > 2 else ''
         if speakers.startswith(prefix):
-            print(f'*{speakers[len(prefix):]}*')
+            agenda += f'*{speakers[len(prefix):]}*\n'
         if abstract:
-            print(abstract)
+            agenda += abstract + '\n'
+    return agenda
 
 
 if __name__ == '__main__':
     # for meeting in outlook.get_appointments_in_range(-30, 30):
     #     print(meeting.Subject, go_to_folder(meeting), sep='; ')
-    ical_to_markdown()
+    create_note_file()
