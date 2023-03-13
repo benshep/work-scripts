@@ -11,22 +11,12 @@ from pushbullet_api_key import api_key  # local file, keep secret!
 
 def enter_otl_timecard(show_window=False):
     # get standard bookings
-    fy = pandas.Timestamp('today').to_period('Q-MAR').qyear  # e.g. 2022 for FY21/22
     hours = get_project_hours_new()
 
     # find out of office dates in the next 3 months (and previous 1)
-    # days_away = []
-    # for appointment in get_appointments_in_range(-30, 90):
-    #     if appointment.AllDayEvent and appointment.BusyStatus == 3:  # out of office
-    #         days = appointment.End - appointment.Start
-    #         days_away += [appointment.Start + timedelta(days=i) for i in range(days.days)]
-    # days_away = [date.replace(tzinfo=None) for date in days_away]  # ignore time zone info
     days_away = outlook.get_away_dates(-30, 90)
-    # print('Out of office days', days_away)
-    # return
 
     web = go_to_oracle_page(('STFC OTL Timecards', 'Time'), show_window=show_window)
-
     toast = ''
     try:
         while True:
@@ -42,9 +32,7 @@ def enter_otl_timecard(show_window=False):
                 print('Creating timecard for', card_label)
                 option.click()
                 web.type('Angal-Kalinin, Doctor Deepa (Deepa)', id='A150N1display')  # approver
-                wb_date = datetime.strptime(card_label.split(' - ')[0], '%B %d, %Y')  # e.g. August 16, 2021
-                if pandas.Timestamp(wb_date + timedelta(days=5)).to_period('Q-MAR').qyear != fy:
-                    raise NotImplementedError('Going into new financial year not supported yet')
+                wb_date = datetime.strptime(card_label.split(' - ')[0], '%B %d, %Y').date()  # e.g. August 16, 2021
                 on_holiday = [wb_date + timedelta(days=day) in days_away for day in range(5)]  # list of True/False for on holiday that day
                 print(f'{on_holiday=}')
 
