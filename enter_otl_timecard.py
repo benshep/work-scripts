@@ -97,7 +97,8 @@ def get_project_hours(fy):
 def get_project_hours_new():
     """Fetch the standard hours worked on each project from a spreadsheet."""
     filename = os.path.join(os.environ['UserProfile'], 'Documents', 'Group Leader', 'MaRS staff and projects.xlsx')
-    booking_plan = pandas.read_excel(filename, sheet_name='Book', header=0, index_col=[2, 3])
+    booking_plan = pandas.read_excel(filename, sheet_name='Book', header=0, index_col=[2, 3], skiprows=1)
+    print(booking_plan)
     ftes = booking_plan['Ben']
     ftes = ftes.iloc[:-2]  # remove "not on code" and total rows
     ftes = ftes.dropna()  # get rid of projects with zero hours
