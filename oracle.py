@@ -1,9 +1,7 @@
-import os
 import time
-import subprocess
-from datetime import datetime
 from webbot import Browser
-from oracle_credentials import username, password
+from stfc_credentials import username, password
+import selenium.common.exceptions
 
 # If this is run from a Python instance with no console, it will show a console window with Chrome messages.
 # To prevent this, go into the site-packages\selenium\webdriver\common\service.py. At the top, add:
@@ -20,11 +18,15 @@ def go_to_oracle_page(links=(), show_window=False, use_obi=False):
     obi_url = 'https://obi.ssc.rcuk.ac.uk/analytics/saw.dll?dashboard&PortalPath=%2Fshared%2FSTFC%20Shared%2F_portal%2FSTFC%20Projects'
     ebs_url = 'https://ebs.ssc.rcuk.ac.uk/OA_HTML/AppsLogin'
     web.go_to(obi_url if use_obi else ebs_url)
-    if not web.exists('Enter your Single Sign-On credentials below'):
-        raise RuntimeError('Failed to load Oracle login page')
+    web.driver.execute_script('OpenUKRI()')
+    wait_for(web, 'Next')
     web.type(username, 'username')
+    web.click('Next')
+    wait_for(web, 'Sign in')
     web.type(password, 'password')
-    web.click('Login')
+    web.click('Sign in')
+    wait_for(web, 'Yes')
+    web.click('Yes')  # stay signed in
 
     time.sleep(2)
     if isinstance(links, str):
@@ -43,31 +45,20 @@ def type_into(web, element, text):
     time.sleep(0.5)
 
 
-def get_payslips():
-    """Download all my payslips."""
-    web = go_to_oracle_page(['RCUK Self-Service Employee', 'Payslip'], show_window=True)
-
-    def get_options():
-        dropdown = web.find_elements(id='AdvicePicker')[0]
-        return dropdown.find_elements_by_tag_name('option')
-
-    payslip_count = len(get_options())
-    os.chdir(os.path.join(os.environ['UserProfile'], 'Downloads'))
-    for i in range(payslip_count):
-        option = get_options()[i]
-        name = option.text
-        print(name)
-        option.click()
-        time.sleep(2)
-        for _ in range(2):  # doesn't work first time!
-            web.click('Go')
-            time.sleep(5)
-        old_files = set(os.listdir())
-        web.click('Export')
-        time.sleep(2)
-        new_file = (set(os.listdir()) - old_files).pop()
-        os.rename(new_file, datetime.strptime(name.split(' - ')[0], '%d %b %Y').strftime('%Y-%m') + '.pdf')
+def wait_for(web, text, timeout=10):
+    """Wait for some text to appear in a webbot instance."""
+    for _ in range(timeout):
+        try:
+            if web.exists(text):
+                break
+        except selenium.common.exceptions.StaleElementReferenceException as e:
+            pass
+        finally:
+            time.sleep(1)
+    else:
+        raise TimeoutError(f'Timed out waiting for text "{text}" to appear.')
 
 
 if __name__ == '__main__':
-    get_payslips()
+    web = go_to_oracle_page(show_window=True)
+
