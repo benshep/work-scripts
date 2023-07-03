@@ -104,11 +104,7 @@ def is_banned(name):
 def go_to_folder(meeting):
     """Pick a folder in which to place the meeting notes, looking at the subject and the body."""
     os.chdir(os.path.join(user_profile, 'Documents'))
-    folder = find_folder_from_text(meeting.Subject)
-    if not folder:
-        folder = find_folder_from_text(meeting.Body)
-    if not folder:
-        folder = 'Other'
+    folder = find_folder_from_text(meeting.Subject) or find_folder_from_text(meeting.Body) or 'Other'
     os.chdir(folder)
     return folder
 
@@ -131,7 +127,8 @@ def ical_to_markdown(url):
     # url = 'https://indico.desy.de/event/35655/event.ics?scope=contribution'
     if not url.endswith('/'):
         url += '/'
-    event = Calendar.from_ical(requests.get(f'{url}event.ics?scope=contribution').text)
+    # Some Indico versions use ?scope=contribution instead - use both!
+    event = Calendar.from_ical(requests.get(f'{url}event.ics?detail=contributions&scope=contribution').text)
     prefix = 'Speakers: '
     agenda = ''
     for component in sorted(event.walk('VEVENT'), key=lambda c: c.decoded('dtstart')):
