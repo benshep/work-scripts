@@ -38,7 +38,7 @@ def create_note_file():
     meeting_date = start.strftime("%#d/%#m/%Y")  # no leading zeros
     subject = meeting.Subject
     subtitle = f'*{meeting_date}. {people_list}*'
-    if match := re.search(r'https://indico[\w\.]+/event/\d+', meeting.Body):  # Indico link: look for an agenda
+    if match := re.search(r'https://[\w\.]+/event/\d+', meeting.Body):  # Indico link: look for an agenda
         url = match[0]
         agenda = ical_to_markdown(url)
         text = f'# [{subject}]({url})\n\n{subtitle}\n\n{agenda}\n\n'
