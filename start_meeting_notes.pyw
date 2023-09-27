@@ -31,9 +31,11 @@ def create_note_file():
     if not (meeting := target_meeting()):
         return  # no current meeting
     go_to_folder(meeting)
+    declined_names = [r.Name for r in meeting.Recipients if r.MeetingResponseStatus == 4]
     attendees = '; '.join([meeting.RequiredAttendees, meeting.OptionalAttendees])
     # print(attendees)
-    people_list = ', '.join(format_name(person_name) for person_name in filter(None, attendees.split('; ')))
+    people_list = ', '.join(format_name(person_name, person_name in declined_names)
+                            for person_name in filter(None, attendees.split('; ')))
     start = outlook.get_meeting_time(meeting)
     meeting_date = start.strftime("%#d/%#m/%Y")  # no leading zeros
     subject = meeting.Subject
@@ -109,18 +111,18 @@ def go_to_folder(meeting):
     return folder
 
 
-def format_name(person_name):
+def format_name(person_name, strikethrough=False):
     """Convert display name to more readable Firstname Surname format. Works with Surname, Firstname (ORG,DEPT,GROUP)
     or firstname.surname@company.com."""
     # match "Surname, Firstname (ORG,DEPT,GROUP)" - last bit in brackets is optional
     if match := re.match(r'(.+?), ([^ ]+)( \(.+?,.+?,.+?\))?', person_name):
-        return f'{match[2]} {match[1]}'  # Firstname Surname
+        return_value = f'{match[2]} {match[1]}'  # Firstname Surname
     elif '@' in person_name:  # email address
-        name, domain = person_name.split('@')
-        return name.title().replace('.', ' ')
+        name, _ = person_name.split('@')
+        return_value = name.title().replace('.', ' ')
     else:
-        return person_name.title()
-
+        return_value = person_name.title()
+    return f'~~{return_value}~~' if strikethrough else return_value
 
 def ical_to_markdown(url):
     """Given an Indico event URL, return a Markdown agenda."""
