@@ -42,8 +42,7 @@ def create_note_file():
     response = {r.Name: r.MeetingResponseStatus for r in meeting.Recipients}
     attendees = filter(None, '; '.join([meeting.RequiredAttendees, meeting.OptionalAttendees]).split('; '))
     attendees = sorted(attendees, key=lambda r: priority.index(response[r]))
-    people_list = ', '.join(format_name(person_name, response[person_name])
-                            for person_name in filter(None, attendees))
+    people_list = ', '.join(format_name(person_name, response[person_name]) for person_name in attendees)
     start = outlook.get_meeting_time(meeting)
     meeting_date = start.strftime("%#d/%#m/%Y")  # no leading zeros
     subject = meeting.Subject
