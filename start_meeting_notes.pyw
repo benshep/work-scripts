@@ -31,11 +31,19 @@ def create_note_file():
     if not (meeting := target_meeting()):
         return  # no current meeting
     go_to_folder(meeting)
-    declined_names = [r.Name for r in meeting.Recipients if r.MeetingResponseStatus == 4]
-    attendees = '; '.join([meeting.RequiredAttendees, meeting.OptionalAttendees])
-    # print(attendees)
-    people_list = ', '.join(format_name(person_name, person_name in declined_names)
-                            for person_name in filter(None, attendees.split('; ')))
+    # Hierarchy of responses: (we want to list attendees from the top)
+    # olResponseOrganized 	    1 	The AppointmentItem is on the Organizer's calendar or the recipient is the Organizer of the meeting.
+    # olResponseAccepted 	    3 	Meeting accepted.
+    # olResponseTentative 	    2 	Meeting tentatively accepted.
+    # olResponseNone 	        0 	The appointment is a simple appointment and does not require a response.
+    # olResponseNotResponded 	5 	Recipient has not responded.
+    # olResponseDeclined 	    4 	Meeting declined.
+    priority = [1, 3, 2, 0, 5, 4]
+    response = {r.Name: r.MeetingResponseStatus for r in meeting.Recipients}
+    attendees = filter(None, '; '.join([meeting.RequiredAttendees, meeting.OptionalAttendees]).split('; '))
+    attendees = sorted(attendees, key=lambda r: priority.index(response[r]))
+    people_list = ', '.join(format_name(person_name, response[person_name])
+                            for person_name in filter(None, attendees))
     start = outlook.get_meeting_time(meeting)
     meeting_date = start.strftime("%#d/%#m/%Y")  # no leading zeros
     subject = meeting.Subject
@@ -111,7 +119,7 @@ def go_to_folder(meeting):
     return folder
 
 
-def format_name(person_name, strikethrough=False):
+def format_name(person_name, response):
     """Convert display name to more readable Firstname Surname format. Works with Surname, Firstname (ORG,DEPT,GROUP)
     or firstname.surname@company.com."""
     # match "Surname, Firstname (ORG,DEPT,GROUP)" - last bit in brackets is optional
@@ -121,8 +129,15 @@ def format_name(person_name, strikethrough=False):
         name, _ = person_name.split('@')
         return_value = name.title().replace('.', ' ')
     else:
-        return_value = person_name.title()
-    return f'~~{return_value}~~' if strikethrough else return_value
+        # title case, but preserve upper case words
+        return_value = ' '.join([word if word.isupper() else word.title() for word in person_name.split()])
+    if response == 4:  # declined
+        return f'~~{return_value}~~'  # strikethrough
+    elif response in (1, 3):  # organised, accepted
+        return f'**{return_value}**'  # bold
+    else:
+        return return_value
+
 
 def ical_to_markdown(url):
     """Given an Indico event URL, return a Markdown agenda."""
