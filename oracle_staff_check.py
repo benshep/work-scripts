@@ -4,6 +4,7 @@ import time
 import win32com.client as win32
 import pandas
 from datetime import datetime, timedelta
+from subprocess import check_output
 from pushbullet import Pushbullet  # to show notifications
 from pushbullet_api_key import api_key  # local file, keep secret!
 from oracle import go_to_oracle_page, type_into
@@ -158,7 +159,11 @@ def otl_submit():
     """Submit this week's OTL timecard for each staff member."""
     # don't bother before Thursday (to give people time to book the end of the week off)
     if datetime.now().weekday() < 3:
+        print('Too early in the week')
         return False
+    if b'LogonUI.exe' not in check_output('TASKLIST'):  # workstation not locked
+        print('Workstation not locked')
+        return False  # for run_tasks, so we know it should retry the task but not report an error
     # get standard booking formula
     all_hours = get_project_hours()
 
@@ -279,6 +284,7 @@ def check_staff_list(page, check_function, return_button_text, toast_title=''):
         print(toast)
         Pushbullet(api_key).push_note(toast_title, toast)
     return toast
+
 
 def check_al_page(return_button_text, web):
     """On an individual annual leave balance page, check the remaining balance, and return toast text."""
