@@ -36,7 +36,7 @@ def join_zoom_meeting():
             joinable_meetings[meeting.Subject] = url
     meeting_count = len(joinable_meetings)
     if meeting_count == 1:
-        url = list(joinable_meetings.values())[0]
+        (subject, url), = joinable_meetings.items()
     elif meeting_count > 1:
         subjects = list(joinable_meetings.keys())
         [print(f'{i}. {subject}') for i, subject in enumerate(subjects)]
@@ -44,11 +44,13 @@ def join_zoom_meeting():
             i = min(int(input('Choose meeting to join [0]: ')), meeting_count - 1)
         except ValueError:
             i = 0
-        url = joinable_meetings[subjects[i]]
+        subject = subjects[i]
+        url = joinable_meetings[subject]
     else:
         print('No joinable meetings found')
         sleep(10)
         return
+    print(f'Joining {subject} ...')
     appdata_exe = os.path.join(user_profile, r'AppData\Roaming\Zoom\bin\Zoom.exe')
     program_files_exe = r'C:\Program Files\Zoom\bin\Zoom.exe'
     subprocess.Popen([appdata_exe if os.path.exists(appdata_exe) else program_files_exe, f"--url={url}"])
