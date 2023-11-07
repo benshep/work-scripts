@@ -1,7 +1,12 @@
 import time
+import os
 from webbot import Browser
 from stfc_credentials import username, password
+from selenium import webdriver
 import selenium.common.exceptions
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as condition
+from selenium.webdriver.common.by import By
 
 # If this is run from a Python instance with no console, it will show a console window with Chrome messages.
 # To prevent this, go into the site-packages\selenium\webdriver\common\service.py. At the top, add:
@@ -10,30 +15,50 @@ import selenium.common.exceptions
 # See https://stackoverflow.com/questions/33983860/hide-chromedriver-console-in-python
 
 
-def go_to_oracle_page(links=(), show_window=False, use_obi=False):
+def go_to_oracle_page(links=(), show_window=False, use_obi=False, selenium=False):
     """Open a webbot instance and log in to Oracle, opening the link(s) specified therein.
     links can be a string or a list of strings.
     Returns the webbot instance, so you can do more things with it."""
-    web = Browser(showWindow=show_window)
-    obi_url = 'https://obi.ssc.rcuk.ac.uk/analytics/saw.dll?dashboard&PortalPath=%2Fshared%2FSTFC%20Shared%2F_portal%2FSTFC%20Projects'
-    ebs_url = 'https://ebs.ssc.rcuk.ac.uk/OA_HTML/AppsLogin'
-    web.go_to(obi_url if use_obi else ebs_url)
-    web.driver.execute_script('OpenUKRI()')
-    wait_for(web, 'Next')
-    web.type(username, 'username')
-    web.click('Next')
-    wait_for(web, 'Sign in')
-    web.type(password, 'password')
-    web.click('Sign in')
-    wait_for(web, 'Yes')
-    web.click('Yes')  # stay signed in
-
-    time.sleep(2)
+    url = 'https://obi.ssc.rcuk.ac.uk/analytics/saw.dll?dashboard&PortalPath=%2Fshared%2FSTFC%20Shared%2F_portal%2FSTFC%20Projects' \
+        if use_obi else 'https://ebs.ssc.rcuk.ac.uk/OA_HTML/AppsLogin'
     if isinstance(links, str):
         links = [links, ]
-    for link in links:
-        web.click(link)
+    if selenium:
+        if not show_window:
+            os.environ['MOZ_HEADLESS'] = '1'
+        web = webdriver.Firefox()
+        web.get(url)
+        # UKRI User Login
+        wait = WebDriverWait(web, 5)
+        wait.until(condition.presence_of_element_located((By.ID, 'ssoUKRIBtn'))).click()
+        wait.until(condition.presence_of_element_located((By.ID, 'i0116'))).send_keys(username)
+        web.find_element_by_id('idSIButton9').click()  # Next
+        wait.until(condition.invisibility_of_element_located((By.CLASS_NAME, 'lightbox-cover')))
+        wait.until(condition.presence_of_element_located((By.ID, 'i0118'))).send_keys(password)
+        web.find_element_by_id('idSIButton9').click()  # Sign in
+        wait.until(condition.invisibility_of_element_located((By.CLASS_NAME, 'lightbox-cover')))
+        web.find_element_by_id('idSIButton9').click()  # Stay signed in
+        for link in links:
+            wait.until(condition.presence_of_element_located((By.LINK_TEXT, link))).click()
         time.sleep(2)
+
+    else:
+        web = Browser(showWindow=show_window)
+        web.go_to(url)
+        web.driver.execute_script('OpenUKRI()')
+        wait_for(web, 'Next')
+        web.type(username, 'username')
+        web.click('Next')
+        wait_for(web, 'Sign in')
+        web.type(password, 'password')
+        web.click('Sign in')
+        wait_for(web, 'Yes')
+        web.click('Yes')  # stay signed in
+
+        time.sleep(2)
+        for link in links:
+            web.click(link)
+            time.sleep(2)
     return web
 
 
@@ -60,5 +85,5 @@ def wait_for(web, text, timeout=10):
 
 
 if __name__ == '__main__':
-    web = go_to_oracle_page(show_window=True)
+    web = go_to_oracle_page(show_window=True, selenium=True, links='STFC OTL Supervisor')
 
