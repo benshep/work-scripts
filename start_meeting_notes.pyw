@@ -45,7 +45,7 @@ def create_note_file():
     people_list = ', '.join(format_name(person_name, response[person_name]) for person_name in attendees)
     start = outlook.get_meeting_time(meeting)
     meeting_date = start.strftime("%#d/%#m/%Y")  # no leading zeros
-    subject = meeting.Subject
+    subject = meeting.Subject.strip()  # remove leading and trailing spaces
     subtitle = f'*{meeting_date}. {people_list}*'
     if match := re.search(r'https://[\w\.]+/event/\d+', meeting.Body):  # Indico link: look for an agenda
         url = match[0]
