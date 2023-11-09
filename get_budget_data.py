@@ -3,7 +3,6 @@ import os
 import pandas
 import selenium.common
 import polling2
-from subprocess import check_output
 from datetime import datetime
 from time import sleep
 
@@ -32,11 +31,11 @@ def search_via_prompt_using_poll(web, index, search_term, check_in_dropdown=Fals
     # Sometimes webbot takes ages to find the elements - base Selenium is much quicker
     # try this a few times - sometimes the dropdown disappears
     for i in range(10):
-        dropdowns = poll(web.driver.find_elements_by_class_name, 'promptTextField')
+        dropdowns = poll(web.find_elements_by_class_name, 'promptTextField')
         print(f'Clicking dropdown, attempt {i}')
         dropdowns[index].click()
         try:
-            search_buttons = poll(web.driver.find_elements_by_class_name, 'DropDownSearch')
+            search_buttons = poll(web.find_elements_by_class_name, 'DropDownSearch')
         except polling2.PollingException:
             continue  # no search button - maybe menu disappeared?
         for button in search_buttons:
@@ -47,7 +46,7 @@ def search_via_prompt_using_poll(web, index, search_term, check_in_dropdown=Fals
             continue  # retry clicking dropdown
         if check_in_dropdown:  # maybe we can skip the dialog and just click a menu option
             try:
-                menu_items = poll(web.driver.find_elements_by_class_name, 'promptMenuOption')
+                menu_items = poll(web.find_elements_by_class_name, 'promptMenuOption')
                 for item in menu_items:
                     if item.get_attribute('title') == search_term:
                         item.click()
@@ -57,7 +56,7 @@ def search_via_prompt_using_poll(web, index, search_term, check_in_dropdown=Fals
         print('Clicking Search')
         try:
             search_button.click()
-            search_box = poll(web.driver.find_element_by_id, 'choiceListSearchString_D')
+            search_box = poll(web.find_element_by_id, 'choiceListSearchString_D')
             search_box.send_keys(search_term)
         except (polling2.PollingException, selenium.common.exceptions.StaleElementReferenceException):
             continue
@@ -67,27 +66,25 @@ def search_via_prompt_using_poll(web, index, search_term, check_in_dropdown=Fals
     sleep(10)
 
     def get_search_result(*args):
-        poll(web.driver.find_element_by_name, 'searchButton').click()
-        return poll(web.driver.find_element_by_class_name, 'searchHighlightedText')  # raises NoSuchElementException if no results
+        poll(web.find_element_by_name, 'searchButton').click()
+        return poll(web.find_element_by_class_name, 'searchHighlightedText')  # raises NoSuchElementException if no results
     try:
         poll(get_search_result)
     except polling2.PollingException:
         raise InformationFetchFailure(f'No results for {search_term}')
-    move_all = poll(web.driver.find_element_by_id, 'idMoveAllButton')
+    move_all = poll(web.find_element_by_id, 'idMoveAllButton')
     move_all.click()
     sleep(3)
-    ok_button = poll(web.driver.find_element_by_name, 'OK')
+    ok_button = poll(web.find_element_by_name, 'OK')
     ok_button.click()
     sleep(10)
 
 
-def get_budget_data(project_names='all', show_window=True):
+def get_budget_data(project_names='all', test_mode=False):
     """Fetch data on spending on one or more projects from Oracle."""
     if project_names != 'all' and isinstance(project_names, str):  # just one project name supplied, wrap it in a list
         project_names = [project_names, ]
 
-    if b'LogonUI.exe' not in check_output('TASKLIST'):  # workstation not locked
-        return False  # for run_tasks, so we know it should retry the task but not report an error
     user_profile = os.environ['UserProfile']
     today = datetime.now()
     fy = today.year - (today.month < 4)  # last calendar year if before April
@@ -98,8 +95,7 @@ def get_budget_data(project_names='all', show_window=True):
     for line in list(pandas.read_excel(excel_filename, sheet_name='Index', dtype='string').itertuples()):
         if project_names != 'all' and line.Name not in project_names:
             continue
-        web = go_to_oracle_page(use_obi=True, show_window=show_window)
-        # web.driver.implicitly_wait(10)
+        web = go_to_oracle_page(use_obi=True, show_window=test_mode, selenium=True)
         try:
             print(f'Fetching data for {line.Name}')
             get_task_data(web, line.Project, line.Task)
@@ -112,7 +108,7 @@ def get_budget_data(project_names='all', show_window=True):
         except InformationFetchFailure as e:
             print(e)
         finally:
-            web.driver.quit()
+            web.quit()
 
 
 def export_csv_using_poll(csv_filename, web):
@@ -120,9 +116,9 @@ def export_csv_using_poll(csv_filename, web):
         os.remove(csv_filename)
     print('Exporting data')
     # there are two tables to export, we want the last one
-    poll(web.driver.find_elements_by_link_text, 'Export', check_success=lambda result: len(result) > 1)[-1].click()
-    poll(web.driver.find_elements_by_link_text, 'Data')[0].click()
-    poll(web.driver.find_elements_by_link_text, 'CSV')[0].click()
+    poll(web.find_elements_by_link_text, 'Export', check_success=lambda result: len(result) > 1)[-1].click()
+    poll(web.find_element_by_link_text, 'Data').click()
+    poll(web.find_element_by_link_text, 'CSV').click()
     poll(os.path.exists, csv_filename)
 
 
@@ -134,19 +130,19 @@ def get_task_data(web, project_code, task):
     # except selenium.common.exceptions.NoSuchElementException:  # no results for this project/task combination
     #     raise InformationFetchFailure(f'No results for {project_code=}, {task=}')
     print('Getting results')
-    poll(web.driver.find_element_by_name, 'gobtn').click()  # Apply
+    poll(web.find_element_by_name, 'gobtn').click()  # Apply
     sleep(30)  # wait for results to be returned
     print('Going to transactions page')
-    overflows = poll(web.driver.find_elements_by_class_name, 'obipsTabBarOverflow')
+    overflows = poll(web.find_elements_by_class_name, 'obipsTabBarOverflow')
     for element in overflows:
         if element.is_displayed():
             element.click()
             break
     # sleep(10)
-    poll(web.find_elements, 'Transactions')[0].click()
+    poll(web.find_element_by_xpath, '//div[@title="Transactions"]').click()
     # sleep(10)
     return True
 
 
 if __name__ == '__main__':
-    get_budget_data(project_names='Software', show_window=True)
+    get_budget_data(project_names='MaRS Group', test_mode=True)
