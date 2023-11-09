@@ -12,7 +12,7 @@ from selenium.webdriver.common.by import By
 
 from pushbullet import Pushbullet  # to show notifications
 from pushbullet_api_key import api_key  # local file, keep secret!
-from oracle import go_to_oracle_page, type_into
+from oracle import go_to_oracle_page
 import outlook
 
 
@@ -100,7 +100,7 @@ def otl_submit(test_mode=False):
 
     toast = iterate_staff('STFC OTL Supervisor', submit_card, 'HxcHieReturnButton', show_window=test_mode)
     # now do mine
-    web = go_to_oracle_page(('STFC OTL Timecards', 'Time', 'Recent Timecards'), show_window=test_mode, selenium=True)
+    web = go_to_oracle_page(('STFC OTL Timecards', 'Time', 'Recent Timecards'), show_window=test_mode)
     toast += submit_staff_timecard(web, all_hours, doing_my_cards=True)
     print(toast)
     Pushbullet(api_key).push_note('👔 Group Timecards', toast)
@@ -109,7 +109,7 @@ def otl_submit(test_mode=False):
 def iterate_staff(page, check_function, toast_title='', show_window=False):
     """Go to a specific page for each staff member and perform a function.
     Don't specify a toast title if you don't want a toast displayed."""
-    web = go_to_oracle_page(page, show_window=show_window, selenium=True)
+    web = go_to_oracle_page(page, show_window=show_window)
     row_count = get_staff_table(web)
     print(f'{row_count=}')
 
