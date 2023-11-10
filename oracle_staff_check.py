@@ -5,7 +5,6 @@ import time
 import selenium.common.exceptions
 import pandas
 from datetime import datetime, timedelta
-from subprocess import check_output
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as condition
 from selenium.webdriver.common.by import By
@@ -182,7 +181,7 @@ def submit_staff_timecard(web, all_hours, doing_my_cards=False):
                 wait_until_page_ready(web)
                 hours_boxes = web.find_elements_by_class_name('x1v')  # 7x6 of these
                 boxes = get_boxes(web)
-                fill_boxes(boxes, project, task)
+                fill_boxes(boxes, row, project, task)
                 for day in range(5):
                     hrs = '0' if on_holiday[day] else f'{daily_hours:.2f}'
                     hours_boxes[row * 7 + day].send_keys(hrs)
@@ -194,7 +193,7 @@ def submit_staff_timecard(web, all_hours, doing_my_cards=False):
         if any(on_holiday):
             # do a row for leave and holidays
             row = len(hours)
-            fill_boxes(boxes,'STRA00009', '01.01')
+            fill_boxes(boxes, row, 'STRA00009', '01.01')
             [hours_boxes[row * 7 + day].send_keys('7.4' if on_holiday[day] else '0') for day in range(5)]
 
         click_when_ready(web, 'review')  # Continue button
@@ -215,11 +214,11 @@ def click_when_ready(web, element_id, by=By.ID):
     WebDriverWait(web, 2).until(condition.presence_of_element_located((by, element_id))).click()
 
 
-def fill_boxes(boxes, project, task):
+def fill_boxes(boxes, row, project, task):
     """Fill in project, task, type boxes."""
-    boxes['Project'].send_keys(project.strip())
-    boxes['Task'].send_keys(task.strip())
-    boxes['Type'].send_keys('Labour - (Straight Time)')
+    boxes['Project'][row].send_keys(project.strip())
+    boxes['Task'][row].send_keys(task.strip())
+    boxes['Type'][row].send_keys('Labour - (Straight Time)')
 
 
 def get_boxes(web):
