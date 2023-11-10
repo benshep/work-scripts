@@ -161,14 +161,15 @@ def submit_staff_timecard(web, all_hours, doing_my_cards=False):
         select = web.find_element_by_id('N66' if doing_my_cards else 'N89')
         options = select.find_elements_by_tag_name('option')
         # Find the first non-entered one (reverse the order since newer ones are at the top)
-        next_option = next(option for option in reversed(options)
-                           if not option.text.endswith('~') and ' - ' in option.text)
+        next_option = next(opt for opt in reversed(options) if not opt.text.endswith('~') and ' - ' in opt.text)
         card_date_text = next_option.text
+        wb_date = datetime.strptime(card_date_text.split(' - ')[0], '%B %d, %Y').date()  # e.g. August 16, 2021
+        if not doing_my_cards and wb_date > datetime.now().date():
+            continue  # don't do future cards for other staff
         next_option.click()
         print('Creating timecard for', card_date_text)
         if doing_my_cards:
             web.find_element_by_id('A150N1display').send_keys('Angal-Kalinin, Doctor Deepa (Deepa)')  # approver
-        wb_date = datetime.strptime(card_date_text.split(' - ')[0], '%B %d, %Y').date()  # e.g. August 16, 2021
         # list of True/False for on holiday that day
         on_holiday = [wb_date + timedelta(days=day) in days_away for day in range(5)]
         print(f'{on_holiday=}')
