@@ -88,9 +88,9 @@ def otl_submit(test_mode=False):
         if datetime.now().weekday() < 3:
             print('Too early in the week')
             return False
-        if b'LogonUI.exe' not in check_output('TASKLIST'):  # workstation not locked
-            print('Workstation not locked')
-            return False  # for run_tasks, so we know it should retry the task but not report an error
+        # if b'LogonUI.exe' not in check_output('TASKLIST'):  # workstation not locked
+        #     print('Workstation not locked')
+        #     return False  # for run_tasks, so we know it should retry the task but not report an error
     # get standard booking formula
     all_hours = get_project_hours()
 
@@ -98,7 +98,7 @@ def otl_submit(test_mode=False):
     def submit_card(web):
         submit_staff_timecard(web, all_hours)
 
-    toast = iterate_staff('STFC OTL Supervisor', submit_card, 'HxcHieReturnButton', show_window=test_mode)
+    toast = iterate_staff(('STFC OTL Supervisor',), submit_card, 'HxcHieReturnButton', show_window=test_mode)
     # now do mine
     web = go_to_oracle_page(('STFC OTL Timecards', 'Time', 'Recent Timecards'), show_window=test_mode)
     toast += submit_staff_timecard(web, all_hours, doing_my_cards=True)
