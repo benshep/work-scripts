@@ -76,7 +76,7 @@ def annual_leave_check(test_mode=False):
     last_day = f'{today.year}-12-31'
     # assume full week of public holidays / privilege days at end of December
     days_left_in_year = len(pandas.bdate_range('today', last_day)) - 5
-    iterate_staff(['RCUK Self-Service Manager', 'Attendance Management'], check_al_page,
+    iterate_staff(('RCUK Self-Service Manager', 'Attendance Management'), check_al_page,
                   f'🏖️ Group Leave ({days_left_in_year=})', show_window=test_mode)
 
 

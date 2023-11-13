@@ -10,7 +10,7 @@ from selenium.webdriver.common.by import By
 
 
 def go_to_oracle_page(links=(), show_window=False):
-    """Open a selenium web driver and log in to Oracle e-Business Suite, opening the specified list of links.
+    """Open a selenium web driver and log in to Oracle e-Business Suite, opening the specified tuple of links.
     If links is 'obi' or 'taleo', open that app instead.
     Returns the web driver instance, so you can do more things with it."""
 
@@ -21,6 +21,7 @@ def go_to_oracle_page(links=(), show_window=False):
     if not show_window:
         os.environ['MOZ_HEADLESS'] = '1'
     web = webdriver.Firefox()
+    web.implicitly_wait(10)
     web.get(url)
     wait = WebDriverWait(web, 5)
     wait.until(condition.presence_of_element_located((By.ID, 'ssoUKRIBtn'))).click()  # UKRI User Login
