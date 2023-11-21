@@ -55,7 +55,7 @@ def check_leave_dates():
 
 
 def get_oracle_off_dates():
-    web = go_to_oracle_page(('RCUK Self-Service Employee', 'Attendance Management'), selenium=True)
+    web = go_to_oracle_page(('RCUK Self-Service Employee', 'Attendance Management'))
     cells = web.find_elements_by_class_name('x1w')
     start_dates = cells[::8]
     end_dates = cells[1::8]
@@ -63,7 +63,7 @@ def get_oracle_off_dates():
     off_dates = outlook.to_set(outlook.get_date_list(from_dmy(start.text), from_dmy(end.text))
                                if 'Leave' in ab_type.text else []
                                for start, end, ab_type in zip(start_dates, end_dates, absence_type))
-    web.driver.quit()
+    web.quit()
     return off_dates
 
 

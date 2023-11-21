@@ -5,7 +5,6 @@ import time
 import selenium.common.exceptions
 import pandas
 from datetime import datetime, timedelta
-from subprocess import check_output
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as condition
 from selenium.webdriver.common.by import By
@@ -77,7 +76,7 @@ def annual_leave_check(test_mode=False):
     last_day = f'{today.year}-12-31'
     # assume full week of public holidays / privilege days at end of December
     days_left_in_year = len(pandas.bdate_range('today', last_day)) - 5
-    iterate_staff(['RCUK Self-Service Manager', 'Attendance Management'], check_al_page,
+    iterate_staff(('RCUK Self-Service Manager', 'Attendance Management'), check_al_page,
                   f'🏖️ Group Leave ({days_left_in_year=})', show_window=test_mode)
 
 
@@ -88,9 +87,9 @@ def otl_submit(test_mode=False):
         if datetime.now().weekday() < 3:
             print('Too early in the week')
             return False
-        if b'LogonUI.exe' not in check_output('TASKLIST'):  # workstation not locked
-            print('Workstation not locked')
-            return False  # for run_tasks, so we know it should retry the task but not report an error
+        # if b'LogonUI.exe' not in check_output('TASKLIST'):  # workstation not locked
+        #     print('Workstation not locked')
+        #     return False  # for run_tasks, so we know it should retry the task but not report an error
     # get standard booking formula
     all_hours = get_project_hours()
 
@@ -98,7 +97,7 @@ def otl_submit(test_mode=False):
     def submit_card(web):
         submit_staff_timecard(web, all_hours)
 
-    toast = iterate_staff('STFC OTL Supervisor', submit_card, 'HxcHieReturnButton', show_window=test_mode)
+    toast = iterate_staff(('STFC OTL Supervisor',), submit_card, 'HxcHieReturnButton', show_window=test_mode)
     # now do mine
     web = go_to_oracle_page(('STFC OTL Timecards', 'Time', 'Recent Timecards'), show_window=test_mode)
     toast += submit_staff_timecard(web, all_hours, doing_my_cards=True)
@@ -162,14 +161,15 @@ def submit_staff_timecard(web, all_hours, doing_my_cards=False):
         select = web.find_element_by_id('N66' if doing_my_cards else 'N89')
         options = select.find_elements_by_tag_name('option')
         # Find the first non-entered one (reverse the order since newer ones are at the top)
-        next_option = next(option for option in reversed(options)
-                           if not option.text.endswith('~') and ' - ' in option.text)
+        next_option = next(opt for opt in reversed(options) if not opt.text.endswith('~') and ' - ' in opt.text)
         card_date_text = next_option.text
+        wb_date = datetime.strptime(card_date_text.split(' - ')[0], '%B %d, %Y').date()  # e.g. August 16, 2021
+        if not doing_my_cards and wb_date > datetime.now().date():
+            continue  # don't do future cards for other staff
         next_option.click()
         print('Creating timecard for', card_date_text)
         if doing_my_cards:
             web.find_element_by_id('A150N1display').send_keys('Angal-Kalinin, Doctor Deepa (Deepa)')  # approver
-        wb_date = datetime.strptime(card_date_text.split(' - ')[0], '%B %d, %Y').date()  # e.g. August 16, 2021
         # list of True/False for on holiday that day
         on_holiday = [wb_date + timedelta(days=day) in days_away for day in range(5)]
         print(f'{on_holiday=}')
@@ -182,7 +182,7 @@ def submit_staff_timecard(web, all_hours, doing_my_cards=False):
                 wait_until_page_ready(web)
                 hours_boxes = web.find_elements_by_class_name('x1v')  # 7x6 of these
                 boxes = get_boxes(web)
-                fill_boxes(boxes, project, task)
+                fill_boxes(boxes, row, project, task)
                 for day in range(5):
                     hrs = '0' if on_holiday[day] else f'{daily_hours:.2f}'
                     hours_boxes[row * 7 + day].send_keys(hrs)
@@ -194,7 +194,7 @@ def submit_staff_timecard(web, all_hours, doing_my_cards=False):
         if any(on_holiday):
             # do a row for leave and holidays
             row = len(hours)
-            fill_boxes(boxes,'STRA00009', '01.01')
+            fill_boxes(boxes, row, 'STRA00009', '01.01')
             [hours_boxes[row * 7 + day].send_keys('7.4' if on_holiday[day] else '0') for day in range(5)]
 
         click_when_ready(web, 'review')  # Continue button
@@ -215,11 +215,11 @@ def click_when_ready(web, element_id, by=By.ID):
     WebDriverWait(web, 2).until(condition.presence_of_element_located((by, element_id))).click()
 
 
-def fill_boxes(boxes, project, task):
+def fill_boxes(boxes, row, project, task):
     """Fill in project, task, type boxes."""
-    boxes['Project'].send_keys(project.strip())
-    boxes['Task'].send_keys(task.strip())
-    boxes['Type'].send_keys('Labour - (Straight Time)')
+    boxes['Project'][row].send_keys(project.strip())
+    boxes['Task'][row].send_keys(task.strip())
+    boxes['Type'][row].send_keys('Labour - (Straight Time)')
 
 
 def get_boxes(web):

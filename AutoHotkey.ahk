@@ -16,6 +16,11 @@ Esc::!F4
 #IfWinExist ahk_class XLMAIN
 #x::WinActivate
 #IfWinExist ahk_class MozillaWindowClass
+!\::
+    WinActivate
+    Send {Alt Down}d{Alt Up}`%
+    Return
+
 #a::WinActivate
 #IfWinExist ahk_exe OUTLOOK.EXE
 #o::WinActivate
@@ -75,7 +80,7 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 #v::Run RASDial "RAL VPN"
 #n::Run C:\ProgramData\chocolatey\lib\metapad\tools\metapad.exe
 #^p::Run cmd.exe
-#c::Run cmd.exe "/K" cd %UserProfile%\Misc\Scripts & %UserProfile%\Miniconda3\Scripts\activate.bat %UserProfile%\Miniconda3\envs\py39
+#c::Run cmd.exe "/K" cd %UserProfile%\Misc\Scripts & %UserProfile%\Miniconda3\Scripts\activate.bat %UserProfile%\Miniconda3\envs\py39 & python
 #t::Run taskmgr.exe
 #+r::Run %UserProfile%\Miniconda3\python.exe %UserProfile%\Misc\scripts\random_cd.py
 #o::Run OUTLOOK.EXE
@@ -155,3 +160,15 @@ return
    SysGet, Height, 79
    WinMove, %Title%,, X1, Y1, Width, Height
 return
+
++#d::toggleDarkMode()
+
+toggleDarkMode()
+{
+    static key := "", mode
+    if !key
+        RegRead mode, % key := "HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", SystemUsesLightTheme
+    mode ^= 1
+    RegWrite REG_DWORD, % key, AppsUseLightTheme   , % mode
+    RegWrite REG_DWORD, % key, SystemUsesLightTheme, % mode
+}

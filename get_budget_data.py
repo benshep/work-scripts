@@ -95,7 +95,7 @@ def get_budget_data(project_names='all', test_mode=False):
     for line in list(pandas.read_excel(excel_filename, sheet_name='Index', dtype='string').itertuples()):
         if project_names != 'all' and line.Name not in project_names:
             continue
-        web = go_to_oracle_page(use_obi=True, show_window=test_mode)
+        web = go_to_oracle_page('obi', show_window=test_mode)
         try:
             print(f'Fetching data for {line.Name}')
             get_task_data(web, line.Project, line.Task)
