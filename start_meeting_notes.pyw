@@ -32,7 +32,7 @@ def create_note_file():
         return  # no current meeting
     go_to_folder(meeting)
     # Hierarchy of responses: (we want to list attendees from the top)
-    # olResponseOrganized 	    1 	The AppointmentItem is on the Organizer's calendar or the recipient is the Organizer of the meeting.
+    # olResponseOrganized 	    1 	On the Organizer's calendar or the recipient is the Organizer of the meeting.
     # olResponseAccepted 	    3 	Meeting accepted.
     # olResponseTentative 	    2 	Meeting tentatively accepted.
     # olResponseNone 	        0 	The appointment is a simple appointment and does not require a response.
@@ -62,7 +62,7 @@ def create_note_file():
 
 def target_meeting():
     os.system('title 📓 Start meeting notes')
-    current_events = outlook.get_current_events()
+    current_events = outlook.get_current_events(hours_ahead=12)
     current_events = filter(lambda event: not outlook.is_wfh(event), current_events)
     current_events = filter(lambda event: event.Subject != 'ASTeC/CI Coffee', current_events)
 
@@ -71,7 +71,7 @@ def target_meeting():
     if meeting_count == 1:
         i = 0
     elif meeting_count > 1:
-        [print(f'{i}. {subject}') for i, subject in enumerate(event.Subject for event in current_events)]
+        [print(f'{i}. {event.Start.strftime("%H:%M")} {event.Subject}') for i, event in enumerate(current_events)]
         try:
             i = min(int(input('Choose meeting for note file [0]: ')), meeting_count - 1)
         except ValueError:

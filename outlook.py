@@ -45,23 +45,23 @@ def get_meeting_time(event, get_end=False):
     return datetime.datetime.fromtimestamp(meeting_time.timestamp())
 
 
-def happening_now(event):
+def happening_now(event, hours_ahead=0.5):
     """Return True if an event is currently happening or is due to start in the next half-hour."""
     try:
         # print(appointmentItem.Start)
         start_time = get_meeting_time(event)
         end_time = get_meeting_time(event, get_end=True)
-        return start_time - datetime.timedelta(hours=0.5) <= datetime.datetime.now() <= end_time
+        return start_time - datetime.timedelta(hours=hours_ahead) <= datetime.datetime.now() <= end_time
     except (OSError, pywintypes.com_error):  # appointments with weird dates!
         return False
 
 
-def get_current_events(user='me'):
+def get_current_events(user='me', hours_ahead=0.5):
     """Return a list of current events from Outlook, sorted by subject."""
-    current_events = filter(happening_now, get_appointments_in_range(-7, 1, user=user))
-    # Sort by subject, so we have a predictable order for events to be returned
-    current_events = sorted(current_events, key=lambda event: event.Subject)
-    return current_events
+    current_events = filter(lambda event: happening_now(event, hours_ahead),
+                            get_appointments_in_range(-7, 1, user=user))
+    # Sort by start time then subject, so we have a predictable order for events to be returned
+    return sorted(current_events, key=lambda event: f'{event.StartUTC} {event.Subject}')
 
 
 def datetime_text(advance_time):
@@ -115,5 +115,12 @@ def to_set(date_lists):
     return set(sum(date_lists, []))
 
 
+def list_meetings():
+    event_list = get_appointments_in_range(start=datetime.date(2022, 4, 1), end=datetime.date(2023, 3, 31))
+    for event in event_list:
+        print(event.Duration, event.AllDayEvent, event.Subject, event.BusyStatus, sep='\t')
+    print(len(event_list))
+
+
 if __name__ == '__main__':
-    print(sorted(list(get_away_dates())))
+    list_meetings()
