@@ -1,6 +1,7 @@
 import contextlib
 import os
 import time
+from platform import node
 
 import selenium.common.exceptions
 import pandas
@@ -14,18 +15,21 @@ from pushbullet_api_key import api_key  # local file, keep secret!
 from oracle import go_to_oracle_page
 import outlook
 
+end_of_year_wb = None  # datetime.date(2023, 12, 25)  # special case - for entering Christmas timecards early
 
 def get_project_hours():
     """Fetch the standard hours worked on each project from a spreadsheet."""
     filename = os.path.join(os.environ['UserProfile'], 'Documents', 'Group Leader', 'MaRS staff and projects.xlsx')
-    booking_plan = pandas.read_excel(filename, sheet_name='Book', header=0, index_col=[2, 3], skiprows=1)
+    booking_plan = pandas.read_excel(filename, sheet_name='Book', header=0, index_col=2, skiprows=1)
+    booking_plan = booking_plan[booking_plan.index.notnull()]  # remove any rows without a project code
     print(booking_plan)
     hours = {}
-    for name in booking_plan.columns[2:]:  # first two are for project code and name
+    assert all(booking_plan.columns[:3] == ['Unnamed: 0', 'Official name', 'Project name'])
+    for name in booking_plan.columns[3:]:  # first two are for project code and name
         if name == 'Total':  # got to the end of the names
             break
         ftes = booking_plan[name]
-        ftes = ftes.iloc[:-2]  # remove "not on code" and total rows
+        # ftes = ftes.iloc[:-2]  # remove "not on code" and total rows
         ftes = ftes.dropna()  # get rid of projects with zero hours
         hours[name] = ftes * 7.4  # turn percentages to daily hours
     return hours
@@ -84,6 +88,9 @@ def otl_submit(test_mode=False):
     """Submit this week's OTL timecard for each staff member."""
     # don't bother before Thursday (to give people time to book the end of the week off)
     if not test_mode:
+        if node() == 'DLAST0023':
+            print('Not running on laptop')
+            return False
         if datetime.now().weekday() < 3:
             print('Too early in the week')
             return False
@@ -129,8 +136,14 @@ def submit_staff_timecard(web, all_hours, doing_my_cards=False):
     """On an individual OTL timecards submitted page, submit a timecard for the current week if necessary."""
 
     # show latest first
-    click_when_ready(web, 'HxcPeriodStarts')  # sort ascending
-    click_when_ready(web, 'HxcPeriodStarts')  # sort descending
+    header_id = 'HxcPeriodStarts'
+    click_when_ready(web, header_id)  # sort ascending
+    header = WebDriverWait(web, 2).until(condition.presence_of_element_located((By.ID, header_id)))
+    header_imgs = header.find_elements_by_tag_name('img')
+    if not header_imgs:  # some staff (e.g. Hon Sci) don't have timecards, so no sort up/down button
+        print('No timecards in list')
+    if header_imgs and header_imgs[0].get_attribute('title') != 'Sorted in descending order':
+        header.click()  # sort descending
     wait_until_page_ready(web)
     if doing_my_cards:
         name = 'Ben Shepherd'
@@ -140,21 +153,20 @@ def submit_staff_timecard(web, all_hours, doing_my_cards=False):
         name = f'{first} {surname}'
         # find out of office dates in the next 3 months (and previous 1)
         email = name.replace(' ', '.').lower() + '@stfc.ac.uk'
-    do_timecards = name in all_hours.keys()
+    do_timecards = header_imgs and name in all_hours.keys()
     if do_timecards:
         hours = all_hours[name]
         days_away = outlook.get_away_dates(-30, 90, user=email)
+        if days_away is False:  # error fetching dates
+            print(f'Warning: no away dates fetched. Suggest manual check for {name}')
     cards_done = 0
     total_days_away = 0
     while do_timecards:  # loop to do all outstanding timecards - break out when done
         first_card_in_list = web.find_elements_by_id('Hxctcarecentlist:Hxctcaperiodstarts:0')
-        if not first_card_in_list:  # some staff (e.g. Hon Sci) don't have timecards
-            print('No timecards in list')
-            break
         last_card_date = first_card_in_list[0].text
         print(f'{name}: {last_card_date=}')
         weeks = last_card_age(last_card_date)
-        if weeks <= 0:
+        if weeks <= 0 and not end_of_year_wb:
             print('Up to date')
             break
         web.find_element_by_id('Hxccreatetcbutton').click()  # Create Timecard
@@ -163,20 +175,20 @@ def submit_staff_timecard(web, all_hours, doing_my_cards=False):
         # Find the first non-entered one (reverse the order since newer ones are at the top)
         next_option = next(opt for opt in reversed(options) if not opt.text.endswith('~') and ' - ' in opt.text)
         card_date_text = next_option.text
-        wb_date = datetime.strptime(card_date_text.split(' - ')[0], '%B %d, %Y').date()  # e.g. August 16, 2021
-        if not doing_my_cards and wb_date > datetime.now().date():
+        wb_date = datetime.datetime.strptime(card_date_text.split(' - ')[0], '%B %d, %Y').date()  # e.g. August 16, 2021
+        if not doing_my_cards and datetime.datetime.now().date() < wb_date != end_of_year_wb:
             continue  # don't do future cards for other staff
         next_option.click()
         print('Creating timecard for', card_date_text)
         if doing_my_cards:
             web.find_element_by_id('A150N1display').send_keys('Angal-Kalinin, Doctor Deepa (Deepa)')  # approver
         # list of True/False for on holiday that day
-        on_holiday = [wb_date + timedelta(days=day) in days_away for day in range(5)]
+        on_holiday = [wb_date + datetime.timedelta(days=day) in days_away for day in range(5)]
         print(f'{on_holiday=}')
 
         # enter hours
-        if not all(on_holiday):
-            for row, ((project_task, _), daily_hours) in enumerate(hours.items()):
+        if not all(on_holiday) and end_of_year_wb != wb_date:
+            for row, (project_task, daily_hours) in enumerate(hours.items()):
                 project, task = project_task.split(' ')
                 web.find_element_by_xpath('//button[contains(text(), "Add Another Row")]').click()
                 wait_until_page_ready(web)
@@ -191,9 +203,16 @@ def submit_staff_timecard(web, all_hours, doing_my_cards=False):
             hours = []
             hours_boxes = web.find_elements_by_class_name('x1v')  # 7x6 of these
             boxes = get_boxes(web)
-        if any(on_holiday):
+        row = len(hours)
+        if end_of_year_wb == wb_date:  # end of year is a bit special
+            fill_boxes(boxes, row, 'STRA00009', '01.01')
+            hours_boxes[row * 7 + 0].send_keys('7.4')
+            hours_boxes[row * 7 + 1].send_keys('7.4')
+            hours_boxes[row * 7 + 2].send_keys('7.4')
+            hours_boxes[row * 7 + 3].send_keys('3.7')
+            hours_boxes[row * 7 + 4].send_keys('0')
+        elif any(on_holiday):
             # do a row for leave and holidays
-            row = len(hours)
             fill_boxes(boxes, row, 'STRA00009', '01.01')
             [hours_boxes[row * 7 + day].send_keys('7.4' if on_holiday[day] else '0') for day in range(5)]
 
@@ -212,7 +231,7 @@ def submit_staff_timecard(web, all_hours, doing_my_cards=False):
 
 def click_when_ready(web, element_id, by=By.ID):
     """Wait for an element to appear, then click it."""
-    WebDriverWait(web, 2).until(condition.presence_of_element_located((by, element_id))).click()
+    WebDriverWait(web, 5).until(condition.presence_of_element_located((by, element_id))).click()
 
 
 def fill_boxes(boxes, row, project, task):
