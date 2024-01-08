@@ -31,9 +31,6 @@ Esc::!F4
 #IfWinExist Anaconda Prompt
 #c::WinActivate 
 
-; #IfWinExist, Google Play Music
-; #z::ControlSend, ahk_parent, {SPACE}, ahk_exe firefox.exe
-
 ;shortcuts for timesheet entry page
 #IfWinActive,Time Entry:
 Down::Send {TAB 15}
@@ -42,10 +39,6 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 ;Alt-D to highlight 'address bar' (name box) in Excel
 #IfWinActive ahk_class XLMAIN
 !d::ControlFocus Edit1
-
-;Caps Lock to start/stop OBS recording if PPT slide show active
-;#IfWinActive ahk_class screenClass
-;CapsLock::ControlSend, , a, OBS
 
 #IfWinActive
 
@@ -77,15 +70,12 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 #2::Run %DocsDir%
 #+w::Run mailto:
 #i::Run %ProgramFiles%\irfanview\i_view64.exe
-#v::Run RASDial "RAL VPN"
 #n::Run C:\ProgramData\chocolatey\lib\metapad\tools\metapad.exe
-#^p::Run cmd.exe
 #c::Run cmd.exe "/K" cd %UserProfile%\Misc\Scripts & %UserProfile%\Miniconda3\Scripts\activate.bat %UserProfile%\Miniconda3\envs\py39 & python
 #t::Run taskmgr.exe
 #+r::Run %UserProfile%\Miniconda3\python.exe %UserProfile%\Misc\scripts\random_cd.py
 #o::Run OUTLOOK.EXE
 #w::Run WINWORD.EXE /q
-;#+a::Run C:\Windows\SystemApps\Microsoft.MicrosoftEdge_8wekyb3d8bbwe\MicrosoftEdge.exe
 #q::Run POWERPNT.EXE /s
 #x::Run EXCEL.EXE /e
 #+g::Run %MusicDir%

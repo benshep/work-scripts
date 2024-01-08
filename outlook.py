@@ -101,7 +101,12 @@ def get_away_dates(start=-30, end=90, user='me', look_for=is_out_of_office):
      """
     events = filter(look_for, get_appointments_in_range(start, end, user=user))
     # Need to subtract a day here since the end time of an all-day event is 00:00 on the next day
-    return to_set([get_date_list(event.Start.date(), event.End.date() - datetime.timedelta(days=1)) for event in events])
+    try:
+        away_list = [get_date_list(event.Start.date(), event.End.date() - datetime.timedelta(days=1)) for event in events]
+        return to_set(away_list)
+    except pywintypes.com_error:
+        print(f"Warning: couldn't fetch away dates for {user}")
+        return False
 
 
 def get_date_list(start, end):
@@ -123,4 +128,8 @@ def list_meetings():
 
 
 if __name__ == '__main__':
-    list_meetings()
+    away_dates = sorted(
+        list(get_away_dates(datetime.date(2023, 1, 1), datetime.date(2023, 12, 31),
+                            user='nasiq.ziyan@stfc.ac.uk')))
+    print(len(away_dates))
+    print(*away_dates, sep='\n')

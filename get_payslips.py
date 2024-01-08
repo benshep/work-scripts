@@ -3,7 +3,7 @@ import time
 import re
 from datetime import datetime
 from shutil import move
-from PyPDF2 import PdfReader
+from pypdf import PdfReader
 from oracle import go_to_oracle_page
 from pushbullet import Pushbullet  # to show notifications
 from pushbullet_api_key import api_key  # local file, keep secret!
@@ -43,7 +43,7 @@ def get_one_slip(web, index):
 
 def get_payslips(only_latest=True, test_mode=False):
     """Download all my payslips, or just the latest."""
-    web = go_to_oracle_page(['RCUK Self-Service Employee', 'Payslip'], show_window=test_mode)
+    web = go_to_oracle_page(('RCUK Self-Service Employee', 'Payslip'), show_window=test_mode)
 
     payslip_count = len(get_options(web))
     os.chdir(os.path.join(user_profile, 'Downloads'))

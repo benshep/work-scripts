@@ -1,3 +1,4 @@
+import contextlib
 import os
 from datetime import datetime, timedelta
 from collections import Counter
@@ -33,13 +34,11 @@ def read_old_access_data():
                   [(surname, days) for (year, week, surname), days in days_on_site.items()
                    if year == prev_year and week == prev_week])
         for person in list(pandas.read_excel(filename, sheet_name='Sheet1', dtype='string').itertuples()):
-            try:
+            with contextlib.suppress(TypeError):
                 name = person._1
                 if name == 'King, Matthew MP' or person._4 == group_name:
                     surname = name.split(', ')[0]
                     days_on_site[(year, week, surname)] += 1
-            except TypeError:
-                pass
     all_names = sorted(list({surname for _, _, surname in days_on_site.keys()}))
     print('\t', *all_names, sep='\t')
     all_weeks = sorted(list({(year, week) for year, week, _ in days_on_site.keys()}))
@@ -56,9 +55,10 @@ def check_prev_day(date):
                                    'Shepherd, Ben BJA', 'Thompson, Neil NR'])
     # find the latest file
     os.chdir(folder)
-    date_value = datetime.strftime(date, '%Y%m%d')
-    filename = date_value + file_suffix
+    filename = datetime.strftime(date, '%Y%m%d') + file_suffix
     # for each group member: here yesterday? if not - check calendar
+    if not os.path.exists(filename):
+        return False
     access_list = pandas.read_excel(filename, sheet_name='Sheet1', dtype='string').iloc[:, 0]  # first column
     not_on_site = group_members[~group_members.isin(access_list)]
     no_away_events = []
@@ -82,10 +82,9 @@ def check_prev_week():
         date = datetime.now() - timedelta(days=days_ago)
         if date.weekday() > 4:  # Sat or Sun
             continue
-        try:
-            if names := check_prev_day(date):
-                toast += date.strftime('%#d %b %Y: ') + ', '.join(names) + '\n'
-        except FileNotFoundError:  # didn't find the access data - never mind, try again later
+        if names := check_prev_day(date):
+            toast += date.strftime('%#d %b %Y: ') + ', '.join(names) + '\n'
+        else:
             return False  # postpone the task
     if toast:
         print(toast)
@@ -93,5 +92,5 @@ def check_prev_week():
 
 
 if __name__ == '__main__':
-    read_old_access_data()
-    # check_prev_week()
+    # read_old_access_data()
+    print(check_prev_week())

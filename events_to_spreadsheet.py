@@ -37,5 +37,5 @@ def set_pc_unlocked_flag(user='me'):
 
 
 if __name__ == '__main__':
-    events_to_spreadsheet('Hywel')
+    events_to_spreadsheet()
     # set_pc_unlocked_flag()

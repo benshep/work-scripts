@@ -2,6 +2,7 @@ import os
 
 import pandas
 import selenium.common
+from selenium.webdriver.common.by import By
 import polling2
 from datetime import datetime
 from time import sleep
@@ -28,7 +29,6 @@ def poll(target, arg=None, ignore_exceptions=(selenium.common.exceptions.NoSuchE
 def search_via_prompt_using_poll(web, index, search_term, check_in_dropdown=False):
     """Search using the dropdown box and the pop-up prompt."""
     print(f'Searching for {search_term} in box {index}')
-    # Sometimes webbot takes ages to find the elements - base Selenium is much quicker
     # try this a few times - sometimes the dropdown disappears
     for i in range(10):
         dropdowns = poll(web.find_elements_by_class_name, 'promptTextField')

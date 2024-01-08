@@ -1,6 +1,5 @@
 import os
 import re
-import win32com.client as win32
 from datetime import datetime
 from trello import TrelloClient
 import trello_auth

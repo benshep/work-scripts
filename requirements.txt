@@ -1,7 +1,9 @@
-webbot
 requests
 pandas
 python-dateutil
 pillow
 selenium
-pushbullet-py
+setuptools
+pypdf
+polling2
+numpy

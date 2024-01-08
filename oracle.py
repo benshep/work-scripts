@@ -27,7 +27,7 @@ def go_to_oracle_page(links=(), show_window=False):
     wait.until(condition.presence_of_element_located((By.ID, 'ssoUKRIBtn'))).click()  # UKRI User Login
     fill_box('i0116', username, web)
     fill_box('i0118', password, web)
-    web.find_element_by_id('idSIButton9').click()  # Stay signed in
+    web.find_element(By.ID, 'idSIButton9').click()  # Stay signed in
     if links not in apps:  # list of links rather than an app to open
         for link in links:
             wait.until(condition.presence_of_element_located((By.LINK_TEXT, link))).click()
@@ -39,7 +39,7 @@ def fill_box(box_id, value, web):
     """Wait for a username/password box to be shown, fill it, and click 'Next'."""
     wait = WebDriverWait(web, 5)
     wait.until(condition.presence_of_element_located((By.ID, box_id))).send_keys(value)
-    web.find_element_by_id('idSIButton9').click()  # Next
+    web.find_element(By.ID, 'idSIButton9').click()  # Next
     wait.until(condition.invisibility_of_element_located((By.CLASS_NAME, 'lightbox-cover')))
 
 
