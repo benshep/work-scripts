@@ -1,4 +1,5 @@
 from datetime import datetime
+from selenium.webdriver.common.by import By
 from oracle import go_to_oracle_page
 import outlook
 from pushbullet import Pushbullet  # to show notifications
@@ -56,7 +57,7 @@ def check_leave_dates():
 
 def get_oracle_off_dates():
     web = go_to_oracle_page(('RCUK Self-Service Employee', 'Attendance Management'))
-    cells = web.find_elements_by_class_name('x1w')
+    cells = web.find_elements(By.CLASS_NAME, 'x1w')
     start_dates = cells[::8]
     end_dates = cells[1::8]
     absence_type = cells[2::8]
