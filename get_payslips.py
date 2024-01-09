@@ -3,6 +3,7 @@ import time
 import re
 from datetime import datetime
 from shutil import move
+from selenium.webdriver.common.by import By
 from pypdf import PdfReader
 from oracle import go_to_oracle_page
 from pushbullet import Pushbullet  # to show notifications
@@ -12,7 +13,7 @@ user_profile = os.environ['UserProfile']
 
 
 def get_options(web):
-    return web.find_element_by_id('AdvicePicker').find_elements_by_tag_name('option')
+    return web.find_element(By.ID, 'AdvicePicker').find_elements(By.TAG_NAME, 'option')
 
 
 def get_one_slip(web, index):
@@ -28,10 +29,10 @@ def get_one_slip(web, index):
     option.click()
     time.sleep(2)
     for _ in range(2):  # doesn't work first time!
-        web.find_element_by_id('Go').click()
+        web.find_element(By.ID, 'Go').click()
         time.sleep(5)
     old_files = set(os.listdir())
-    web.find_element_by_id('Export').click()
+    web.find_element(By.ID, 'Export').click()
     time.sleep(2)
     new_file = (set(os.listdir()) - old_files).pop()
     move(new_file, new_filename)
