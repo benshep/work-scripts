@@ -39,7 +39,9 @@ def get_one_slip(web, index):
     payslip_content = PdfReader(new_filename).pages[0].extract_text()
     net_pay = float(re.findall(r'SUMMARY NET PAY (\d+\.\d\d)', payslip_content)[0])
     print(net_pay)
-    Pushbullet(api_key).push_note('💰 Payslip', f'Net pay for {date_text}: £{net_pay:.2f}')
+    payments = re.findall('Units Rate Amount\n(.*)\n Amount', payslip_content, re.MULTILINE + re.DOTALL)[0]
+    payments = re.sub(' (\d)', ': £\\1', payments)  # neaten up a bit
+    Pushbullet(api_key).push_note('💰 Payslip', f'Net pay for {date_text}: £{net_pay:.2f}\n{payments}')
 
 
 def get_payslips(only_latest=True, test_mode=False):
