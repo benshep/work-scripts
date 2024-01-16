@@ -28,7 +28,7 @@ Esc::!F4
 #w::WinActivate
 #IfWinExist ahk_class PPTFrameClass
 #q::WinActivate
-#IfWinExist Anaconda Prompt
+#IfWinExist Python
 #c::WinActivate 
 
 ;shortcuts for timesheet entry page
@@ -71,7 +71,7 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 #+w::Run mailto:
 #i::Run %ProgramFiles%\irfanview\i_view64.exe
 #n::Run C:\ProgramData\chocolatey\lib\metapad\tools\metapad.exe
-#c::Run cmd.exe "/K" cd %UserProfile%\Misc\Scripts & %UserProfile%\Miniconda3\Scripts\activate.bat %UserProfile%\Miniconda3\envs\py39 & python
+#c::Run cmd.exe "/K" title Python & cd %UserProfile%\Misc\Scripts & %UserProfile%\Miniconda3\Scripts\activate.bat %UserProfile%\Miniconda3\envs\py311 & python
 #t::Run taskmgr.exe
 #+r::Run %UserProfile%\Miniconda3\python.exe %UserProfile%\Misc\scripts\random_cd.py
 #o::Run OUTLOOK.EXE

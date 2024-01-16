@@ -1,8 +1,6 @@
 import os
 from time import sleep
 from oracle import go_to_oracle_page
-from pushbullet import Pushbullet  # to show notifications
-from pushbullet_api_key import api_key  # local file, keep secret!
 
 user_profile = os.environ['UserProfile']
 
@@ -79,8 +77,7 @@ def get_candidate_data(test_mode=False):
         toast += name + '\n'
 
     web.quit()
-    if toast:
-        Pushbullet(api_key).push_note('New candidates', toast)
+    return toast
 
 
 def get_cvs_folder():

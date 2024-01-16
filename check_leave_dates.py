@@ -2,8 +2,6 @@ from datetime import datetime
 from selenium.webdriver.common.by import By
 from oracle import go_to_oracle_page
 import outlook
-from pushbullet import Pushbullet  # to show notifications
-from pushbullet_api_key import api_key  # local file, keep secret!
 
 
 def list_missing(date_set):
@@ -50,9 +48,7 @@ def check_leave_dates():
         toast = ''
     if not_in_oracle := outlook_off_dates - oracle_off_dates:
         toast += f'Missing from Oracle: {list_missing(not_in_oracle)}'
-    if toast:
-        print(toast)
-        Pushbullet(api_key).push_note('📅 Check leave dates', toast)
+    return toast
 
 
 def get_oracle_off_dates():

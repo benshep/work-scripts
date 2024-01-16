@@ -3,6 +3,8 @@ import os
 import pandas
 import selenium.common
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as condition
 import polling2
 from datetime import datetime
 from time import sleep
@@ -26,58 +28,58 @@ def poll(target, arg=None, ignore_exceptions=(selenium.common.exceptions.NoSuchE
                          ignore_exceptions=ignore_exceptions)
 
 
-def search_via_prompt_using_poll(web, index, search_term, check_in_dropdown=False):
+def search_via_prompt(web, index, search_term, check_in_dropdown=False):
     """Search using the dropdown box and the pop-up prompt."""
     print(f'Searching for {search_term} in box {index}')
     # try this a few times - sometimes the dropdown disappears
+    wait = WebDriverWait(web, 5)
     for i in range(10):
-        dropdowns = poll(web.find_elements_by_class_name, 'promptTextField')
         print(f'Clicking dropdown, attempt {i}')
-        dropdowns[index].click()
+        web.find_elements(By.CLASS_NAME, 'promptTextField')[index].click()
         try:
-            search_buttons = poll(web.find_elements_by_class_name, 'DropDownSearch')
-        except polling2.PollingException:
+            # search_buttons = wait_for_elements(web, By.CLASS_NAME, 'DropDownSearch')
+            search_buttons = web.find_elements(By.CLASS_NAME, 'DropDownSearch')
+        except selenium.common.exceptions.NoSuchElementException:
             continue  # no search button - maybe menu disappeared?
         for button in search_buttons:
             if button.is_displayed():
-                search_button = button.find_element_by_tag_name('span')
+                search_button = button.find_element(By.TAG_NAME, 'span')
                 break
         else:
             continue  # retry clicking dropdown
         if check_in_dropdown:  # maybe we can skip the dialog and just click a menu option
             try:
-                menu_items = poll(web.find_elements_by_class_name, 'promptMenuOption')
-                for item in menu_items:
+                for item in web.find_elements(By.CLASS_NAME, 'promptMenuOption'):
                     if item.get_attribute('title') == search_term:
                         item.click()
                         return
-            except (polling2.PollingException, selenium.common.exceptions.StaleElementReferenceException):
+            except selenium.common.exceptions.StaleElementReferenceException:
                 continue  # no menu options - maybe menu disappeared?
         print('Clicking Search')
         try:
             search_button.click()
-            search_box = poll(web.find_element_by_id, 'choiceListSearchString_D')
-            search_box.send_keys(search_term)
-        except (polling2.PollingException, selenium.common.exceptions.StaleElementReferenceException):
+            web.find_element(By.ID, 'choiceListSearchString_D').send_keys(search_term)
+        except selenium.common.exceptions.StaleElementReferenceException:
             continue
         break
     else:
         raise InformationFetchFailure('Failed to click Search button')
     sleep(10)
 
-    def get_search_result(*args):
-        poll(web.find_element_by_name, 'searchButton').click()
-        return poll(web.find_element_by_class_name, 'searchHighlightedText')  # raises NoSuchElementException if no results
+    web.find_element(By.NAME, 'searchButton').click()
+    # raises NoSuchElementException if no results
     try:
-        poll(get_search_result)
-    except polling2.PollingException:
-        raise InformationFetchFailure(f'No results for {search_term}')
-    move_all = poll(web.find_element_by_id, 'idMoveAllButton')
-    move_all.click()
-    sleep(3)
-    ok_button = poll(web.find_element_by_name, 'OK')
-    ok_button.click()
+        web.find_element(By.CLASS_NAME, 'searchHighlightedText')
+    except selenium.common.exceptions.NoSuchElementException as e:
+        raise InformationFetchFailure(f'No results for {search_term}') from e
+    web.find_element(By.ID, 'idMoveAllButton').click()
+    web.find_element(By.NAME, 'OK').click()
     sleep(10)
+
+
+def wait_for_elements(web, by, value):
+    WebDriverWait(web, 5).until(condition.presence_of_element_located((by, value)))
+    return web.find_elements(by, value)
 
 
 def get_budget_data(project_names='all', test_mode=False):
@@ -99,7 +101,7 @@ def get_budget_data(project_names='all', test_mode=False):
         try:
             print(f'Fetching data for {line.Name}')
             get_task_data(web, line.Project, line.Task)
-            export_csv_using_poll(csv_filename, web)
+            export_csv(csv_filename, web)
             print('Writing data to spreadsheet')
             with pandas.ExcelWriter(excel_filename, mode='a', if_sheet_exists='replace') as writer:
                 data = pandas.read_csv(csv_filename, parse_dates=['Date', 'Fiscal Date', 'Fiscal Period'])
@@ -111,35 +113,44 @@ def get_budget_data(project_names='all', test_mode=False):
             web.quit()
 
 
-def export_csv_using_poll(csv_filename, web):
+def export_csv(csv_filename, web):
     if os.path.exists(csv_filename):
         os.remove(csv_filename)
     print('Exporting data')
     # there are two tables to export, we want the last one
-    poll(web.find_elements_by_link_text, 'Export', check_success=lambda result: len(result) > 1)[-1].click()
-    poll(web.find_element_by_link_text, 'Data').click()
-    poll(web.find_element_by_link_text, 'CSV').click()
-    poll(os.path.exists, csv_filename)
+    by, value = By.LINK_TEXT, 'Export'
+    wait = WebDriverWait(web, 5)
+    wait.until(lambda web: len(web.find_elements(by, value)) > 1)
+    web.find_elements(by, value)[-1].click()
+    # wait_for_elements(web, By.LINK_TEXT, 'Export')[-1].click()
+    web.find_element(By.LINK_TEXT, 'Data').click()
+    web.find_element(By.LINK_TEXT, 'CSV').click()
+    poll(non_zero_size, csv_filename)
+
+
+def non_zero_size(filename):
+    return os.path.exists(filename) and os.path.getsize(filename) > 0
 
 
 def get_task_data(web, project_code, task):
     """Get budget data for given project code and task."""
     # try:
-    search_via_prompt_using_poll(web, 1, project_code)  # Project Number
-    search_via_prompt_using_poll(web, 8, task)  # , check_in_dropdown=True)  # Task Number
+    search_via_prompt(web, 1, project_code)  # Project Number
+    search_via_prompt(web, 8, task)  # , check_in_dropdown=True)  # Task Number
     # except selenium.common.exceptions.NoSuchElementException:  # no results for this project/task combination
     #     raise InformationFetchFailure(f'No results for {project_code=}, {task=}')
     print('Getting results')
-    poll(web.find_element_by_name, 'gobtn').click()  # Apply
-    sleep(30)  # wait for results to be returned
+    wait = WebDriverWait(web, 5)
+    wait.until(condition.presence_of_element_located((By.NAME, 'gobtn'))).click()  # Apply
+    # sleep(30)  # wait for results to be returned
     print('Going to transactions page')
-    overflows = poll(web.find_elements_by_class_name, 'obipsTabBarOverflow')
+    overflows = wait_for_elements(web, By.CLASS_NAME, 'obipsTabBarOverflow')
     for element in overflows:
         if element.is_displayed():
             element.click()
             break
     # sleep(10)
-    poll(web.find_element_by_xpath, '//div[@title="Transactions"]').click()
+    wait.until(condition.presence_of_element_located((By.XPATH, '//div[@title="Transactions"]'))).click()
     # sleep(10)
     return True
 

@@ -10,12 +10,11 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as condition
 from selenium.webdriver.common.by import By
 
-from pushbullet import Pushbullet  # to show notifications
-from pushbullet_api_key import api_key  # local file, keep secret!
 from oracle import go_to_oracle_page
 import outlook
 
 end_of_year_wb = None  # datetime.date(2023, 12, 25)  # special case - for entering Christmas timecards early
+
 
 def get_project_hours():
     """Fetch the standard hours worked on each project from a spreadsheet."""
@@ -80,8 +79,8 @@ def annual_leave_check(test_mode=False):
     last_day = f'{today.year}-12-31'
     # assume full week of public holidays / privilege days at end of December
     days_left_in_year = len(pandas.bdate_range('today', last_day)) - 5
-    iterate_staff(('RCUK Self-Service Manager', 'Attendance Management'), check_al_page,
-                  f'🏖️ Group Leave ({days_left_in_year=})', show_window=test_mode)
+    return iterate_staff(('RCUK Self-Service Manager', 'Attendance Management'), check_al_page,
+                         show_window=test_mode) + f'\n{days_left_in_year=}'
 
 
 def otl_submit(test_mode=False):
@@ -104,12 +103,12 @@ def otl_submit(test_mode=False):
     def submit_card(web):
         submit_staff_timecard(web, all_hours)
 
-    toast = iterate_staff(('STFC OTL Supervisor',), submit_card, 'HxcHieReturnButton', show_window=test_mode)
+    toast = iterate_staff(('STFC OTL Supervisor',), submit_card, show_window=test_mode)
     # now do mine
     web = go_to_oracle_page(('STFC OTL Timecards', 'Time', 'Recent Timecards'), show_window=test_mode)
     toast += submit_staff_timecard(web, all_hours, doing_my_cards=True)
-    print(toast)
-    Pushbullet(api_key).push_note('👔 Group Timecards', toast)
+    web.quit()
+    return toast
 
 
 def iterate_staff(page, check_function, toast_title='', show_window=False):
@@ -124,12 +123,7 @@ def iterate_staff(page, check_function, toast_title='', show_window=False):
         web.find_element_by_id(f'N3:Y:{i}').click()  # link from 'Action' column at far right
         toast.append(check_function(web))
     web.quit()
-    toast = '\n'.join(filter(None, toast))
-    if toast_title and toast:
-        print(toast_title)
-        print(toast)
-        Pushbullet(api_key).push_note(toast_title, toast)
-    return toast
+    return '\n'.join(filter(None, toast))
 
 
 def submit_staff_timecard(web, all_hours, doing_my_cards=False):
