@@ -23,14 +23,13 @@ def go_to_oracle_page(links=(), show_window=False):
     web = webdriver.Firefox()
     web.implicitly_wait(10)
     web.get(url)
-    wait = WebDriverWait(web, 5)
-    wait.until(condition.presence_of_element_located((By.ID, 'ssoUKRIBtn'))).click()  # UKRI User Login
+    web.find_element(By.ID, 'ssoUKRIBtn').click()  # UKRI User Login
     fill_box('i0116', username, web)
     fill_box('i0118', password, web)
     web.find_element(By.ID, 'idSIButton9').click()  # Stay signed in
     if links not in apps:  # list of links rather than an app to open
         for link in links:
-            wait.until(condition.presence_of_element_located((By.LINK_TEXT, link))).click()
+            web.find_element(By.LINK_TEXT, link).click()
     time.sleep(2)
     return web
 
@@ -38,11 +37,11 @@ def go_to_oracle_page(links=(), show_window=False):
 def fill_box(box_id, value, web):
     """Wait for a username/password box to be shown, fill it, and click 'Next'."""
     wait = WebDriverWait(web, 5)
-    wait.until(condition.presence_of_element_located((By.ID, box_id))).send_keys(value)
+    web.find_element(By.ID, box_id).send_keys(value)
     web.find_element(By.ID, 'idSIButton9').click()  # Next
     wait.until(condition.invisibility_of_element_located((By.CLASS_NAME, 'lightbox-cover')))
 
 
 if __name__ == '__main__':
-    go_to_oracle_page(show_window=True, links='taleo')
+    go_to_oracle_page(show_window=True, links=('STFC OTL Timecards', 'Time', 'Recent Timecards'))
 
