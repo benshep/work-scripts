@@ -42,9 +42,9 @@ def get_staff_table(web):
         # ensure all requests have completed each time
         wait_until_page_ready(web)
         i += 1
-        table = web.find_element_by_class_name('x1o')
-        rows = table.find_elements_by_tag_name('tr')
-        imgs = table.find_elements_by_tag_name('img')
+        table = web.find_element(By.CLASS_NAME, 'x1o')
+        rows = table.find_elements(By.TAG_NAME, 'tr')
+        imgs = table.find_elements(By.TAG_NAME, 'img')
         for img in imgs:
             if img.get_attribute('title') == 'Select to expand':
                 img.click()
@@ -66,7 +66,7 @@ def wait_until_page_ready(web, timeout=2):
 def get_name(web):
     """Return the first and last name from the recent timecards page."""
     name_translate = {'Alexander': 'Alex'}
-    name = web.find_element_by_class_name('x1f').text.split(': ')[1]  # Recent Timecards heading
+    name = web.find_element(By.CLASS_NAME, 'x1f').text.split(': ')[1]  # Recent Timecards heading
     surname, first, number = name.split(', ')  # e.g. 'Bainbridge, Doctor Alexander Robert, 155807'
     title, first, *middles = first.split(' ')  # middles will be empty if no middle name
     first = name_translate.get(first, first)
@@ -120,7 +120,7 @@ def iterate_staff(page, check_function, toast_title='', show_window=False):
 
     toast = []
     for i in range(1, row_count):  # first one is mine - ignore this
-        web.find_element_by_id(f'N3:Y:{i}').click()  # link from 'Action' column at far right
+        web.find_element(By.ID, 'N3:Y:{i}').click()  # link from 'Action' column at far right
         toast.append(check_function(web))
     web.quit()
     return '\n'.join(filter(None, toast))
@@ -133,7 +133,7 @@ def submit_staff_timecard(web, all_hours, doing_my_cards=False):
     header_id = 'HxcPeriodStarts'
     click_when_ready(web, header_id)  # sort ascending
     header = WebDriverWait(web, 2).until(condition.presence_of_element_located((By.ID, header_id)))
-    header_imgs = header.find_elements_by_tag_name('img')
+    header_imgs = header.find_elements(By.TAG_NAME, 'img')
     if not header_imgs:  # some staff (e.g. Hon Sci) don't have timecards, so no sort up/down button
         print('No timecards in list')
     if header_imgs and header_imgs[0].get_attribute('title') != 'Sorted in descending order':
@@ -156,16 +156,16 @@ def submit_staff_timecard(web, all_hours, doing_my_cards=False):
     cards_done = 0
     total_days_away = 0
     while do_timecards:  # loop to do all outstanding timecards - break out when done
-        first_card_in_list = web.find_elements_by_id('Hxctcarecentlist:Hxctcaperiodstarts:0')
+        first_card_in_list = web.find_elements(By.ID, 'Hxctcarecentlist:Hxctcaperiodstarts:0')
         last_card_date = first_card_in_list[0].text
         print(f'{name}: {last_card_date=}')
         weeks = last_card_age(last_card_date)
         if weeks <= 0 and not end_of_year_wb:
             print('Up to date')
             break
-        web.find_element_by_id('Hxccreatetcbutton').click()  # Create Timecard
-        select = web.find_element_by_id('N66' if doing_my_cards else 'N89')
-        options = select.find_elements_by_tag_name('option')
+        web.find_element(By.ID, 'Hxccreatetcbutton').click()  # Create Timecard
+        select = web.find_element(By.ID, 'N66' if doing_my_cards else 'N89')
+        options = select.find_elements(By.TAG_NAME, 'option')
         # Find the first non-entered one (reverse the order since newer ones are at the top)
         next_option = next(opt for opt in reversed(options) if not opt.text.endswith('~') and ' - ' in opt.text)
         card_date_text = next_option.text
@@ -175,7 +175,7 @@ def submit_staff_timecard(web, all_hours, doing_my_cards=False):
         next_option.click()
         print('Creating timecard for', card_date_text)
         if doing_my_cards:
-            web.find_element_by_id('A150N1display').send_keys('Angal-Kalinin, Doctor Deepa (Deepa)')  # approver
+            web.find_element(By.ID, 'A150N1display').send_keys('Angal-Kalinin, Doctor Deepa (Deepa)')  # approver
         # list of True/False for on holiday that day
         on_holiday = [wb_date + datetime.timedelta(days=day) in days_away for day in range(5)]
         print(f'{on_holiday=}')
@@ -184,9 +184,9 @@ def submit_staff_timecard(web, all_hours, doing_my_cards=False):
         if not all(on_holiday) and end_of_year_wb != wb_date:
             for row, (project_task, daily_hours) in enumerate(hours.items()):
                 project, task = project_task.split(' ')
-                web.find_element_by_xpath('//button[contains(text(), "Add Another Row")]').click()
+                web.find_element(By.XPATH, '//button[contains(text(), "Add Another Row")]').click()
                 wait_until_page_ready(web)
-                hours_boxes = web.find_elements_by_class_name('x1v')  # 7x6 of these
+                hours_boxes = web.find_elements(By.CLASS_NAME, 'x1v')  # 7x6 of these
                 boxes = get_boxes(web)
                 fill_boxes(boxes, row, project, task)
                 for day in range(5):
@@ -195,7 +195,7 @@ def submit_staff_timecard(web, all_hours, doing_my_cards=False):
                     wait_until_page_ready(web)
         else:
             hours = []
-            hours_boxes = web.find_elements_by_class_name('x1v')  # 7x6 of these
+            hours_boxes = web.find_elements(By.CLASS_NAME, 'x1v')  # 7x6 of these
             boxes = get_boxes(web)
         row = len(hours)
         if end_of_year_wb == wb_date:  # end of year is a bit special
@@ -237,22 +237,22 @@ def fill_boxes(boxes, row, project, task):
 
 def get_boxes(web):
     """Find boxes to fill in."""
-    return {title: web.find_elements_by_xpath(f'//*[@class="x8" and @title="{title}"]')
+    return {title: web.find_elements(By.XPATH, '//*[@class="x8" and @title="{title}"]')
             for title in ('Project', 'Task', 'Type')}
 
 
 def check_al_page(web):
     """On an individual annual leave balance page, check the remaining balance, and return toast text."""
-    if web.find_elements_by_class_name('x5y'):  # error - not available for honorary scientists
+    if web.find_elements(By.CLASS_NAME, 'x5y'):  # error - not available for honorary scientists
         web.back()
         return None
     click_when_ready(web, 'Entitlement Balances', By.LINK_TEXT)
     with contextlib.suppress(selenium.common.exceptions.TimeoutException):  # balances are expanded on the second look
         click_when_ready(web, 'Show Accrual Balances', By.LINK_TEXT)
-    name = web.find_element_by_id('EmpName').text
+    name = web.find_element(By.ID, 'EmpName').text
     surname, first = name.split(', ')
-    remaining_days = float(web.find_elements_by_class_name('x2')[-1].text)  # can have half-days too
-    web.find_element_by_id('Return').click()
+    remaining_days = float(web.find_elements(By.CLASS_NAME, 'x2')[-1].text)  # can have half-days too
+    web.find_element(By.ID, 'Return').click()
     # Only show if more than 10 days remaining (max carry over)
     return f'{first} {surname}: {remaining_days:g} days' if remaining_days > 10 else None
 
