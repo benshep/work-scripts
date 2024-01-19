@@ -30,7 +30,12 @@ def get_project_hours():
         ftes = booking_plan[name]
         # ftes = ftes.iloc[:-2]  # remove "not on code" and total rows
         ftes = ftes.dropna()  # get rid of projects with zero hours
-        hours[name] = ftes * 7.4  # turn percentages to daily hours
+        total_effort = round(sum(ftes), 2)
+        if total_effort != 1.0:
+            raise ValueError(f"{name}'s total FTE adds up to {total_effort:.2f} - should be 1.00")
+        daily_hours = ftes * 7.4  # turn percentages to daily hours
+        hours[name] = daily_hours  # turn percentages to daily hours
+
     return hours
 
 
@@ -120,7 +125,7 @@ def iterate_staff(page, check_function, toast_title='', show_window=False):
 
     toast = []
     for i in range(1, row_count):  # first one is mine - ignore this
-        web.find_element(By.ID, 'N3:Y:{i}').click()  # link from 'Action' column at far right
+        web.find_element(By.ID, f'N3:Y:{i}').click()  # link from 'Action' column at far right
         toast.append(check_function(web))
     web.quit()
     return '\n'.join(filter(None, toast))
@@ -131,8 +136,8 @@ def submit_staff_timecard(web, all_hours, doing_my_cards=False):
 
     # show latest first
     header_id = 'HxcPeriodStarts'
-    click_when_ready(web, header_id)  # sort ascending
-    header = WebDriverWait(web, 2).until(condition.presence_of_element_located((By.ID, header_id)))
+    web.find_element(By.ID, header_id).click()  # sort ascending
+    header = web.find_element(By.ID, header_id)
     header_imgs = header.find_elements(By.TAG_NAME, 'img')
     if not header_imgs:  # some staff (e.g. Hon Sci) don't have timecards, so no sort up/down button
         print('No timecards in list')
@@ -169,15 +174,15 @@ def submit_staff_timecard(web, all_hours, doing_my_cards=False):
         # Find the first non-entered one (reverse the order since newer ones are at the top)
         next_option = next(opt for opt in reversed(options) if not opt.text.endswith('~') and ' - ' in opt.text)
         card_date_text = next_option.text
-        wb_date = datetime.datetime.strptime(card_date_text.split(' - ')[0], '%B %d, %Y').date()  # e.g. August 16, 2021
-        if not doing_my_cards and datetime.datetime.now().date() < wb_date != end_of_year_wb:
+        wb_date = datetime.strptime(card_date_text.split(' - ')[0], '%B %d, %Y').date()  # e.g. August 16, 2021
+        if not doing_my_cards and datetime.now().date() < wb_date != end_of_year_wb:
             continue  # don't do future cards for other staff
         next_option.click()
         print('Creating timecard for', card_date_text)
         if doing_my_cards:
             web.find_element(By.ID, 'A150N1display').send_keys('Angal-Kalinin, Doctor Deepa (Deepa)')  # approver
         # list of True/False for on holiday that day
-        on_holiday = [wb_date + datetime.timedelta(days=day) in days_away for day in range(5)]
+        on_holiday = [wb_date + timedelta(days=day) in days_away for day in range(5)]
         print(f'{on_holiday=}')
 
         # enter hours
@@ -200,32 +205,24 @@ def submit_staff_timecard(web, all_hours, doing_my_cards=False):
         row = len(hours)
         if end_of_year_wb == wb_date:  # end of year is a bit special
             fill_boxes(boxes, row, 'STRA00009', '01.01')
-            hours_boxes[row * 7 + 0].send_keys('7.4')
-            hours_boxes[row * 7 + 1].send_keys('7.4')
-            hours_boxes[row * 7 + 2].send_keys('7.4')
-            hours_boxes[row * 7 + 3].send_keys('3.7')
-            hours_boxes[row * 7 + 4].send_keys('0')
+            [hours_boxes[row * 7 + i].send_keys(str(duration)) for i, duration in enumerate([7.4, 7.4, 7.4, 3.7, 0])]
         elif any(on_holiday):
             # do a row for leave and holidays
             fill_boxes(boxes, row, 'STRA00009', '01.01')
             [hours_boxes[row * 7 + day].send_keys('7.4' if on_holiday[day] else '0') for day in range(5)]
 
-        click_when_ready(web, 'review')  # Continue button
-        click_when_ready(web, 'HxcSubmit')  # Submit button
+        web.find_element(By.ID, 'review').click()  # Continue button
+        web.find_element(By.ID, 'HxcSubmit').click()  # Submit button
         cards_done += 1
         total_days_away += sum(on_holiday)
         print('Submitted timecard for', card_date_text)
-        click_when_ready(web, 'Return to Recent Timecards', By.LINK_TEXT)
-    click_when_ready(web, 'HxcHieReturnButton')
+        web.find_element(By.LINK_TEXT, 'Return to Recent Timecards').click()
+    if not doing_my_cards:
+        web.find_element(By.ID, 'HxcHieReturnButton').click()
     if cards_done > 0:
         return f'{name}: {cards_done=}' + (f', {total_days_away=}' if total_days_away else '') + '\n'
     else:
         return ''
-
-
-def click_when_ready(web, element_id, by=By.ID):
-    """Wait for an element to appear, then click it."""
-    WebDriverWait(web, 5).until(condition.presence_of_element_located((by, element_id))).click()
 
 
 def fill_boxes(boxes, row, project, task):
@@ -237,7 +234,7 @@ def fill_boxes(boxes, row, project, task):
 
 def get_boxes(web):
     """Find boxes to fill in."""
-    return {title: web.find_elements(By.XPATH, '//*[@class="x8" and @title="{title}"]')
+    return {title: web.find_elements(By.XPATH, f'//*[@class="x8" and @title="{title}"]')
             for title in ('Project', 'Task', 'Type')}
 
 
@@ -246,9 +243,9 @@ def check_al_page(web):
     if web.find_elements(By.CLASS_NAME, 'x5y'):  # error - not available for honorary scientists
         web.back()
         return None
-    click_when_ready(web, 'Entitlement Balances', By.LINK_TEXT)
+    web.find_element(By.LINK_TEXT, 'Entitlement Balances').click()
     with contextlib.suppress(selenium.common.exceptions.TimeoutException):  # balances are expanded on the second look
-        click_when_ready(web, 'Show Accrual Balances', By.LINK_TEXT)
+        web.find_element(By.LINK_TEXT, 'Show Accrual Balances').click()
     name = web.find_element(By.ID, 'EmpName').text
     surname, first = name.split(', ')
     remaining_days = float(web.find_elements(By.CLASS_NAME, 'x2')[-1].text)  # can have half-days too
@@ -263,4 +260,4 @@ def last_card_age(last_card_date):
 
 
 if __name__ == '__main__':
-    otl_submit(test_mode=True)
+    print(otl_submit(test_mode=True))
