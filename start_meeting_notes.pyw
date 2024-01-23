@@ -130,6 +130,7 @@ def format_name(person_name, response):
     else:
         # title case, but preserve upper case words
         return_value = ' '.join([word if word.isupper() else word.title() for word in person_name.split()])
+        return_value = return_value.replace(' - UKRI', '')
     if response == 4:  # declined
         return f'~~{return_value}~~'  # strikethrough
     elif response in (1, 3):  # organised, accepted
