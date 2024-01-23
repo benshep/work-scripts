@@ -4,6 +4,9 @@ SetTitleMatchMode, 2
 DocsDir = %UserProfile%\Documents
 MusicDir = %UserProfile%\Music
 
+PythonEnv = %UserProfile%\Miniconda3\envs\py311
+AnacondaCommand = %UserProfile%\Miniconda3\python.exe %UserProfile%\Miniconda3\cwp.py %PythonEnv% %PythonEnv%\python.exe
+
 ;Esc to quit Calc, Snipping Tool, and Notepad
 #IfWinActive ahk_class CalcFrame
 Esc::!F4
@@ -47,9 +50,9 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 !F1::Send {Volume_Mute}
 
 ;launch the Zoom meeting that's nearest to now in the calendar
-#^z::Run %UserProfile%\Miniconda3\python.exe %UserProfile%\Miniconda3\cwp.py %UserProfile%\Miniconda3\envs\py39 %UserProfile%\Miniconda3\envs\py39\python.exe %DocsDir%\Scripts\join_zoom_meeting.pyw
+#^z::Run %AnacondaCommand% %DocsDir%\Scripts\join_zoom_meeting.pyw
 ;write notes for the Zoom meeting that's nearest to now in the calendar
-#^n::Run %UserProfile%\Miniconda3\python.exe %UserProfile%\Miniconda3\cwp.py %UserProfile%\Miniconda3\envs\py39 %UserProfile%\Miniconda3\envs\py39\python.exe %DocsDir%\Scripts\start_meeting_notes.pyw
+#^n::Run %AnacondaCommand% %DocsDir%\Scripts\start_meeting_notes.pyw
 
 ;Ctrl-Win-` to toggle window always on top
 #^`::
@@ -71,9 +74,11 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 #+w::Run mailto:
 #i::Run %ProgramFiles%\irfanview\i_view64.exe
 #n::Run C:\ProgramData\chocolatey\lib\metapad\tools\metapad.exe
-#c::Run cmd.exe "/K" title Python & cd %UserProfile%\Misc\Scripts & %UserProfile%\Miniconda3\Scripts\activate.bat %UserProfile%\Miniconda3\envs\py311 & python
+#c::Run cmd.exe "/K" title Python & cd %UserProfile%\Misc\Scripts & %UserProfile%\Miniconda3\Scripts\activate.bat %PythonEnv% & python
 #t::Run taskmgr.exe
-#+r::Run %UserProfile%\Miniconda3\python.exe %UserProfile%\Misc\scripts\random_cd.py
+; Win-Shift-T for a random Trello task
+#+t::Run %AnacondaCommand% %DocsDir%\Scripts\oddjob.py
+#+r::Run %AnacondaCommand% %UserProfile%\Misc\scripts\random_cd.py
 #o::Run OUTLOOK.EXE
 #w::Run WINWORD.EXE /q
 #q::Run POWERPNT.EXE /s
