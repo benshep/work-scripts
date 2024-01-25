@@ -244,7 +244,8 @@ def check_al_page(web):
         web.back()
         return None
     web.find_element(By.LINK_TEXT, 'Entitlement Balances').click()
-    with contextlib.suppress(selenium.common.exceptions.TimeoutException):  # balances are expanded on the second look
+    # balances are expanded on the second look, so the 'Show' button won't be present
+    with contextlib.suppress(selenium.common.exceptions.NoSuchElementException):
         web.find_element(By.LINK_TEXT, 'Show Accrual Balances').click()
     name = web.find_element(By.ID, 'EmpName').text
     surname, first = name.split(', ')
@@ -260,4 +261,4 @@ def last_card_age(last_card_date):
 
 
 if __name__ == '__main__':
-    print(otl_submit(test_mode=True))
+    print(annual_leave_check(test_mode=True))
