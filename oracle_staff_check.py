@@ -134,36 +134,44 @@ def iterate_staff(page, check_function, toast_title='', show_window=False):
 def submit_staff_timecard(web, all_hours, doing_my_cards=False):
     """On an individual OTL timecards submitted page, submit a timecard for the current week if necessary."""
 
-    # show latest first
-    header_id = 'HxcPeriodStarts'
-    web.find_element(By.ID, header_id).click()  # sort ascending
-    header = web.find_element(By.ID, header_id)
-    header_imgs = header.find_elements(By.TAG_NAME, 'img')
-    if not header_imgs:  # some staff (e.g. Hon Sci) don't have timecards, so no sort up/down button
-        print('No timecards in list')
-    if header_imgs and header_imgs[0].get_attribute('title') != 'Sorted in descending order':
-        header.click()  # sort descending
-    wait_until_page_ready(web)
     if doing_my_cards:
         name = 'Ben Shepherd'
         email = 'me'
     else:
         first, surname = get_name(web)
         name = f'{first} {surname}'
-        # find out of office dates in the next 3 months (and previous 1)
         email = name.replace(' ', '.').lower() + '@stfc.ac.uk'
-    do_timecards = header_imgs and name in all_hours.keys()
+    print(name)
+
+    # show latest first
+    header_id = 'HxcPeriodStarts'
+    web.find_element(By.ID, header_id).click()  # sort ascending
+    time.sleep(2)
+    header = web.find_element(By.ID, header_id)
+    try:
+        sort_arrow = header.find_element(By.TAG_NAME, 'img')
+        if sort_arrow.get_attribute('title') != 'Sorted in descending order':
+            header.click()  # sort descending
+        do_timecards = name in all_hours.keys()
+    except selenium.common.exceptions.NoSuchElementException:
+        # some staff (e.g. Hon Sci) don't have timecards, so no sort up/down button
+        print('No timecards in list')
+        do_timecards = False
+
+    wait_until_page_ready(web)
     if do_timecards:
         hours = all_hours[name]
+        # find out of office dates in the next 3 months (and previous 1)
         days_away = outlook.get_away_dates(-30, 90, user=email)
         if days_away is False:  # error fetching dates
             print(f'Warning: no away dates fetched. Suggest manual check for {name}')
+
     cards_done = 0
     total_days_away = 0
     while do_timecards:  # loop to do all outstanding timecards - break out when done
         first_card_in_list = web.find_elements(By.ID, 'Hxctcarecentlist:Hxctcaperiodstarts:0')
         last_card_date = first_card_in_list[0].text
-        print(f'{name}: {last_card_date=}')
+        print(f'{last_card_date=}')
         weeks = last_card_age(last_card_date)
         if weeks <= 0 and not end_of_year_wb:
             print('Up to date')
