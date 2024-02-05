@@ -95,6 +95,11 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 ; !Numpad6::Send #{Right}
 ; !Numpad2::Send #{Down}
 
+; names with accents
+::Dusan::Dušan
+::Topalovic::Topalović
+::Pockar::Počkar
+
 ;Greek letters
 ::\alpha::α
 ::\beta::β
