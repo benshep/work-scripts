@@ -46,11 +46,13 @@ def get_payslips(only_latest=True, test_mode=False):
     """Download all my payslips, or just the latest."""
     web = go_to_oracle_page(('RCUK Self-Service Employee', 'Payslip'), show_window=test_mode)
 
-    payslip_count = len(get_options(web))
-    os.chdir(os.path.join(user_profile, 'Downloads'))
+    try:
+        payslip_count = len(get_options(web))
+        os.chdir(os.path.join(user_profile, 'Downloads'))
 
-    result = '\n'.join(get_one_slip(web, i) for i in ((-1,) if only_latest else range(payslip_count)))
-    web.quit()
+        result = '\n'.join(get_one_slip(web, i) for i in ((-1,) if only_latest else range(payslip_count)))
+    finally:
+        web.quit()
     return result
 
 

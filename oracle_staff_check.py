@@ -111,8 +111,10 @@ def otl_submit(test_mode=False):
     toast = iterate_staff(('STFC OTL Supervisor',), submit_card, show_window=test_mode)
     # now do mine
     web = go_to_oracle_page(('STFC OTL Timecards', 'Time', 'Recent Timecards'), show_window=test_mode)
-    toast += submit_staff_timecard(web, all_hours, doing_my_cards=True)
-    web.quit()
+    try:
+        toast += submit_staff_timecard(web, all_hours, doing_my_cards=True)
+    finally:
+        web.quit()
     return toast
 
 
@@ -120,14 +122,16 @@ def iterate_staff(page, check_function, toast_title='', show_window=False):
     """Go to a specific page for each staff member and perform a function.
     Don't specify a toast title if you don't want a toast displayed."""
     web = go_to_oracle_page(page, show_window=show_window)
-    row_count = get_staff_table(web)
-    print(f'{row_count=}')
+    try:
+        row_count = get_staff_table(web)
+        print(f'{row_count=}')
 
-    toast = []
-    for i in range(1, row_count):  # first one is mine - ignore this
-        web.find_element(By.ID, f'N3:Y:{i}').click()  # link from 'Action' column at far right
-        toast.append(check_function(web))
-    web.quit()
+        toast = []
+        for i in range(1, row_count):  # first one is mine - ignore this
+            web.find_element(By.ID, f'N3:Y:{i}').click()  # link from 'Action' column at far right
+            toast.append(check_function(web))
+    finally:
+        web.quit()
     return '\n'.join(filter(None, toast))
 
 
