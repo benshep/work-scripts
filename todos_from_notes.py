@@ -17,6 +17,7 @@ def todos_from_notes():
     notes_checked = 'notes_checked'
     last_checked = os.path.getmtime(notes_checked) if os.path.exists(notes_checked) else 0
     today = datetime.now()
+    toast = ''
     for folder, _, file_list in os.walk(documents_folder):
         for file in file_list:
             if not file.lower().endswith('.md'):
@@ -29,6 +30,7 @@ def todos_from_notes():
             if os.path.getmtime(filename) < last_checked:  # old file
                 continue
             # Now read through the file looking for actions
+            print(filename)
             text = open(filename, encoding='utf-8', errors='replace').read()
             matches = re.finditer(r'(.*)\*\*Actions?[ \-.:]+(.{4,})\*\*(.*)', text)  # text in bold
             for match in matches:
@@ -40,6 +42,7 @@ def todos_from_notes():
                 desc = f'From **{meeting_title}** on {meeting_date.strftime("%#d/%#m/%y")}\n{match[0]}'
                 print(meeting_date, meeting_title, action_name, sep='; ')
 
+                toast += action_name + '\n'
                 card = new_list.add_card(name=action_name, desc=desc)
                 for label in labels:
                     if label.name.lower() in folder_names:
@@ -67,8 +70,9 @@ def todos_from_notes():
                     card.set_due(date)
                     card.set_reminder(3 * 24 * 60)  # 3 days before due date
 
-        open(notes_checked, 'w').write('')  # touch file, so we know when it was done last
+    open(notes_checked, 'w').write('')  # touch file, so we know when it was done last
+    return toast
 
 
 if __name__ == '__main__':
-    todos_from_notes()
+    print(todos_from_notes())
