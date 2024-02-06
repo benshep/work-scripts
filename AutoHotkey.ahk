@@ -17,7 +17,11 @@ Esc::!F4
 
 ;activate Excel/Firefox/Outlook/Word/PPT if they exist, otherwise start them
 #IfWinExist ahk_class XLMAIN
+;shift+wheel for horizontal scrolling in Excel
++WheelDown::ComObjActive("Excel.Application").ActiveWindow.SmallScroll(0,0,2,0)
++WheelUp::ComObjActive("Excel.Application").ActiveWindow.SmallScroll(0,0,0,2)
 #x::WinActivate
+
 #IfWinExist ahk_class MozillaWindowClass
 !\::
     WinActivate
