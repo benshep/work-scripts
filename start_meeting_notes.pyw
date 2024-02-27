@@ -107,7 +107,11 @@ def find_folder_from_text(text):
 
 
 def is_banned(name):
-    return name in ('Zoom', 'Other', 'Old work') or name.lower() == name  # disallow lower case only folders!
+    """Test banned state of folders. Folders are banned for the following reasons:
+    - Name is Zoom, Other, or Old work - don't put notes in those
+    - Name is lowercase only
+    - Name is 3 characters or less"""
+    return name in ('Zoom', 'Other', 'Old work') or name.lower() == name or len(name) <= 3
 
 
 def go_to_folder(meeting):
