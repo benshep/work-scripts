@@ -62,9 +62,10 @@ def create_note_file():
 
     if match := re.search(r'https://[\w\.]+/event/\d+', meeting.Body):  # Indico link: look for an agenda
         url = match[0]
-        description += ical_to_markdown(url)
-        subject = f'[{subject}]({url})'
-    text = f'# {subject}\n\n{subtitle}\n\n{description}\n\n'
+        agenda = ical_to_markdown(url)
+        text = f'# [{subject}]({url})\n\n{subtitle}\n\n{description}\n\n{agenda}\n\n'
+    else:
+        text = f'# {subject}\n\n{subtitle}\n\n{description}\n\n'
 
     bad_chars = str.maketrans({char: ' ' for char in '*?/\\<>:|"'})  # can't use these in filenames
     filename = f'{start_time.strftime("%Y-%m-%d")} {subject.translate(bad_chars)}.md'
