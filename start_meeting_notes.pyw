@@ -45,8 +45,8 @@ def create_note_file():
     attendees = filter(None, '; '.join([meeting.RequiredAttendees, meeting.OptionalAttendees]).split('; '))
     attendees = sorted(attendees, key=lambda r: priority.index(response[r]))
     people_list = ', '.join(format_name(person_name, response[person_name]) for person_name in attendees)
-    start = outlook.get_meeting_time(meeting)
-    meeting_date = start.strftime("%#d/%#m/%Y")  # no leading zeros
+    start_time = outlook.get_meeting_time(meeting)
+    meeting_date = start_time.strftime("%#d/%#m/%Y")  # no leading zeros
     subject = meeting.Subject.strip()  # remove leading and trailing spaces
     subtitle = f'*{meeting_date}. {people_list}*'
     description = meeting.Body
@@ -63,10 +63,11 @@ def create_note_file():
     if match := re.search(r'https://[\w\.]+/event/\d+', meeting.Body):  # Indico link: look for an agenda
         url = match[0]
         description += ical_to_markdown(url)
-    text = f'# [{subject}]({url})\n\n{subtitle}\n\n{description}\n\n'
+        subject = f'[{subject}]({url})'
+    text = f'# {subject}\n\n{subtitle}\n\n{description}\n\n'
 
     bad_chars = str.maketrans({char: ' ' for char in '*?/\\<>:|"'})  # can't use these in filenames
-    filename = f'{start.strftime("%Y-%m-%d")} {subject.translate(bad_chars)}.md'
+    filename = f'{start_time.strftime("%Y-%m-%d")} {subject.translate(bad_chars)}.md'
     open(filename, 'a', encoding='utf-8').write(text)
     os.startfile(filename)
 
