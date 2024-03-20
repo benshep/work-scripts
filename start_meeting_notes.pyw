@@ -7,6 +7,8 @@ Look through today's events in an Outlook calendar,
 and start a Markdown notes file for the closest one to the current time.
 """
 
+
+import contextlib
 import os
 import re
 import requests
@@ -47,12 +49,21 @@ def create_note_file():
     meeting_date = start.strftime("%#d/%#m/%Y")  # no leading zeros
     subject = meeting.Subject.strip()  # remove leading and trailing spaces
     subtitle = f'*{meeting_date}. {people_list}*'
+    description = meeting.Body
+    description = description.replace('o   ', '  * ')  # second-level lists
+    description = description.replace('\r\n\r\n', '\n')  # double-spaced paragraphs
+    # snip out Zoom joining instructions
+    start = description.find(' <http://zoom.us/> ')  # begins with this
+    if start >= 0:
+        # last bit is "Skype on a SurfaceHub" link, only one with @lync in it - or sometime SIP: xxxx@zoomcrc.com
+        end = max(description.rfind('@lync.zoom.us'), description.rfind('@zoomcrc.com'))
+        end = description.find('\r\n', end)  # end of line
+        description = (description[:start] + description[end:]).strip()
+
     if match := re.search(r'https://[\w\.]+/event/\d+', meeting.Body):  # Indico link: look for an agenda
         url = match[0]
-        agenda = ical_to_markdown(url)
-        text = f'# [{subject}]({url})\n\n{subtitle}\n\n{agenda}\n\n'
-    else:
-        text = f'# {subject}\n\n{subtitle}\n\n'
+        description += ical_to_markdown(url)
+    text = f'# [{subject}]({url})\n\n{subtitle}\n\n{description}\n\n'
 
     bad_chars = str.maketrans({char: ' ' for char in '*?/\\<>:|"'})  # can't use these in filenames
     filename = f'{start.strftime("%Y-%m-%d")} {subject.translate(bad_chars)}.md'
