@@ -11,6 +11,7 @@ from selenium.webdriver.support import expected_conditions as condition
 from selenium.webdriver.common.by import By
 
 from oracle import go_to_oracle_page
+from check_leave_dates import get_off_dates
 import outlook
 
 end_of_year_wb = None  # datetime.date(2023, 12, 25)  # special case - for entering Christmas timecards early
@@ -70,10 +71,15 @@ def wait_until_page_ready(web, timeout=2):
 
 def get_name(web):
     """Return the first and last name from the recent timecards page."""
-    name_translate = {'Alexander': 'Alex'}
     name = web.find_element(By.CLASS_NAME, 'x1f').text.split(': ')[1]  # Recent Timecards heading
-    surname, first, number = name.split(', ')  # e.g. 'Bainbridge, Doctor Alexander Robert, 155807'
-    title, first, *middles = first.split(' ')  # middles will be empty if no middle name
+    return translate_name(name)
+
+
+def translate_name(name):
+    name_translate = {'Alexander': 'Alex'}
+    surname, first, *number = name.split(', ')  # e.g. 'Bainbridge, Doctor Alexander Robert, 155807'
+    if ' ' in first:
+        title, first, *middles = first.split(' ')  # middles will be empty if no middle name
     first = name_translate.get(first, first)
     return first, surname
 
@@ -104,48 +110,77 @@ def otl_submit(test_mode=False):
     # get standard booking formula
     all_hours = get_project_hours()
 
+    # get Oracle holiday dates
+    all_off_dates = get_staff_leave_dates(test_mode)
+
     # everyone else's first
     def submit_card(web):
-        submit_staff_timecard(web, all_hours)
+        submit_staff_timecard(web, all_hours, all_off_dates)
 
     toast = iterate_staff(('STFC OTL Supervisor',), submit_card, show_window=test_mode)
     # now do mine
     web = go_to_oracle_page(('STFC OTL Timecards', 'Time', 'Recent Timecards'), show_window=test_mode)
     try:
-        toast += submit_staff_timecard(web, all_hours, doing_my_cards=True)
+        toast += submit_staff_timecard(web, all_hours)
     finally:
         web.quit()
     return toast
 
 
-def iterate_staff(page, check_function, toast_title='', show_window=False):
+def get_all_off_dates(web):
+    return get_off_dates(web, fetch_all=True)
+
+
+def get_staff_leave_dates(test_mode=False):
+    """Get leave dates in Oracle for each staff member."""
+    return iterate_staff(('RCUK Self-Service Manager', 'Attendance Management'),
+                         get_all_off_dates, show_window=test_mode)
+
+
+def iterate_staff(page, check_function, show_window=False):
     """Go to a specific page for each staff member and perform a function.
-    Don't specify a toast title if you don't want a toast displayed."""
+    If the function returns a string, concatenate them all together and return a toast.
+    Otherwise, return a dict of {name: value}."""
     web = go_to_oracle_page(page, show_window=show_window)
+    print(page)
     try:
         row_count = get_staff_table(web)
         print(f'{row_count=}')
 
         toast = []
+        return_dict = {}
         for i in range(1, row_count):  # first one is mine - ignore this
+            # id changes after you've clicked 'Action' link once!
+            tag_id = 'N25' if i > 1 and page == ('STFC OTL Supervisor',) else 'N26'
+            name = ' '.join(translate_name(web.find_element(By.ID, f'N3:{tag_id}:{i}').text))
+            print(name)
             web.find_element(By.ID, f'N3:Y:{i}').click()  # link from 'Action' column at far right
-            toast.append(check_function(web))
+            with contextlib.suppress(selenium.common.exceptions.NoSuchElementException):
+                if web.find_element(By.CLASS_NAME, 'x5y').text == 'Error':  # got an error page, not the expected page
+                    web.find_element(By.CLASS_NAME, 'x7n').click()  # click 'OK'
+                    continue
+            result = check_function(web)
+            if isinstance(result, str):
+                toast.append(result)
+            else:
+                return_dict[name] = result
     finally:
         web.quit()
-    return '\n'.join(filter(None, toast))
+    return return_dict or '\n'.join(filter(None, toast))
 
 
-def submit_staff_timecard(web, all_hours, doing_my_cards=False):
+def submit_staff_timecard(web, all_hours, all_absences : dict = {}):
     """On an individual OTL timecards submitted page, submit a timecard for the current week if necessary."""
 
+    doing_my_cards = not all_absences
     if doing_my_cards:
         name = 'Ben Shepherd'
         email = 'me'
+        all_absences = {name: set()}
     else:
         first, surname = get_name(web)
         name = f'{first} {surname}'
         email = name.replace(' ', '.').lower() + '@stfc.ac.uk'
-    print(name)
 
     # show latest first
     header_id = 'HxcPeriodStarts'
@@ -166,9 +201,11 @@ def submit_staff_timecard(web, all_hours, doing_my_cards=False):
     if do_timecards:
         hours = all_hours[name]
         # find out of office dates in the next 3 months (and previous 1)
-        days_away = outlook.get_away_dates(-30, 90, user=email)
-        if days_away is False:  # error fetching dates
+        outlook_off_dates = outlook.get_away_dates(-30, 90, user=email)
+        if outlook_off_dates is False:  # error fetching dates
             print(f'Warning: no away dates fetched. Suggest manual check for {name}')
+            outlook_off_dates = set()
+        days_away = outlook_off_dates | outlook.get_dl_ral_holidays() | all_absences[name]
 
     cards_done = 0
     total_days_away = 0
@@ -177,7 +214,7 @@ def submit_staff_timecard(web, all_hours, doing_my_cards=False):
         last_card_date = first_card_in_list[0].text
         print(f'{last_card_date=}')
         weeks = last_card_age(last_card_date)
-        if weeks <= 0 and not end_of_year_wb:
+        if weeks <= -1 and not end_of_year_wb:  # set -2 to do two weeks in advance
             print('Up to date')
             break
         web.find_element(By.ID, 'Hxccreatetcbutton').click()  # Create Timecard
@@ -187,8 +224,8 @@ def submit_staff_timecard(web, all_hours, doing_my_cards=False):
         next_option = next(opt for opt in reversed(options) if not opt.text.endswith('~') and ' - ' in opt.text)
         card_date_text = next_option.text
         wb_date = datetime.strptime(card_date_text.split(' - ')[0], '%B %d, %Y').date()  # e.g. August 16, 2021
-        if not doing_my_cards and datetime.now().date() < wb_date != end_of_year_wb:
-            continue  # don't do future cards for other staff
+        # if not doing_my_cards and datetime.now().date() < wb_date != end_of_year_wb:
+        #     continue  # don't do future cards for other staff
         next_option.click()
         print('Creating timecard for', card_date_text)
         if doing_my_cards:
@@ -230,7 +267,8 @@ def submit_staff_timecard(web, all_hours, doing_my_cards=False):
         print('Submitted timecard for', card_date_text)
         web.find_element(By.LINK_TEXT, 'Return to Recent Timecards').click()
     if not doing_my_cards:
-        web.find_element(By.ID, 'HxcHieReturnButton').click()
+        print('Return to hierarchy')
+        web.find_element(By.ID, 'HxcHieReturnButton').click()  # Return to Hierarchy button
     if cards_done > 0:
         return f'{name}: {cards_done=}' + (f', {total_days_away=}' if total_days_away else '') + '\n'
     else:
@@ -273,4 +311,5 @@ def last_card_age(last_card_date):
 
 
 if __name__ == '__main__':
-    print(annual_leave_check(test_mode=True))
+    print(otl_submit(test_mode=True))
+    # print(last_card_age('25-Mar-2024'))

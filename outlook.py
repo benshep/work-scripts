@@ -1,8 +1,10 @@
 # import pandas
+import os
 import win32com.client
 import pywintypes
 import re
 import datetime
+from icalendar import Calendar
 
 
 def get_appointments_in_range(start=0, end=30, user='me'):
@@ -106,7 +108,7 @@ def get_away_dates(start=-30, end=90, user='me', look_for=is_out_of_office):
         return to_set(away_list)
     except pywintypes.com_error:
         print(f"Warning: couldn't fetch away dates for {user}")
-        return False
+        return set()
 
 
 def get_date_list(start, end):
@@ -125,6 +127,13 @@ def list_meetings():
     for event in event_list:
         print(event.Duration, event.AllDayEvent, event.Subject, event.BusyStatus, sep='\t')
     print(len(event_list))
+
+
+def get_dl_ral_holidays():
+    """Return a list of holiday dates for DL/RAL. Assumes ICS file is already downloaded to Documents/Other folder."""
+    filename = os.path.join(os.environ['UserProfile'], 'Documents', 'Other', 'DL_RAL_Site_Holidays_2024.ics')
+    calendar = Calendar.from_ical(open(filename, encoding='utf-8').read())
+    return {event.decoded('dtstart') for event in calendar.walk('VEVENT')}
 
 
 if __name__ == '__main__':
