@@ -60,7 +60,7 @@ def get_oracle_off_dates():
     return off_dates
 
 
-def get_off_dates(web, fetch_all=False, me=False):
+def get_off_dates(web, fetch_all=False, me=True):
     """Get absence dates from an Oracle 'Attendance Management' page."""
     cells = web.find_elements(By.CLASS_NAME, 'x1w')
     columns = 8 if me else 9  # staff under me get a 'delete' column too
