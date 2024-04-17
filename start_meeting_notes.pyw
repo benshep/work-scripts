@@ -48,7 +48,7 @@ def create_note_file():
     start_time = outlook.get_meeting_time(meeting)
     meeting_date = start_time.strftime("%#d/%#m/%Y")  # no leading zeros
     subject = meeting.Subject.strip()  # remove leading and trailing spaces
-    subtitle = f'*{meeting_date}. {people_list}*'
+    subtitle = f'*{meeting_date}' + (f'. {people_list}*' if people_list else '*')
     description = meeting.Body
     description = description.replace('o   ', '  * ')  # second-level lists
     description = description.replace('\r\n\r\n', '\n')  # double-spaced paragraphs
@@ -162,7 +162,10 @@ def ical_to_markdown(url):
     if not url.endswith('/'):
         url += '/'
     # Some Indico versions use ?scope=contribution instead - use both!
-    event = Calendar.from_ical(requests.get(f'{url}event.ics?detail=contributions&scope=contribution').text)
+    try:
+        event = Calendar.from_ical(requests.get(f'{url}event.ics?detail=contributions&scope=contribution').text)
+    except ValueError:
+        return ''
     prefix = 'Speakers: '
     agenda = ''
     for component in sorted(event.walk('VEVENT'), key=lambda c: c.decoded('dtstart')):
