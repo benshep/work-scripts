@@ -4,7 +4,7 @@ SetTitleMatchMode, 2
 DocsDir = %UserProfile%\Documents
 MusicDir = %UserProfile%\Music
 
-PythonEnv = %UserProfile%\Miniconda3\envs\py311
+PythonEnv = %UserProfile%\Miniconda3\envs\py312
 AnacondaCommand = %UserProfile%\Miniconda3\python.exe %UserProfile%\Miniconda3\cwp.py %PythonEnv% %PythonEnv%\python.exe
 
 ;Esc to quit Calc, Snipping Tool, and Notepad
@@ -15,18 +15,18 @@ Esc::!F4
 #IfWinActive ahk_class Microsoft-Windows-Tablet-SnipperEditor
 Esc::!F4
 
+;#IfWinActive ahk_class MozillaWindowClass
+;\::Send {Alt Down}{Left}{Alt Up}
+
 ;activate Excel/Firefox/Outlook/Word/PPT if they exist, otherwise start them
 #IfWinExist ahk_class XLMAIN
-;shift+wheel for horizontal scrolling in Excel
-+WheelDown::ComObjActive("Excel.Application").ActiveWindow.SmallScroll(0,0,2,0)
-+WheelUp::ComObjActive("Excel.Application").ActiveWindow.SmallScroll(0,0,0,2)
 #x::WinActivate
 
-#IfWinExist ahk_class MozillaWindowClass
-!\::
-    WinActivate
-    Send {Alt Down}d{Alt Up}`%
-    Return
+;#IfWinExist ahk_class MozillaWindowClass
+;!\::
+;    WinActivate
+;    Send {Alt Down}d{Alt Up}`%
+;    Return
 
 #a::WinActivate
 #IfWinExist ahk_exe OUTLOOK.EXE
@@ -46,6 +46,9 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 ;Alt-D to highlight 'address bar' (name box) in Excel
 #IfWinActive ahk_class XLMAIN
 !d::ControlFocus Edit1
+;shift+wheel for horizontal scrolling in Excel
++WheelDown::ComObjActive("Excel.Application").ActiveWindow.SmallScroll(0,0,2,0)
++WheelUp::ComObjActive("Excel.Application").ActiveWindow.SmallScroll(0,0,0,2)
 
 #IfWinActive
 
