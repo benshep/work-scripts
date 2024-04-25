@@ -30,7 +30,8 @@ def get_project_hours():
             break
         ftes = booking_plan[name]
         # ftes = ftes.iloc[:-2]  # remove "not on code" and total rows
-        ftes = ftes.dropna()  # get rid of projects with zero hours
+        # get rid of projects with zero hours
+        ftes = ftes.dropna().drop(ftes[ftes == 0].index)
         total_effort = round(sum(ftes), 2)
         if total_effort != 1.0:
             raise ValueError(f"{name}'s total FTE adds up to {total_effort:.2f} - should be 1.00")
@@ -94,7 +95,7 @@ def annual_leave_check(test_mode=False):
                          show_window=test_mode) + f'\n{days_left_in_year=}'
 
 
-def otl_submit(test_mode=False):
+def otl_submit(test_mode=False, weeks_in_advance=1):
     """Submit this week's OTL timecard for each staff member."""
     # don't bother before Thursday (to give people time to book the end of the week off)
     if not test_mode:
@@ -115,20 +116,20 @@ def otl_submit(test_mode=False):
 
     # everyone else's first
     def submit_card(web):
-        submit_staff_timecard(web, all_hours, all_off_dates)
+        return submit_staff_timecard(web, all_hours, all_off_dates, weeks_in_advance=weeks_in_advance)
 
     toast = iterate_staff(('STFC OTL Supervisor',), submit_card, show_window=test_mode)
     # now do mine
     web = go_to_oracle_page(('STFC OTL Timecards', 'Time', 'Recent Timecards'), show_window=test_mode)
     try:
-        toast += submit_staff_timecard(web, all_hours)
+        toast += submit_staff_timecard(web, all_hours, weeks_in_advance=weeks_in_advance)
     finally:
         web.quit()
     return toast
 
 
 def get_all_off_dates(web):
-    return get_off_dates(web, fetch_all=True)
+    return get_off_dates(web, fetch_all=True, me=False)
 
 
 def get_staff_leave_dates(test_mode=False):
@@ -160,6 +161,7 @@ def iterate_staff(page, check_function, show_window=False):
                     web.find_element(By.CLASS_NAME, 'x7n').click()  # click 'OK'
                     continue
             result = check_function(web)
+            print(result, type(result))
             if isinstance(result, str):
                 toast.append(result)
             else:
@@ -169,7 +171,7 @@ def iterate_staff(page, check_function, show_window=False):
     return return_dict or '\n'.join(filter(None, toast))
 
 
-def submit_staff_timecard(web, all_hours, all_absences : dict = {}):
+def submit_staff_timecard(web, all_hours, all_absences: dict = {}, weeks_in_advance=1):
     """On an individual OTL timecards submitted page, submit a timecard for the current week if necessary."""
 
     doing_my_cards = not all_absences
@@ -214,7 +216,7 @@ def submit_staff_timecard(web, all_hours, all_absences : dict = {}):
         last_card_date = first_card_in_list[0].text
         print(f'{last_card_date=}')
         weeks = last_card_age(last_card_date)
-        if weeks <= -1 and not end_of_year_wb:  # set -2 to do two weeks in advance
+        if weeks <= -weeks_in_advance and not end_of_year_wb:
             print('Up to date')
             break
         web.find_element(By.ID, 'Hxccreatetcbutton').click()  # Create Timecard
@@ -236,7 +238,16 @@ def submit_staff_timecard(web, all_hours, all_absences : dict = {}):
 
         # enter hours
         if not all(on_holiday) and end_of_year_wb != wb_date:
+            # Compensate for rounding errors using 'cascade rounding' method
+            # https://stackoverflow.com/questions/13483430/how-to-make-rounded-percentages-add-up-to-100#answer-13483486
+            # Needed because Oracle only accepts 2 decimal places, and STFC need exactly 7.4 hours per day
+            running_total = 0
+            total_rounded = 0
             for row, (project_task, daily_hours) in enumerate(hours.items()):
+                running_total += daily_hours
+                previous_total_rounded = round(running_total, 2)
+                rounded_hours = previous_total_rounded - total_rounded
+                total_rounded = previous_total_rounded
                 project, task = project_task.split(' ')
                 web.find_element(By.XPATH, '//button[contains(text(), "Add Another Row")]').click()
                 wait_until_page_ready(web)
@@ -244,14 +255,14 @@ def submit_staff_timecard(web, all_hours, all_absences : dict = {}):
                 boxes = get_boxes(web)
                 fill_boxes(boxes, row, project, task)
                 for day in range(5):
-                    hrs = '0' if on_holiday[day] else f'{daily_hours:.2f}'
+                    hrs = '0' if on_holiday[day] else f'{rounded_hours:.2f}'
                     hours_boxes[row * 7 + day].send_keys(hrs)
                     wait_until_page_ready(web)
+                row = len(hours)
         else:
-            hours = []
+            row = 0
             hours_boxes = web.find_elements(By.CLASS_NAME, 'x1v')  # 7x6 of these
             boxes = get_boxes(web)
-        row = len(hours)
         if end_of_year_wb == wb_date:  # end of year is a bit special
             fill_boxes(boxes, row, 'STRA00009', '01.01')
             [hours_boxes[row * 7 + i].send_keys(str(duration)) for i, duration in enumerate([7.4, 7.4, 7.4, 3.7, 0])]
@@ -311,5 +322,5 @@ def last_card_age(last_card_date):
 
 
 if __name__ == '__main__':
-    print(otl_submit(test_mode=True))
+    print(otl_submit(test_mode=True, weeks_in_advance=2))
     # print(last_card_age('25-Mar-2024'))
