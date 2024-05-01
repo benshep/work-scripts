@@ -30,6 +30,8 @@ def go_to_oracle_page(links=(), show_window=False):
     if links not in apps:  # list of links rather than an app to open
         for link in links:
             web.find_element(By.LINK_TEXT, link).click()
+    elif links == 'obi':  # open STFC Projects dashboard
+        web.find_element(By.LINK_TEXT, 'STFC Projects - Transactions').click()
     time.sleep(2)
     return web
 
