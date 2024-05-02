@@ -1,7 +1,8 @@
 import os
 import time
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
+from calendar import monthrange
 from shutil import move
 from selenium.webdriver.common.by import By
 from pypdf import PdfReader
@@ -53,8 +54,16 @@ def get_payslips(only_latest=True, test_mode=False):
         result = '\n'.join(get_one_slip(web, i) for i in ((-1,) if only_latest else range(payslip_count)))
     finally:
         web.quit()
-    return result
+
+    if result:
+        return result
+    # When do we expect to get next one? Paid on second-to-last working day, should see payslip day before
+    _, days_in_month = monthrange(2024, 5)
+    now = datetime.now()
+    rest_of_month = [now + timedelta(days=d) for d in range(1, days_in_month - now.day + 1)]
+    working_days = [day for day in rest_of_month if day.weekday() < 5]
+    return working_days[-3] if len(working_days) > 2 else now + timedelta(days=1)
 
 
 if __name__ == '__main__':
-    get_payslips(test_mode=True)
+    print(get_payslips(test_mode=True))
