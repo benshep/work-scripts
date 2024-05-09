@@ -161,7 +161,6 @@ def iterate_staff(page, check_function, show_window=False):
                     web.find_element(By.CLASS_NAME, 'x7n').click()  # click 'OK'
                     continue
             result = check_function(web)
-            print(result, type(result))
             if isinstance(result, str):
                 toast.append(result)
             else:
@@ -281,7 +280,7 @@ def submit_staff_timecard(web, all_hours, all_absences: dict = {}, weeks_in_adva
         print('Return to hierarchy')
         web.find_element(By.ID, 'HxcHieReturnButton').click()  # Return to Hierarchy button
     if cards_done > 0:
-        return f'{name}: {cards_done=}' + (f', {total_days_away=}' if total_days_away else '') + '\n'
+        return f'{name}: {cards_done=}' + (f', {total_days_away=}' if total_days_away else '')
     else:
         return ''
 
