@@ -170,7 +170,7 @@ def iterate_staff(page, check_function, show_window=False):
     return return_dict or '\n'.join(filter(None, toast))
 
 
-def submit_staff_timecard(web, all_hours, all_absences: dict = {}, weeks_in_advance=1):
+def submit_staff_timecard(web, all_hours, all_absences=None, weeks_in_advance=1):
     """On an individual OTL timecards submitted page, submit a timecard for the current week if necessary."""
 
     doing_my_cards = not all_absences
