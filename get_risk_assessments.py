@@ -19,7 +19,8 @@ def get_risk_assessments():
     """Open the SHE Assure website, and bulk-download project risk assessments to the local file system."""
     user_profile = os.environ['UserProfile']
     downloads_folder = os.path.join(user_profile, 'Downloads')
-    ras_folder = os.path.join(user_profile, 'Documents', 'Safety', 'RAs')
+    ras_folder = os.path.join(user_profile, 'OneDrive - Science and Technology Facilities Council',
+                              'Documents', 'Safety', 'RAs')
     os.makedirs(ras_folder, exist_ok=True)
     os.chdir(downloads_folder)
 

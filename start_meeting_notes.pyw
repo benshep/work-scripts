@@ -112,7 +112,7 @@ def is_banned(name):
 
 def go_to_folder(meeting):
     """Pick a folder in which to place the meeting notes, looking at the subject and the body."""
-    os.chdir(os.path.join(user_profile, 'Documents'))
+    os.chdir(os.path.join(user_profile, 'OneDrive - Science and Technology Facilities Council', 'Documents'))
     folder = find_folder_from_text(meeting.Subject) or find_folder_from_text(meeting.Body) or 'Other'
     os.chdir(folder)
     return folder

@@ -12,7 +12,7 @@ def todos_from_notes():
     new_list = next(task_list for task_list in to_do_board.list_lists() if task_list.name == '💡 New')
     labels = to_do_board.get_labels()
     user_profile = os.environ['UserProfile']
-    documents_folder = os.path.join(user_profile, 'Documents')
+    documents_folder = os.path.join(user_profile, 'OneDrive - Science and Technology Facilities Council', 'Documents')
     os.chdir(documents_folder)
     notes_checked = 'notes_checked'
     last_checked = os.path.getmtime(notes_checked) if os.path.exists(notes_checked) else 0

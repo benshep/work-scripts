@@ -88,7 +88,8 @@ def get_budget_data(project_names='all', test_mode=False):
     user_profile = os.environ['UserProfile']
     today = datetime.now()
     fy = today.year - (today.month < 4)  # last calendar year if before April
-    excel_filename = os.path.join(user_profile, 'Documents', 'Budget', f'Budget summaries {fy}.xlsx')
+    excel_filename = os.path.join(user_profile, 'OneDrive - Science and Technology Facilities Council',
+                                  'Documents', 'Budget', f'Budget summaries {fy}.xlsx')
     # The Index sheet here must have columns Name, Project and Task at least.
     # Budget data will be placed into sheets named after the Name column, overwriting anything already in there.
     csv_filename = os.path.join(user_profile, 'Downloads', 'Detailed Cost by project.csv')
