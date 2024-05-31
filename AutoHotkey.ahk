@@ -1,7 +1,7 @@
 ﻿ProgramFilesX86 = C:\Program Files (x86)
 SetTitleMatchMode, 2
 
-DocsDir = %UserProfile%\Documents
+DocsDir = %UserProfile%\STFC\Documents
 MusicDir = %UserProfile%\Music
 
 PythonEnv = %UserProfile%\Miniconda3\envs\py312

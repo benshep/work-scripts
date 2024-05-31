@@ -4,6 +4,7 @@ import win32com.client
 import pywintypes
 import re
 import datetime
+import pythoncom
 from icalendar import Calendar
 
 
@@ -38,6 +39,7 @@ def get_calendar(user='me'):
 
 def get_outlook():
     """Return a reference to the Outlook application."""
+    pythoncom.CoInitialize()  # try to combat the "CoInitialize has not been called" error
     return win32com.client.Dispatch('Outlook.Application')
 
 

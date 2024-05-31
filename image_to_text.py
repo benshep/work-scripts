@@ -8,7 +8,7 @@ from datetime import datetime
 
 def image_to_text():
     user_profile = os.environ['UserProfile']
-    receipts_folder = os.path.join(user_profile, 'Documents', 'Travel', 'Receipts')
+    receipts_folder = os.path.join(user_profile, 'STFC', 'Documents', 'Travel', 'Receipts')
     os.chdir(receipts_folder)
     screenshots = [file for file in os.listdir() if file.startswith('Screenshot') and file.endswith('.png')]
     for receipt_img in screenshots:
