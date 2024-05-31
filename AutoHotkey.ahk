@@ -1,7 +1,7 @@
 ﻿ProgramFilesX86 = C:\Program Files (x86)
 SetTitleMatchMode, 2
 
-DocsDir = %UserProfile%\OneDrive - Science and Technology Facilities Council\Documents
+DocsDir = "%UserProfile%\OneDrive - Science and Technology Facilities Council\Documents"
 MusicDir = %UserProfile%\Music
 
 PythonEnv = %UserProfile%\Miniconda3\envs\py312
