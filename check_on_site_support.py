@@ -2,8 +2,6 @@ import os
 import pandas
 from datetime import datetime
 import outlook
-from pushbullet import Pushbullet  # to show notifications
-from pushbullet_api_key import api_key  # local file, keep secret!
 
 
 def check_on_site_support():
@@ -62,9 +60,7 @@ def check_on_site_support():
         if clashes := off_days & support_days:
             toast.append(f'🏠 {initials} out of office clashes: ' + format_date_list(clashes))
 
-    if toast:
-        print(toast)
-        Pushbullet(api_key).push_note(support_subject, '\n'.join(toast))
+    return toast
 
 
 def create_support_events(not_in_outlook, support_subject):

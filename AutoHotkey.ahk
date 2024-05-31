@@ -4,6 +4,9 @@ SetTitleMatchMode, 2
 DocsDir = %UserProfile%\OneDrive - Science and Technology Facilities Council\Documents
 MusicDir = %UserProfile%\Music
 
+PythonEnv = %UserProfile%\Miniconda3\envs\py312
+AnacondaCommand = %UserProfile%\Miniconda3\python.exe %UserProfile%\Miniconda3\cwp.py %PythonEnv% %PythonEnv%\python.exe
+
 ;Esc to quit Calc, Snipping Tool, and Notepad
 #IfWinActive ahk_class CalcFrame
 Esc::!F4
@@ -12,14 +15,18 @@ Esc::!F4
 #IfWinActive ahk_class Microsoft-Windows-Tablet-SnipperEditor
 Esc::!F4
 
+;#IfWinActive ahk_class MozillaWindowClass
+;\::Send {Alt Down}{Left}{Alt Up}
+
 ;activate Excel/Firefox/Outlook/Word/PPT if they exist, otherwise start them
 #IfWinExist ahk_class XLMAIN
 #x::WinActivate
-#IfWinExist ahk_class MozillaWindowClass
-!\::
-    WinActivate
-    Send {Alt Down}d{Alt Up}`%
-    Return
+
+;#IfWinExist ahk_class MozillaWindowClass
+;!\::
+;    WinActivate
+;    Send {Alt Down}d{Alt Up}`%
+;    Return
 
 #a::WinActivate
 #IfWinExist ahk_exe OUTLOOK.EXE
@@ -28,7 +35,7 @@ Esc::!F4
 #w::WinActivate
 #IfWinExist ahk_class PPTFrameClass
 #q::WinActivate
-#IfWinExist Anaconda Prompt
+#IfWinExist Python
 #c::WinActivate 
 
 ;shortcuts for timesheet entry page
@@ -39,6 +46,9 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 ;Alt-D to highlight 'address bar' (name box) in Excel
 #IfWinActive ahk_class XLMAIN
 !d::ControlFocus Edit1
+;shift+wheel for horizontal scrolling in Excel
++WheelDown::ComObjActive("Excel.Application").ActiveWindow.SmallScroll(0,0,2,0)
++WheelUp::ComObjActive("Excel.Application").ActiveWindow.SmallScroll(0,0,0,2)
 
 #IfWinActive
 
@@ -47,9 +57,9 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 !F1::Send {Volume_Mute}
 
 ;launch the Zoom meeting that's nearest to now in the calendar
-#^z::Run %UserProfile%\Miniconda3\python.exe %UserProfile%\Miniconda3\cwp.py %UserProfile%\Miniconda3\envs\py39 %UserProfile%\Miniconda3\envs\py39\python.exe %DocsDir%\Scripts\join_zoom_meeting.pyw
+#^z::Run %AnacondaCommand% %DocsDir%\Scripts\join_zoom_meeting.pyw
 ;write notes for the Zoom meeting that's nearest to now in the calendar
-#^n::Run %UserProfile%\Miniconda3\python.exe %UserProfile%\Miniconda3\cwp.py %UserProfile%\Miniconda3\envs\py39 %UserProfile%\Miniconda3\envs\py39\python.exe %DocsDir%\Scripts\start_meeting_notes.pyw
+#^n::Run %AnacondaCommand% %DocsDir%\Scripts\start_meeting_notes.pyw
 
 ;Ctrl-Win-` to toggle window always on top
 #^`::
@@ -71,9 +81,11 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 #+w::Run mailto:
 #i::Run %ProgramFiles%\irfanview\i_view64.exe
 #n::Run C:\ProgramData\chocolatey\lib\metapad\tools\metapad.exe
-#c::Run cmd.exe "/K" cd %UserProfile%\Misc\Scripts & %UserProfile%\Miniconda3\Scripts\activate.bat %UserProfile%\Miniconda3\envs\py39 & python
+#c::Run cmd.exe "/K" title Python & cd %UserProfile%\Misc\Scripts & %UserProfile%\Miniconda3\Scripts\activate.bat %PythonEnv% & python
 #t::Run taskmgr.exe
-#+r::Run %UserProfile%\Miniconda3\python.exe %UserProfile%\Misc\scripts\random_cd.py
+; Win-Shift-T for a random Trello task
+#+t::Run %AnacondaCommand% %DocsDir%\Scripts\oddjob.py
+#+r::Run %AnacondaCommand% %UserProfile%\Misc\scripts\random_cd.py
 #o::Run OUTLOOK.EXE
 #w::Run WINWORD.EXE /q
 #q::Run POWERPNT.EXE /s
@@ -89,6 +101,11 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 ; !Numpad8::Send #{Up}
 ; !Numpad6::Send #{Right}
 ; !Numpad2::Send #{Down}
+
+; names with accents
+::Dusan::Dušan
+::Topalovic::Topalović
+::Pockar::Počkar
 
 ;Greek letters
 ::\alpha::α

@@ -1,8 +1,6 @@
 import os
 import pandas
 from outlook import get_appointments_in_range
-from pushbullet import Pushbullet  # to show notifications
-from pushbullet_api_key import api_key  # local file, keep secret!
 
 
 def fill_availability():
@@ -43,9 +41,7 @@ def fill_availability():
     if changed_to_no:
         toast += '👎 ' + ', '.join(format_date(date) for date in changed_to_no)
 
-    if toast:
-        print(toast)
-        Pushbullet(api_key).push_note('📅 Availability', toast)
+    return toast
 
 
 def format_date(date, include_time=False):

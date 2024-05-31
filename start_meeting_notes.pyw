@@ -7,6 +7,8 @@ Look through today's events in an Outlook calendar,
 and start a Markdown notes file for the closest one to the current time.
 """
 
+
+import contextlib
 import os
 import re
 import requests
@@ -43,19 +45,30 @@ def create_note_file():
     attendees = filter(None, '; '.join([meeting.RequiredAttendees, meeting.OptionalAttendees]).split('; '))
     attendees = sorted(attendees, key=lambda r: priority.index(response[r]))
     people_list = ', '.join(format_name(person_name, response[person_name]) for person_name in attendees)
-    start = outlook.get_meeting_time(meeting)
-    meeting_date = start.strftime("%#d/%#m/%Y")  # no leading zeros
+    start_time = outlook.get_meeting_time(meeting)
+    meeting_date = start_time.strftime("%#d/%#m/%Y")  # no leading zeros
     subject = meeting.Subject.strip()  # remove leading and trailing spaces
-    subtitle = f'*{meeting_date}. {people_list}*'
+    subtitle = f'*{meeting_date}' + (f'. {people_list}*' if people_list else '*')
+    description = meeting.Body
+    description = description.replace('o   ', '  * ')  # second-level lists
+    description = description.replace('\r\n\r\n', '\n')  # double-spaced paragraphs
+    # snip out Zoom joining instructions
+    start = description.find(' <http://zoom.us/> ')  # begins with this
+    if start >= 0:
+        # last bit is "Skype on a SurfaceHub" link, only one with @lync in it - or sometime SIP: xxxx@zoomcrc.com
+        end = max(description.rfind('@lync.zoom.us'), description.rfind('@zoomcrc.com'))
+        end = description.find('\r\n', end)  # end of line
+        description = (description[:start] + description[end:]).strip()
+
     if match := re.search(r'https://[\w\.]+/event/\d+', meeting.Body):  # Indico link: look for an agenda
         url = match[0]
         agenda = ical_to_markdown(url)
-        text = f'# [{subject}]({url})\n\n{subtitle}\n\n{agenda}\n\n'
+        text = f'# [{subject}]({url})\n\n{subtitle}\n\n{description}\n\n{agenda}\n\n'
     else:
-        text = f'# {subject}\n\n{subtitle}\n\n'
+        text = f'# {subject}\n\n{subtitle}\n\n{description}\n\n'
 
     bad_chars = str.maketrans({char: ' ' for char in '*?/\\<>:|"'})  # can't use these in filenames
-    filename = f'{start.strftime("%Y-%m-%d")} {subject.translate(bad_chars)}.md'
+    filename = f'{start_time.strftime("%Y-%m-%d")} {subject.translate(bad_chars)}.md'
     open(filename, 'a', encoding='utf-8').write(text)
     os.startfile(filename)
 
@@ -107,7 +120,11 @@ def find_folder_from_text(text):
 
 
 def is_banned(name):
-    return name in ('Zoom', 'Other', 'Old work') or name.lower() == name  # disallow lower case only folders!
+    """Test banned state of folders. Folders are banned for the following reasons:
+    - Name is Zoom, Other, or Old work - don't put notes in those
+    - Name is lowercase only
+    - Name is 3 characters or less"""
+    return name in ('Zoom', 'Other', 'Old work') or name.lower() == name or len(name) <= 3
 
 
 def go_to_folder(meeting):
@@ -130,6 +147,7 @@ def format_name(person_name, response):
     else:
         # title case, but preserve upper case words
         return_value = ' '.join([word if word.isupper() else word.title() for word in person_name.split()])
+        return_value = return_value.replace(' - UKRI', '')
     if response == 4:  # declined
         return f'~~{return_value}~~'  # strikethrough
     elif response in (1, 3):  # organised, accepted
@@ -144,7 +162,10 @@ def ical_to_markdown(url):
     if not url.endswith('/'):
         url += '/'
     # Some Indico versions use ?scope=contribution instead - use both!
-    event = Calendar.from_ical(requests.get(f'{url}event.ics?detail=contributions&scope=contribution').text)
+    try:
+        event = Calendar.from_ical(requests.get(f'{url}event.ics?detail=contributions&scope=contribution').text)
+    except ValueError:
+        return ''
     prefix = 'Speakers: '
     agenda = ''
     for component in sorted(event.walk('VEVENT'), key=lambda c: c.decoded('dtstart')):

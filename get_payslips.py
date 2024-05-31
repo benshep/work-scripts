@@ -1,13 +1,12 @@
 import os
 import time
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
+from calendar import monthrange
 from shutil import move
 from selenium.webdriver.common.by import By
 from pypdf import PdfReader
 from oracle import go_to_oracle_page
-from pushbullet import Pushbullet  # to show notifications
-from pushbullet_api_key import api_key  # local file, keep secret!
 
 user_profile = os.environ['UserProfile']
 
@@ -24,7 +23,7 @@ def get_one_slip(web, index):
     new_filename = os.path.join(user_profile, 'Misc', 'Money', 'Payslips', slip_date.strftime('%y-%m.pdf'))
     if os.path.exists(new_filename):
         print(f'Already got payslip for {date_text}')
-        return
+        return ''
     print(name)
     option.click()
     time.sleep(2)
@@ -41,20 +40,30 @@ def get_one_slip(web, index):
     print(net_pay)
     payments = re.findall('Units Rate Amount\n(.*)\n Amount', payslip_content, re.MULTILINE + re.DOTALL)[0]
     payments = re.sub(' (\d)', ': £\\1', payments)  # neaten up a bit
-    Pushbullet(api_key).push_note('💰 Payslip', f'Net pay for {date_text}: £{net_pay:.2f}\n{payments}')
+    return f'Net pay for {date_text}: £{net_pay:.2f}\n{payments}'
 
 
 def get_payslips(only_latest=True, test_mode=False):
     """Download all my payslips, or just the latest."""
     web = go_to_oracle_page(('RCUK Self-Service Employee', 'Payslip'), show_window=test_mode)
 
-    payslip_count = len(get_options(web))
-    os.chdir(os.path.join(user_profile, 'Downloads'))
+    try:
+        payslip_count = len(get_options(web))
+        os.chdir(os.path.join(user_profile, 'Downloads'))
 
-    for i in (-1,) if only_latest else range(payslip_count):
-        get_one_slip(web, i)
-    web.quit()
+        result = '\n'.join(get_one_slip(web, i) for i in ((-1,) if only_latest else range(payslip_count)))
+    finally:
+        web.quit()
+
+    if result:
+        return result
+    # When do we expect to get next one? Paid on second-to-last working day, should see payslip day before
+    _, days_in_month = monthrange(2024, 5)
+    now = datetime.now()
+    rest_of_month = [now + timedelta(days=d) for d in range(1, days_in_month - now.day + 1)]
+    working_days = [day for day in rest_of_month if day.weekday() < 5]
+    return working_days[-3] if len(working_days) > 2 else now + timedelta(days=1)
 
 
 if __name__ == '__main__':
-    get_payslips(test_mode=True)
+    print(get_payslips(test_mode=True))
