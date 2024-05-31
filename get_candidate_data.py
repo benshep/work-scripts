@@ -82,8 +82,8 @@ def get_candidate_data(test_mode=False):
 
 
 def get_cvs_folder():
-    return os.path.join(user_profile, 'OneDrive - Science and Technology Facilities Council', 'Documents',
-                        'Group Leader', 'Recruitment', 'Physicist Industrial Placement')
+    return os.path.join(user_profile, 'STFC', 'Documents', 'Group Leader',
+                        'Recruitment', 'Physicist Industrial Placement')
 
 
 def list_candidates():

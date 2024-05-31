@@ -19,8 +19,8 @@ end_of_year_wb = None  # datetime.date(2023, 12, 25)  # special case - for enter
 
 def get_project_hours():
     """Fetch the standard hours worked on each project from a spreadsheet."""
-    filename = os.path.join(os.environ['UserProfile'], 'OneDrive - Science and Technology Facilities Council',
-                            'Documents', 'Group Leader', 'MaRS staff and projects.xlsx')
+    filename = os.path.join(os.environ['UserProfile'], 'STFC', 'Documents',
+                            'Group Leader', 'MaRS staff and projects.xlsx')
     booking_plan = pandas.read_excel(filename, sheet_name='Book', header=0, index_col=2, skiprows=1)
     booking_plan = booking_plan[booking_plan.index.notnull()]  # remove any rows without a project code
     print(booking_plan)
