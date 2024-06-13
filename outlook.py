@@ -133,7 +133,7 @@ def list_meetings():
 
 def get_dl_ral_holidays():
     """Return a list of holiday dates for DL/RAL. Assumes ICS file is already downloaded to Documents/Other folder."""
-    filename = os.path.join(os.environ['UserProfile'], 'Documents', 'Other', 'DL_RAL_Site_Holidays_2024.ics')
+    filename = os.path.join(os.environ['UserProfile'], 'STFC', 'Documents', 'Other', 'DL_RAL_Site_Holidays_2024.ics')
     calendar = Calendar.from_ical(open(filename, encoding='utf-8').read())
     return {event.decoded('dtstart') for event in calendar.walk('VEVENT')}
 
