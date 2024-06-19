@@ -2,7 +2,7 @@ import os
 import pandas
 from datetime import datetime
 import outlook
-
+from folders import user_profile
 
 def check_on_site_support():
     sheet = get_spreadsheet_data()
@@ -79,7 +79,6 @@ def create_support_events(not_in_outlook, support_subject):
 
 def get_spreadsheet_data():
     """Read in data from CLARA support calendar."""
-    user_profile = os.environ['UserProfile']
     spreadsheet_filename = os.path.join(user_profile, r"Science and Technology Facilities Council",
                                         'ASTeC-RTF Safety - General', "CLARA NWH Support Calendar.xlsx")
     return pandas.read_excel(spreadsheet_filename, sheet_name='Magnets')

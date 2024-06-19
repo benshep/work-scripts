@@ -1,13 +1,11 @@
 import os
 from time import sleep
 from oracle import go_to_oracle_page
-
-user_profile = os.environ['UserProfile']
+from folders import user_profile, downloads_folder
 
 
 def get_candidate_data(test_mode=False):
     toast = ''
-    downloads_folder = os.path.join(user_profile, 'Downloads')
     os.chdir(downloads_folder)
     cvs_folder = get_cvs_folder()
     # print('Opening Taleo')

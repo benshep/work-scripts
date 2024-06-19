@@ -7,8 +7,7 @@ from shutil import move
 from selenium.webdriver.common.by import By
 from pypdf import PdfReader
 from oracle import go_to_oracle_page
-
-user_profile = os.environ['UserProfile']
+from folders import misc_folder, downloads_folder
 
 
 def get_options(web):
@@ -20,7 +19,7 @@ def get_one_slip(web, index):
     name = option.text
     slip_date = datetime.strptime(name.split(' - ')[0], '%d %b %Y')
     date_text = slip_date.strftime('%b %Y')
-    new_filename = os.path.join(user_profile, 'Misc', 'Money', 'Payslips', slip_date.strftime('%y-%m.pdf'))
+    new_filename = os.path.join(misc_folder, 'Money', 'Payslips', slip_date.strftime('%y-%m.pdf'))
     if os.path.exists(new_filename):
         print(f'Already got payslip for {date_text}')
         return ''
@@ -49,7 +48,7 @@ def get_payslips(only_latest=True, test_mode=False):
 
     try:
         payslip_count = len(get_options(web))
-        os.chdir(os.path.join(user_profile, 'Downloads'))
+        os.chdir(downloads_folder)
 
         result = '\n'.join(get_one_slip(web, i) for i in ((-1,) if only_latest else range(payslip_count)))
     finally:

@@ -2,7 +2,7 @@ import os
 import webbot
 from time import sleep
 from stfc_credentials import username, password
-
+from folders import downloads_folder, docs_folder
 
 class InformationFetchFailure(Exception):
     pass
@@ -17,9 +17,7 @@ def remove_bad_chars(filename: str):
 
 def get_risk_assessments():
     """Open the SHE Assure website, and bulk-download project risk assessments to the local file system."""
-    user_profile = os.environ['UserProfile']
-    downloads_folder = os.path.join(user_profile, 'Downloads')
-    ras_folder = os.path.join(user_profile, 'STFC', 'Documents', 'Safety', 'RAs')
+    ras_folder = os.path.join(docs_folder, 'Safety', 'RAs')
     os.makedirs(ras_folder, exist_ok=True)
     os.chdir(downloads_folder)
 

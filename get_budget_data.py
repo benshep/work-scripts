@@ -10,7 +10,7 @@ from datetime import datetime
 from time import sleep
 
 from oracle import go_to_oracle_page
-
+from folders import user_profile, docs_folder, downloads_folder
 
 class InformationFetchFailure(Exception):
     pass
@@ -87,13 +87,12 @@ def get_budget_data(project_names='all', test_mode=False):
     if project_names != 'all' and isinstance(project_names, str):  # just one project name supplied, wrap it in a list
         project_names = [project_names, ]
 
-    user_profile = os.environ['UserProfile']
     today = datetime.now()
     fy = today.year - (today.month < 4)  # last calendar year if before April
-    excel_filename = os.path.join(user_profile, 'STFC', 'Documents', 'Budget', f'Budget summaries {fy}.xlsx')
+    excel_filename = os.path.join(docs_folder, 'Budget', f'Budget summaries {fy}.xlsx')
     # The Index sheet here must have columns Name, Project and Task at least.
     # Budget data will be placed into sheets named after the Name column, overwriting anything already in there.
-    csv_filename = os.path.join(user_profile, 'Downloads', 'Detailed Cost by project.csv')
+    csv_filename = os.path.join(downloads_folder, 'Detailed Cost by project.csv')
     for line in list(pandas.read_excel(excel_filename, sheet_name='Index', dtype='string').itertuples()):
         if project_names != 'all' and line.Name not in project_names:
             continue

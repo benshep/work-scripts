@@ -15,8 +15,7 @@ import requests
 from icalendar import Calendar
 from time import sleep
 import outlook
-
-user_profile = os.environ['UserProfile']
+from folders import user_profile
 
 
 def folder_match(name: str, test_against: str):

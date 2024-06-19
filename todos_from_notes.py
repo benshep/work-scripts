@@ -3,7 +3,7 @@ import re
 from datetime import datetime
 from trello import TrelloClient
 import trello_auth
-
+from folders import docs_folder
 
 def todos_from_notes():
     """Go through Markdown files in Documents; find any action points that should be added to my to-do list."""
@@ -11,9 +11,7 @@ def todos_from_notes():
     to_do_board = next(board for board in trello_client.list_boards() if board.name == 'To-Do List')
     new_list = next(task_list for task_list in to_do_board.list_lists() if task_list.name == '💡 New')
     labels = to_do_board.get_labels()
-    user_profile = os.environ['UserProfile']
-    documents_folder = os.path.join(user_profile, 'STFC', 'Documents')
-    os.chdir(documents_folder)
+    os.chdir(docs_folder)
     notes_checked = 'notes_checked'
     last_checked = os.path.getmtime(notes_checked) if os.path.exists(notes_checked) else 0
     today = datetime.now()

@@ -12,8 +12,7 @@ import re
 import subprocess
 from time import sleep
 import outlook
-
-user_profile = os.environ['UserProfile']
+from folders import user_profile
 
 
 def join_vc_meeting():
