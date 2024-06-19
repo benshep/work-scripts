@@ -16,7 +16,7 @@ def todos_from_notes():
     last_checked = os.path.getmtime(notes_checked) if os.path.exists(notes_checked) else 0
     today = datetime.now()
     toast = ''
-    for folder, _, file_list in os.walk(documents_folder):
+    for folder, _, file_list in os.walk(docs_folder):
         for file in file_list:
             if not file.lower().endswith('.md'):
                 continue
