@@ -28,11 +28,12 @@ def poll(target, arg=None, ignore_exceptions=(selenium.common.exceptions.NoSuchE
                          ignore_exceptions=ignore_exceptions)
 
 
-def search_via_prompt(web, index, search_term, check_in_dropdown=False):
+def search_via_prompt(web, field_name, search_term, check_in_dropdown=False):
     """Search using the dropdown box and the pop-up prompt."""
-    print(f'Searching for {search_term} in box {index}')
+    print(f'Searching for {search_term} in box {field_name}')
+    prompt_labels = web.find_elements(By.CLASS_NAME, 'promptLabel')
+    index = next(i for i, label in enumerate(prompt_labels) if label.text == field_name)
     # try this a few times - sometimes the dropdown disappears
-    wait = WebDriverWait(web, 5)
     for i in range(10):
         print(f'Clicking dropdown, attempt {i}')
         web.find_elements(By.CLASS_NAME, 'promptTextField')[index].click()
@@ -134,8 +135,8 @@ def non_zero_size(filename):
 def get_task_data(web, project_code, task):
     """Get budget data for given project code and task."""
     # try:
-    search_via_prompt(web, 1, project_code)  # Project Number
-    search_via_prompt(web, 8, task)  # , check_in_dropdown=True)  # Task Number
+    search_via_prompt(web, 'Project Number', project_code)
+    search_via_prompt(web, 'Task Number', task)  # , check_in_dropdown=True)
     # except selenium.common.exceptions.NoSuchElementException:  # no results for this project/task combination
     #     raise InformationFetchFailure(f'No results for {project_code=}, {task=}')
     print('Getting results')
