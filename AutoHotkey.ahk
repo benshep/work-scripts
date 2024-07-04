@@ -74,7 +74,7 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 	Return
 
 ;Win-` to move window to other monitor
-^`::Send #+{Left}{Ctrl Up}
+;^`::Send #+{Left}{Ctrl Up}
 #b::Run %UserProfile%
 #1::Run C:\
 #2::Run %DocsDir%
