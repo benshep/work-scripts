@@ -65,14 +65,17 @@ def get_off_dates(web, fetch_all=False, me=True):
     cells = web.find_elements(By.CLASS_NAME, 'x1w')
     columns = 8 if me else 9  # staff under me get a 'delete' column too
     start_dates = cells[::columns]
-    end_dates = cells[1::columns]
-    absence_type = cells[2::columns]
-    return_value = outlook.to_set(
-        outlook.get_date_list(from_dmy(start.text), from_dmy(end.text)) if fetch_all or 'Leave' in ab_type.text else []
-        for start, end, ab_type in zip(start_dates, end_dates, absence_type))
+    if start_dates[0].text == 'No results found.':
+        return_value = set()
+    else:
+        end_dates = cells[1::columns]
+        absence_type = cells[2::columns]
+        return_value = outlook.to_set(
+            outlook.get_date_list(from_dmy(st.text), from_dmy(end.text)) if fetch_all or 'Leave' in ab_type.text else []
+            for st, end, ab_type in zip(start_dates, end_dates, absence_type))
     if not me:  # click 'Return to People in Hierarchy'
         web.find_element(By.ID, 'Return').click()
-    print(len(return_value), 'absences, latest:', max(return_value))
+    print(len(return_value), 'absences, latest:', max(return_value) if return_value else 'N/A')
     return return_value
 
 

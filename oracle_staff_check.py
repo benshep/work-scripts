@@ -322,5 +322,5 @@ def last_card_age(last_card_date):
 
 
 if __name__ == '__main__':
-    print(otl_submit(test_mode=True, weeks_in_advance=2))
+    print(get_staff_leave_dates(test_mode=True))
     # print(last_card_age('25-Mar-2024'))
