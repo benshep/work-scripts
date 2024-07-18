@@ -123,7 +123,7 @@ def otl_submit(test_mode=False, weeks_in_advance=1):
     # now do mine
     web = go_to_oracle_page(('STFC OTL Timecards', 'Time', 'Recent Timecards'), show_window=test_mode)
     try:
-        toast += submit_staff_timecard(web, all_hours, weeks_in_advance=weeks_in_advance)
+        toast += '\n' + submit_staff_timecard(web, all_hours, weeks_in_advance=weeks_in_advance)
     finally:
         web.quit()
     return toast
