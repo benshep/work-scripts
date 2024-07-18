@@ -185,10 +185,10 @@ def submit_staff_timecard(web, all_hours, all_absences=None, weeks_in_advance=1)
         email = name.replace(' ', '.').lower() + '@stfc.ac.uk'
 
     # show latest first
-    header_id = 'HxcPeriodStarts'
-    web.find_element(By.ID, header_id).click()  # sort ascending
+    header = web.find_element(By.ID, 'HxcPeriodStarts')
+    header.click()  # sort ascending
     time.sleep(2)
-    header = web.find_element(By.ID, header_id)
+    header = web.find_element(By.ID, 'HxcPeriodStarts')  # try to prevent element going stale
     try:
         sort_arrow = header.find_element(By.TAG_NAME, 'img')
         if sort_arrow.get_attribute('title') != 'Sorted in descending order':
@@ -276,6 +276,7 @@ def submit_staff_timecard(web, all_hours, all_absences=None, weeks_in_advance=1)
         cards_done += 1
         total_days_away += sum(on_holiday)
         print('Submitted timecard for', card_date_text)
+        time.sleep(2)
         web.find_element(By.LINK_TEXT, 'Return to Recent Timecards').click()
     if not doing_my_cards:
         print('Return to hierarchy')
