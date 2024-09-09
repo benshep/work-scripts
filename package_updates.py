@@ -35,11 +35,12 @@ def get_rss():
 def find_new_python_packages():
     installed_packages = list_packages()
     available_packages = get_rss()
+    toast = ''
     for name, (version, build_channel) in installed_packages.items():
         new_version = available_packages.get(name, '')
         if new_version > version:
-            print(f'{name}: {version} --> {new_version},',
-                  'pip' if 'pypi' in build_channel else 'conda')
+            toast += f'{name}: {version} --> {new_version}, ' + ('pip' if 'pypi' in build_channel else 'conda')
+    return toast
 
 
 if __name__ == '__main__':
