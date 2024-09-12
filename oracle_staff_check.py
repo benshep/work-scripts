@@ -164,7 +164,7 @@ def iterate_staff(page, check_function, show_window=False):
             result = check_function(web)
             if isinstance(result, str):
                 toast.append(result)
-            else:
+            elif result:  # make sure we're not returning a None
                 return_dict[name] = result
     finally:
         web.quit()
