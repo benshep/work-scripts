@@ -39,7 +39,8 @@ def find_new_python_packages():
     for name, (version, build_channel) in installed_packages.items():
         new_version = available_packages.get(name, '')
         if new_version > version:
-            toast += f'{name}: {version} --> {new_version}, ' + ('pip' if 'pypi' in build_channel else 'conda')
+            toast += (f'pip install {name} -U' if 'pypi' in build_channel else f'conda upgrade {name}') + \
+                     f' # {version} --> {new_version}' + '\n'
     return toast
 
 
