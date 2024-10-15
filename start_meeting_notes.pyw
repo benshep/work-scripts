@@ -7,7 +7,6 @@ Look through today's events in an Outlook calendar,
 and start a Markdown notes file for the closest one to the current time.
 """
 
-
 import contextlib
 import os
 import re
@@ -15,7 +14,7 @@ import requests
 from icalendar import Calendar
 from time import sleep
 import outlook
-from folders import user_profile
+from folders import docs_folder, sharepoint_folder
 
 
 def folder_match(name: str, test_against: str):
@@ -105,9 +104,9 @@ def walk(top, max_depth):
             yield from walk(os.path.join(top, name), max_depth - 1)
 
 
-def find_folder_from_text(text):
+def find_folder_from_text(top_folder, text):
     """Choose an appropriate folder based on some text. Traverse the first-level folders, then the second level."""
-    for path, folders in walk(os.getcwd(), 2):
+    for path, folders in walk(top_folder, 2):
         if is_banned(os.path.split(path)[1]):
             continue
         for folder in folders:
@@ -115,6 +114,18 @@ def find_folder_from_text(text):
                 continue
             if folder_match(folder, text):
                 return os.path.join(path, folder)
+    return False
+
+
+def find_subject_folder(folder, text):
+    """Find a folder which names the specific text provided."""
+    subject_match_file = 'meeting_subjects.txt'
+    for path, folders, files in os.walk(folder):
+        if subject_match_file not in files:
+            continue
+        subjects = open(os.path.join(path, subject_match_file)).read().splitlines()
+        if text in subjects:
+            return path
     return False
 
 
@@ -128,8 +139,10 @@ def is_banned(name):
 
 def go_to_folder(meeting):
     """Pick a folder in which to place the meeting notes, looking at the subject and the body."""
-    os.chdir(os.path.join(user_profile, 'STFC', 'Documents'))
-    folder = find_folder_from_text(meeting.Subject) or find_folder_from_text(meeting.Body) or 'Other'
+    folder = find_subject_folder(docs_folder, meeting.Subject) or \
+             find_subject_folder(sharepoint_folder, meeting.Subject) or \
+             find_folder_from_text(docs_folder, meeting.Subject) or \
+             find_folder_from_text(docs_folder, meeting.Body) or 'Other'
     os.chdir(folder)
     return folder
 
