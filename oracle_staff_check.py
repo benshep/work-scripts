@@ -103,9 +103,11 @@ def otl_submit(test_mode=False, weeks_in_advance=1):
         if node() == 'DLAST0023':
             print('Not running on laptop')
             return False
-        if datetime.now().weekday() < 3:
+        now = datetime.now()
+        weekday = now.weekday()
+        if weekday < 3:
             print('Too early in the week')
-            return False
+            return now + timedelta(days=3 - weekday)
         # if b'LogonUI.exe' not in check_output('TASKLIST'):  # workstation not locked
         #     print('Workstation not locked')
         #     return False  # for run_tasks, so we know it should retry the task but not report an error
