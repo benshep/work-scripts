@@ -142,7 +142,8 @@ def go_to_folder(meeting):
     folder = find_subject_folder(docs_folder, meeting.Subject) or \
              find_subject_folder(sharepoint_folder, meeting.Subject) or \
              find_folder_from_text(docs_folder, meeting.Subject) or \
-             find_folder_from_text(docs_folder, meeting.Body) or 'Other'
+             find_folder_from_text(docs_folder, meeting.Body) or \
+             os.path.join(docs_folder, 'Other')
     os.chdir(folder)
     return folder
 
