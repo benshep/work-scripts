@@ -77,12 +77,13 @@ def target_meeting():
     current_events = filter(lambda event: not outlook.is_wfh(event), current_events)
     current_events = filter(lambda event: event.Subject != 'ASTeC/CI Coffee', current_events)
 
-    current_events = list(current_events)
+    # put all the declined meetings at the end of the list
+    current_events = sorted(list(current_events), key=lambda event: event.Subject.startswith('Declined: '))
     meeting_count = len(current_events)
     if meeting_count == 1:
         i = 0
     elif meeting_count > 1:
-        [print(f'{i}. {event.Start.strftime("%H:%M")} {event.Subject}') for i, event in enumerate(current_events)]
+        [print(f'{i:2d}. {event.Start.strftime("%H:%M")} {event.Subject}') for i, event in enumerate(current_events)]
         try:
             i = min(int(input('Choose meeting for note file [0]: ')), meeting_count - 1)
         except ValueError:
