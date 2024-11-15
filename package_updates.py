@@ -35,7 +35,6 @@ def get_rss():
 def find_new_python_packages():
     installed_packages = list_packages()
     available_packages = get_rss()
-    toast = ''
     conda_new = []
     pip_new = []
     for name, (version, build_channel) in installed_packages.items():
@@ -45,7 +44,7 @@ def find_new_python_packages():
                 continue  # numpy upgrades aren't working right now
             (pip_new if 'pypi' in build_channel else conda_new).append(name)
     toast = (f'conda upgrade {" ".join(conda_new)}\n' if conda_new else '') + \
-            (f'pip install {" ".join(pip_new)}' if pip_new else '')
+            (f'pip install {" ".join(pip_new)} -U' if pip_new else '')
     return toast
 
 
