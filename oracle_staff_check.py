@@ -14,7 +14,15 @@ from oracle import go_to_oracle_page
 from check_leave_dates import get_off_dates
 import outlook
 
-end_of_year_wb = None  # datetime.date(2023, 12, 25)  # special case - for entering Christmas timecards early
+# At Christmas, we get guidance for filling in OTLs. This gives hours to book to the leave code for each day
+end_of_year_time_off = {
+    datetime(2024, 12, 25): 7.4,
+    datetime(2024, 12, 26): 7.4,
+    datetime(2024, 12, 27): 7.4,
+    datetime(2024, 12, 30): 3.7,
+    datetime(2024, 12, 31): 0,
+    datetime(2025, 1, 1): 7.4
+}
 
 
 def get_project_hours():
@@ -96,7 +104,7 @@ def annual_leave_check(test_mode=False):
                          show_window=test_mode) + f'\n{days_left_in_year=}'
 
 
-def otl_submit(test_mode=False, weeks_in_advance=1):
+def otl_submit(test_mode=False, weeks_in_advance=0):
     """Submit this week's OTL timecard for each staff member."""
     # don't bother before Thursday (to give people time to book the end of the week off)
     if not test_mode:
@@ -173,8 +181,9 @@ def iterate_staff(page, check_function, show_window=False):
     return return_dict or '\n'.join(filter(None, toast))
 
 
-def submit_staff_timecard(web, all_hours, all_absences=None, weeks_in_advance=1):
-    """On an individual OTL timecards submitted page, submit a timecard for the current week if necessary."""
+def submit_staff_timecard(web, all_hours, all_absences=None, weeks_in_advance=0):
+    """On an individual OTL timecards submitted page, submit a timecard for the current week if necessary.
+    Specify weeks_in_advance to do the given number of extra cards after this current week."""
 
     doing_my_cards = not all_absences
     if doing_my_cards:
@@ -218,7 +227,7 @@ def submit_staff_timecard(web, all_hours, all_absences=None, weeks_in_advance=1)
         last_card_date = first_card_in_list[0].text
         print(f'{last_card_date=}')
         weeks = last_card_age(last_card_date)
-        if weeks <= -weeks_in_advance and not end_of_year_wb:
+        if weeks <= -weeks_in_advance:
             print('Up to date')
             break
         web.find_element(By.ID, 'Hxccreatetcbutton').click()  # Create Timecard
@@ -235,11 +244,11 @@ def submit_staff_timecard(web, all_hours, all_absences=None, weeks_in_advance=1)
         if doing_my_cards:
             web.find_element(By.ID, 'A150N1display').send_keys('Angal-Kalinin, Doctor Deepa (Deepa)')  # approver
         # list of True/False for on holiday that day
-        on_holiday = [wb_date + timedelta(days=day) in days_away for day in range(5)]
-        print(f'{on_holiday=}')
+        on_leave = [wb_date + timedelta(days=day) in days_away for day in range(5)]
+        print(f'{on_leave=}')
 
         # enter hours
-        if not all(on_holiday) and end_of_year_wb != wb_date:
+        if not all(on_leave):
             # Compensate for rounding errors using 'cascade rounding' method
             # https://stackoverflow.com/questions/13483430/how-to-make-rounded-percentages-add-up-to-100#answer-13483486
             # Needed because Oracle only accepts 2 decimal places, and STFC need exactly 7.4 hours per day
@@ -257,26 +266,25 @@ def submit_staff_timecard(web, all_hours, all_absences=None, weeks_in_advance=1)
                 boxes = get_boxes(web)
                 fill_boxes(boxes, row, project, task)
                 for day in range(5):
-                    hrs = '0' if on_holiday[day] else f'{rounded_hours:.2f}'
-                    hours_boxes[row * 7 + day].send_keys(hrs)
+                    hrs = 0 if on_leave[day] or wb_date + timedelta(days=day) in end_of_year_time_off else rounded_hours
+                    hours_boxes[row * 7 + day].send_keys(f'{hrs:.2f}')
                     wait_until_page_ready(web)
                 row = len(hours)
         else:
             row = 0
             hours_boxes = web.find_elements(By.CLASS_NAME, 'x1v')  # 7x6 of these
             boxes = get_boxes(web)
-        if end_of_year_wb == wb_date:  # end of year is a bit special
-            fill_boxes(boxes, row, 'STRA00009', '01.01')
-            [hours_boxes[row * 7 + i].send_keys(str(duration)) for i, duration in enumerate([7.4, 7.4, 7.4, 3.7, 0])]
-        elif any(on_holiday):
-            # do a row for leave and holidays
-            fill_boxes(boxes, row, 'STRA00009', '01.01')
-            [hours_boxes[row * 7 + day].send_keys('7.4' if on_holiday[day] else '0') for day in range(5)]
+        # do a row for leave and holidays
+        fill_boxes(boxes, row, 'STRA00009', '01.01')
+        for day in range(5):
+            hours_boxes[row * 7 + day].send_keys(
+                ':.2f'.format(end_of_year_time_off.get(wb_date + timedelta(days=day), 7.4 if on_leave[day] else 0)))
+
 
         web.find_element(By.ID, 'review').click()  # Continue button
         web.find_element(By.ID, 'HxcSubmit').click()  # Submit button
         cards_done += 1
-        total_days_away += sum(on_holiday)
+        total_days_away += sum(on_leave)
         print('Submitted timecard for', card_date_text)
         time.sleep(2)
         web.find_element(By.LINK_TEXT, 'Return to Recent Timecards').click()
@@ -320,8 +328,12 @@ def check_al_page(web):
 
 
 def last_card_age(last_card_date):
-    delta = datetime.now() - datetime.strptime(last_card_date, '%d-%b-%Y')  # e.g. 12-Jul-2021
-    return delta.days // 7
+    """Return weeks since supplied Monday, starting on Mondays.
+    Returns 0 for this week, 1 for last week, -1 for next week."""
+    now = datetime.now()
+    this_monday = now - timedelta(days=now.weekday())
+    delta = this_monday - datetime.strptime(last_card_date, '%d-%b-%Y')  # e.g. 12-Jul-2021
+    return round(delta.days / 7)
 
 
 if __name__ == '__main__':
