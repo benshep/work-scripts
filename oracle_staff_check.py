@@ -24,6 +24,8 @@ end_of_year_time_off = {
     datetime(2025, 1, 1): 7.4
 }
 
+supervisor_page = ('STFC OTL Supervisor',)
+
 
 def get_project_hours():
     """Fetch the standard hours worked on each project from a spreadsheet."""
@@ -108,9 +110,9 @@ def otl_submit(test_mode=False, weeks_in_advance=0):
     """Submit this week's OTL timecard for each staff member."""
     # don't bother before Thursday (to give people time to book the end of the week off)
     if not test_mode:
-        if node() == 'DLAST0023':
-            print('Not running on laptop')
-            return False
+        # if node() == 'DLAST0023':
+        #     print('Not running on laptop')
+        #     return False
         now = datetime.now()
         weekday = now.weekday()
         if weekday < 3:
@@ -129,7 +131,7 @@ def otl_submit(test_mode=False, weeks_in_advance=0):
     def submit_card(web):
         return submit_staff_timecard(web, all_hours, all_off_dates, weeks_in_advance=weeks_in_advance)
 
-    toast = iterate_staff(('STFC OTL Supervisor',), submit_card, show_window=test_mode)
+    toast = iterate_staff(supervisor_page, submit_card, show_window=test_mode)
     # now do mine
     web = go_to_oracle_page(('STFC OTL Timecards', 'Time', 'Recent Timecards'), show_window=test_mode)
     try:
@@ -163,7 +165,7 @@ def iterate_staff(page, check_function, show_window=False):
         return_dict = {}
         for i in range(1, row_count):  # first one is mine - ignore this
             # id changes after you've clicked 'Action' link once!
-            tag_id = 'N25' if i > 1 and page == ('STFC OTL Supervisor',) else 'N26'
+            tag_id = 'N25' if i > 1 and page == supervisor_page else 'N26'
             name = ' '.join(translate_name(web.find_element(By.ID, f'N3:{tag_id}:{i}').text))
             print(name)
             web.find_element(By.ID, f'N3:Y:{i}').click()  # link from 'Action' column at far right
@@ -196,10 +198,11 @@ def submit_staff_timecard(web, all_hours, all_absences=None, weeks_in_advance=0)
         email = name.replace(' ', '.').lower() + '@stfc.ac.uk'
 
     # show latest first
-    header = web.find_element(By.ID, 'HxcPeriodStarts')
+    period_starts = 'HxcPeriodStarts'
+    header = web.find_element(By.ID, period_starts)
     header.click()  # sort ascending
     time.sleep(2)
-    header = web.find_element(By.ID, 'HxcPeriodStarts')  # try to prevent element going stale
+    header = web.find_element(By.ID, period_starts)  # try to prevent element going stale
     try:
         sort_arrow = header.find_element(By.TAG_NAME, 'img')
         if sort_arrow.get_attribute('title') != 'Sorted in descending order':
@@ -225,6 +228,8 @@ def submit_staff_timecard(web, all_hours, all_absences=None, weeks_in_advance=0)
     while do_timecards:  # loop to do all outstanding timecards - break out when done
         first_card_in_list = web.find_elements(By.ID, 'Hxctcarecentlist:Hxctcaperiodstarts:0')
         last_card_date = first_card_in_list[0].text
+        # recorded_hours = [float(el.text) for el in web.find_elements(By.CLASS_NAME, 'x1u x57')]
+        # print(recorded_hours)
         print(f'{last_card_date=}')
         weeks = last_card_age(last_card_date)
         if weeks <= -weeks_in_advance:
@@ -248,6 +253,7 @@ def submit_staff_timecard(web, all_hours, all_absences=None, weeks_in_advance=0)
         print(f'{on_leave=}')
 
         # enter hours
+        hours_box_class = 'x1v'
         if not all(on_leave):
             # Compensate for rounding errors using 'cascade rounding' method
             # https://stackoverflow.com/questions/13483430/how-to-make-rounded-percentages-add-up-to-100#answer-13483486
@@ -262,7 +268,7 @@ def submit_staff_timecard(web, all_hours, all_absences=None, weeks_in_advance=0)
                 project, task = project_task.split(' ')
                 web.find_element(By.XPATH, '//button[contains(text(), "Add Another Row")]').click()
                 wait_until_page_ready(web)
-                hours_boxes = web.find_elements(By.CLASS_NAME, 'x1v')  # 7x6 of these
+                hours_boxes = web.find_elements(By.CLASS_NAME, hours_box_class)  # 7x6 of these
                 boxes = get_boxes(web)
                 fill_boxes(boxes, row, project, task)
                 for day in range(5):
@@ -272,13 +278,13 @@ def submit_staff_timecard(web, all_hours, all_absences=None, weeks_in_advance=0)
                 row = len(hours)
         else:
             row = 0
-            hours_boxes = web.find_elements(By.CLASS_NAME, 'x1v')  # 7x6 of these
+            hours_boxes = web.find_elements(By.CLASS_NAME, hours_box_class)  # 7x6 of these
             boxes = get_boxes(web)
         # do a row for leave and holidays
         fill_boxes(boxes, row, 'STRA00009', '01.01')
         for day in range(5):
-            hours_boxes[row * 7 + day].send_keys(
-                ':.2f'.format(end_of_year_time_off.get(wb_date + timedelta(days=day), 7.4 if on_leave[day] else 0)))
+            hrs = end_of_year_time_off.get(wb_date + timedelta(days=day), 7.4 if on_leave[day] else 0)
+            hours_boxes[row * 7 + day].send_keys(f'{hrs:.2f}')
 
 
         web.find_element(By.ID, 'review').click()  # Continue button
@@ -337,5 +343,6 @@ def last_card_age(last_card_date):
 
 
 if __name__ == '__main__':
-    print(get_staff_leave_dates(test_mode=True))
+    print(otl_submit(test_mode=True, weeks_in_advance=2))
+    # print(get_staff_leave_dates(test_mode=True))
     # print(last_card_age('25-Mar-2024'))
