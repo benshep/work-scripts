@@ -4,7 +4,7 @@ SetTitleMatchMode, 2
 DocsDir = %UserProfile%\STFC\Documents
 MusicDir = %UserProfile%\Music
 
-PythonEnv = %UserProfile%\Miniconda3\envs\py312
+PythonEnv = %UserProfile%\Miniconda3\envs\py313
 AnacondaCommand = %UserProfile%\Miniconda3\python.exe %UserProfile%\Miniconda3\cwp.py %PythonEnv% %PythonEnv%\python.exe
 
 ;Esc to quit Calc, Snipping Tool, and Notepad
@@ -22,7 +22,7 @@ Esc::!F4
 #IfWinExist ahk_class XLMAIN
 #x::WinActivate
 
-;#IfWinExist ahk_class MozillaWindowClass
+#IfWinExist ahk_class MozillaWindowClass
 ;!\::
 ;    WinActivate
 ;    Send {Alt Down}d{Alt Up}`%
@@ -47,8 +47,8 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 #IfWinActive ahk_class XLMAIN
 !d::ControlFocus Edit1
 ;shift+wheel for horizontal scrolling in Excel
-+WheelDown::ComObjActive("Excel.Application").ActiveWindow.SmallScroll(0,0,2,0)
-+WheelUp::ComObjActive("Excel.Application").ActiveWindow.SmallScroll(0,0,0,2)
+;+WheelDown::ComObjActive("Excel.Application").ActiveWindow.SmallScroll(0,0,2,0)
+;+WheelUp::ComObjActive("Excel.Application").ActiveWindow.SmallScroll(0,0,0,2)
 
 #IfWinActive
 
@@ -72,7 +72,18 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 			OnTop = not on top
 	TrayTip, AutoHotKey, Set %Title% %OnTop%, 30
 	Return
-
+;Ctrl-Win-T to toggle window transparency https://superuser.com/questions/272812/simple-transparency-toggle-with-autohotkey#answer-272955
+#^t::
+    WinGet, currentTransparency, Transparent, A
+    if (currentTransparency = OFF)
+    {
+        WinSet, Transparent, 150, A
+    }
+    else
+    {
+        WinSet, Transparent, OFF, A
+    }
+    return
 ;Win-` to move window to other monitor
 ;^`::Send #+{Left}{Ctrl Up}
 #b::Run %UserProfile%
@@ -179,3 +190,5 @@ toggleDarkMode()
     RegWrite REG_DWORD, % key, AppsUseLightTheme   , % mode
     RegWrite REG_DWORD, % key, SystemUsesLightTheme, % mode
 }
+
+
