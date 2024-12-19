@@ -7,3 +7,8 @@ setuptools
 pypdf
 polling2
 numpy
+icalendar
+feedparser
+pywin32
+py-trello
+govuk-bank-holidays
