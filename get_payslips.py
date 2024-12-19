@@ -6,6 +6,8 @@ from calendar import monthrange
 from shutil import move
 from selenium.webdriver.common.by import By
 from pypdf import PdfReader
+from govuk_bank_holidays.bank_holidays import BankHolidays
+
 from oracle import go_to_oracle_page
 from folders import misc_folder, downloads_folder
 
@@ -38,7 +40,7 @@ def get_one_slip(web, index):
     net_pay = float(re.findall(r'SUMMARY NET PAY (\d+\.\d\d)', payslip_content)[0])
     print(net_pay)
     payments = re.findall('Units Rate Amount\n(.*)\n Amount', payslip_content, re.MULTILINE + re.DOTALL)[0]
-    payments = re.sub(' (\d)', ': £\\1', payments)  # neaten up a bit
+    payments = re.sub(r' (\d)', ': £\\1', payments)  # neaten up a bit
     return f'Net pay for {date_text}: £{net_pay:.2f}\n{payments}'
 
 
@@ -57,11 +59,12 @@ def get_payslips(only_latest=True, test_mode=False):
     if result:
         return result
     # When do we expect to get next one? Paid on second-to-last working day, should see payslip day before
-    _, days_in_month = monthrange(2024, 5)
-    now = datetime.now()
-    rest_of_month = [now + timedelta(days=d) for d in range(1, days_in_month - now.day + 1)]
-    working_days = [day for day in rest_of_month if day.weekday() < 5]
-    return working_days[-3] if len(working_days) > 2 else now + timedelta(days=1)
+    today = datetime.now().date()
+    _, days_in_month = monthrange(today.year, today.month)
+    rest_of_month = [today + timedelta(days=d) for d in range(1, days_in_month - today.day + 1)]
+    bank_holidays = [bh['date'] for bh in BankHolidays().get_holidays(division=BankHolidays.ENGLAND_AND_WALES)]
+    working_days = [day for day in rest_of_month if day.weekday() < 5 and day not in bank_holidays]
+    return working_days[-3] if len(working_days) > 2 else today + timedelta(days=1)
 
 
 if __name__ == '__main__':
