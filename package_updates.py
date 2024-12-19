@@ -43,9 +43,8 @@ def find_new_python_packages():
             if 'numpy' in name and new_version == '2.0.0':
                 continue  # numpy upgrades aren't working right now
             (pip_new if 'pypi' in build_channel else conda_new).append(name)
-    toast = (f'conda upgrade {" ".join(conda_new)}\n' if conda_new else '') + \
-            (f'pip install {" ".join(pip_new)} -U' if pip_new else '')
-    return toast
+    return (f'conda upgrade {" ".join(conda_new)}\n' if conda_new else '') + \
+        (f'pip install {" ".join(pip_new)} -U' if pip_new else '')
 
 
 if __name__ == '__main__':
