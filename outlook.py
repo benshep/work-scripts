@@ -55,7 +55,8 @@ def happening_now(event, hours_ahead=0.5):
         # print(appointmentItem.Start)
         start_time = get_meeting_time(event)
         end_time = get_meeting_time(event, get_end=True)
-        return start_time - datetime.timedelta(hours=hours_ahead) <= datetime.datetime.now() <= end_time
+        buffer = datetime.timedelta(hours=hours_ahead)
+        return start_time - buffer <= datetime.datetime.now() <= end_time + buffer
     except (OSError, pywintypes.com_error):  # appointments with weird dates!
         return False
 
