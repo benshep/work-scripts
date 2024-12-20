@@ -1,10 +1,14 @@
+import os
 import subprocess
 import re
 import feedparser
 
+from folders import user_profile
 
 def list_packages():
-    output = subprocess.check_output('conda list').decode('utf-8').split('\r\n')
+    env_name = os.environ['CONDA_DEFAULT_ENV']
+    command = [os.path.join(user_profile, "Miniconda3", "Scripts", "conda.exe"), 'list', '-n', env_name]
+    output = subprocess.check_output(command).decode('utf-8').split('\r\n')
     conda_packages = {}
     for line in output:
         if line.startswith('#'):
@@ -40,6 +44,7 @@ def find_new_python_packages():
     for name, (version, build_channel) in installed_packages.items():
         new_version = available_packages.get(name, '')
         if new_version > version:
+            print(f'{name}: {new_version} available, got {version}')
             if 'numpy' in name and new_version == '2.0.0':
                 continue  # numpy upgrades aren't working right now
             (pip_new if 'pypi' in build_channel else conda_new).append(name)
@@ -48,4 +53,4 @@ def find_new_python_packages():
 
 
 if __name__ == '__main__':
-    find_new_python_packages()
+    print(find_new_python_packages())
