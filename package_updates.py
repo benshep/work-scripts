@@ -2,6 +2,7 @@ import os
 import subprocess
 import re
 import feedparser
+from natsort import natsorted
 
 from folders import user_profile
 
@@ -43,7 +44,8 @@ def find_new_python_packages():
     pip_new = []
     for name, (version, build_channel) in installed_packages.items():
         new_version = available_packages.get(name, '')
-        if new_version > version:
+        versions = [new_version, version]
+        if versions != natsorted(versions):  # natural sort that puts e.g. 3.13.1 after 3.9.21
             print(f'{name}: {new_version} available, got {version}')
             if 'numpy' in name and new_version == '2.0.0':
                 continue  # numpy upgrades aren't working right now
