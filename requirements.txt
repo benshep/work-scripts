@@ -9,6 +9,8 @@ polling2
 numpy
 icalendar
 feedparser
+natsort
+openpyxl
 pywin32
 py-trello
 govuk-bank-holidays
