@@ -29,8 +29,7 @@ def get_rss():
         return None
     packages = {}
     for entry in feed.entries:
-        match = re.findall(r'([\w\-_]+)-(\d[\w\.,\-]+)', entry.title)
-        if not match:
+        if not (match := re.findall(r'([\w\-_]+)-(\d[\w\.,\-]+)', entry.title)):
             continue
         name, version = match[0]
         packages[name] = version
