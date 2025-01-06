@@ -45,7 +45,7 @@ def find_new_python_packages():
         versions = [new_version, version]
         if versions != natsorted(versions):  # natural sort that puts e.g. 3.13.1 after 3.9.21
             print(f'{name}: {new_version} available, got {version}')
-            if 'numpy' in name and new_version == '2.0.0':
+            if ('numpy' in name and new_version == '2.0.0') or name == 'certifi':
                 continue  # numpy upgrades aren't working right now
             (pip_new if 'pypi' in build_channel else conda_new).append(name)
     return (f'conda upgrade {" ".join(conda_new)}\n' if conda_new else '') + \
