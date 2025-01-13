@@ -12,8 +12,10 @@ def todos_from_notes():
     new_list = next(task_list for task_list in to_do_board.list_lists() if task_list.name == '💡 New')
     labels = to_do_board.get_labels()
     os.chdir(docs_folder)
-    notes_checked = 'notes_checked'
-    last_checked = os.path.getmtime(notes_checked) if os.path.exists(notes_checked) else 0
+    notes_checked = 'notes_checked.txt'
+    file_exists = os.path.exists(notes_checked)
+    last_checked = os.path.getmtime(notes_checked) if file_exists else 0
+    actions_added = open(notes_checked).read() if file_exists else ''
     today = datetime.now()
     toast = ''
     for folder, _, file_list in os.walk(docs_folder):
@@ -30,10 +32,11 @@ def todos_from_notes():
             # Now read through the file looking for actions
             print(filename)
             text = open(filename, encoding='utf-8', errors='replace').read()
-            matches = re.finditer(r'(.*)\*\*Actions?[ \-.:]+(.{4,})\*\*(.*)', text)  # text in bold
-            for match in matches:
+            for match in re.finditer(r'(.*)\*\*Actions?[ \-.:]+(.{4,})\*\*(.*)', text):  # text in bold
                 action_name = match[2].strip('. ')  # remove full stops from action name
                 action_name = action_name[0].upper() + action_name[1:]  # Sentence case.
+                if (file_record := f'{file}\t{action_name}\n') in actions_added:
+                    continue  # already done this one!
                 folder_names = folder.lower().split(os.path.sep)[-2:]  # e.g. C:\users\ben\docs\temp -> docs, temp
                 meeting_title = file[11:-3]  # the bit between the date and the file extension
                 # match[0] is entire match - put it all in for context
@@ -42,6 +45,7 @@ def todos_from_notes():
 
                 toast += action_name + '\n'
                 card = new_list.add_card(name=action_name, desc=desc)
+                open(notes_checked, 'a').write(file_record)
                 for label in labels:
                     if label.name.lower() in folder_names:
                         print(label.name)
@@ -55,8 +59,7 @@ def todos_from_notes():
                     card.add_label(next(label for label in labels if label.name == 'deadline 📆'))
                     day = date_match[1]
                     month = date_match[2]
-                    year = date_match[3] or today.year
-                    year = int(year)
+                    year = int(date_match[3] or today.year)
                     if year < 100:
                         year += 2000
                     date_format = '%d/%m/%Y' if month.isnumeric() else '%d/%b/%Y'
@@ -68,7 +71,6 @@ def todos_from_notes():
                     card.set_due(date)
                     card.set_reminder(3 * 24 * 60)  # 3 days before due date
 
-    open(notes_checked, 'w').write('')  # touch file, so we know when it was done last
     return toast
 
 
