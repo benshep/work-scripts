@@ -22,7 +22,8 @@ def open_office_url(extra_info):
         return
     office_path = r'C:\Program Files\Microsoft Office\root\Office16'
     url = info['linkUrl']
-    url = url.split('?')[0]
+    # try leaving in the query portion of the URL (after ?) - if it doesn't work, need to be discerning
+    # url = url.split('?')[0]
     subprocess.call([os.path.join(office_path, app), url])
 
 
