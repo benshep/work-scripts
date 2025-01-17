@@ -8,11 +8,11 @@ import pythoncom
 from icalendar import Calendar
 
 
-def get_appointments_in_range(start=0, end=30, user='me'):
+def get_appointments_in_range(start=0.0, end=30.0, user='me'):
     """Get a list of appointments in the given range. start and end are relative days from today, or datetimes."""
     today = datetime.date.today()
-    from_date = today + datetime.timedelta(days=start) if isinstance(start, int) else start - datetime.timedelta(days=1)
-    to_date = today + datetime.timedelta(days=end) if isinstance(end, int) else end
+    from_date = today + datetime.timedelta(days=start) if isinstance(start, (int, float)) else start - datetime.timedelta(days=1)
+    to_date = today + datetime.timedelta(days=end) if isinstance(end, (int, float)) else end
     date_filter = f"[Start] >= '{datetime_text(from_date)}' AND [Start] <= '{datetime_text(to_date)}'"
     return get_appointments(date_filter, user=user)
 
@@ -64,7 +64,7 @@ def happening_now(event, hours_ahead=0.5):
 def get_current_events(user='me', hours_ahead=0.5):
     """Return a list of current events from Outlook, sorted by subject."""
     current_events = filter(lambda event: happening_now(event, hours_ahead),
-                            get_appointments_in_range(-7, 1, user=user))
+                            get_appointments_in_range(-7 if hours_ahead < 1 else 0, 1 + hours_ahead / 24, user=user))
     # Sort by start time then subject, so we have a predictable order for events to be returned
     return sorted(current_events, key=lambda event: f'{event.StartUTC} {event.Subject}')
 

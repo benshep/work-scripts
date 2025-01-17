@@ -73,25 +73,28 @@ def create_note_file():
 
 def target_meeting():
     os.system('title 📓 Start meeting notes')
-    current_events = outlook.get_current_events(hours_ahead=12)
-    current_events = filter(lambda event: not outlook.is_wfh(event), current_events)
-    current_events = filter(lambda event: event.Subject != 'ASTeC/CI Coffee', current_events)
+    hours_ahead = 12
+    time_format = "%H:%M"
+    while True:
+        current_events = outlook.get_current_events(hours_ahead=hours_ahead)
+        current_events = filter(lambda event: not outlook.is_wfh(event), current_events)
+        current_events = filter(lambda event: event.Subject != 'ASTeC/CI Coffee', current_events)
 
-    # put all the declined meetings at the end of the list
-    current_events = sorted(list(current_events), key=lambda event: event.Subject.startswith('Declined: '))
-    meeting_count = len(current_events)
-    if meeting_count == 1:
-        i = 0
-    elif meeting_count > 1:
-        [print(f'{i:2d}. {event.Start.strftime("%H:%M")} {event.Subject}') for i, event in enumerate(current_events)]
+        # put all the declined meetings at the end of the list
+        current_events = sorted(list(current_events), key=lambda event: event.Subject.startswith('Declined: '))
+        meeting_count = len(current_events)
+        [print(f'{i:2d}. {event.Start.strftime(time_format)} {event.Subject}') for i, event in enumerate(current_events)]
+        print(f'{meeting_count:2d}. More...')
         try:
-            i = min(int(input('Choose meeting for note file [0]: ')), meeting_count - 1)
+            i = min(int(input('Choose meeting for note file [0]: ')), meeting_count)
         except ValueError:
             i = 0
-    else:
-        print('No current meetings found')
-        sleep(10)
-        return None
+        if i < meeting_count:  # valid meeting
+            break
+        hours_ahead += 24 * 7  # look ahead to next week
+        time_format = "%a %d/%m %H:%M"
+        print()
+
     return current_events[i]
 
 
