@@ -6,7 +6,7 @@ import datetime
 from platform import node
 
 sys.path.append(os.path.join(os.environ['UserProfile'], 'Misc', 'Scripts'))
-import google_sheets
+import google
 
 sheet_id = {'me': '1qjcicqh02LMCdQUJwkvnOYli8TJb9qRdZyvyOwKMFHA',  # 🗺️ Where is Ben?
             'Hywel': '1usvoxxjpPZT0C4rZHKz9mVreDtEc-ahSfHYkpIJZ9FY'}
@@ -23,7 +23,7 @@ def events_to_spreadsheet(user='me'):
     if sheet_data := [[dmy(event.Start), dmy(event.End), event.Subject,
                        event.Location, event.BusyStatus, event.AllDayEvent] for event in events]:
         print(f'Found {len(sheet_data)} events, starting with {sheet_data[0][2]} at {sheet_data[0][0]}')
-        google_sheets.update_cells(sheet_id[user], 'Events', f'A2:F{len(sheet_data) + 1}', sheet_data)
+        google.update_cells(sheet_id[user], 'Events', f'A2:F{len(sheet_data) + 1}', sheet_data)
 
 
 def set_pc_unlocked_flag(user='me'):
@@ -31,9 +31,9 @@ def set_pc_unlocked_flag(user='me'):
     # https://stackoverflow.com/questions/34514644/in-python-3-how-can-i-tell-if-windows-is-locked#answer-57258754
     unlocked = 'LogonUI.exe' not in str(subprocess.check_output('TASKLIST'))
     print('Updating online status:', unlocked)
-    google_sheets.update_cell(sheet_id[user], '', f'{node()}_unlocked', unlocked)
+    google.update_cell(sheet_id[user], '', f'{node()}_unlocked', unlocked)
     if unlocked:
-        google_sheets.update_cell(sheet_id[user], '', f'{node()}_unlocked_updated', dmy(datetime.datetime.now()))
+        google.update_cell(sheet_id[user], '', f'{node()}_unlocked_updated', dmy(datetime.datetime.now()))
 
 
 if __name__ == '__main__':
