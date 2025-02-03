@@ -24,7 +24,7 @@ def join_vc_meeting():
     # j is join - w seems to be webinar
     # 9-11 digits for the meeting ID
     # Following that, URL params with alphanumeric, =&.- (any more required?)
-    zoom_url = re.compile(r'https://(?:[\w\-]+.)?zoom\.us/[\w/\?=&\-]+\b')  # simpler regex
+    zoom_url = re.compile(r'https://(?:[\w\-]+.)?(?:zoom\.us|zoomgov\.com)/[\w/\?=&\-]+\b')  # simpler regex
     teams_url = re.compile(r'https://teams\.microsoft\.com/l/meetup-join/.*\b')
     current_events = outlook.get_current_events()
     print('Current events:', [event.Subject for event in current_events])
