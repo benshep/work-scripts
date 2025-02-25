@@ -114,10 +114,19 @@ def get_away_dates(start=-30, end=90, user='me', look_for=is_out_of_office):
         return set()
 
 
-def get_date_list(start, end):
-    """Return a list of business dates (i.e. Mon-Fri) in a given date range, inclusive."""
-    date_list = [start + datetime.timedelta(days=d) for d in range((end - start).days + 1)]
-    return list(filter(lambda date: date.weekday() < 5, date_list))
+def get_date_list(start, end=None, count=0):
+    """Return a list of business dates (i.e. Mon-Fri) in a given date range, inclusive.
+    Specify count instead of end to return a fixed number of dates."""
+    if end is not None:  # end date specified, not count
+        count = (end - start).days + 1
+    elif count == 0:  # neither optional argument specified - assume one day
+        count = 1
+    date_list = []
+    while len(date_list) < count:
+        date_list.append(start)
+        weekday = start.weekday()
+        start += datetime.timedelta((7 - weekday) if weekday > 3 else 1)  # add 3 on Fri, 2 on Sat, 1 for all others
+    return date_list
 
 
 def to_set(date_lists):

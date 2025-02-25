@@ -142,7 +142,7 @@ def otl_submit(test_mode=False, weeks_in_advance=0):
 
 
 def get_all_off_dates(web):
-    return get_off_dates(web, fetch_all=True, me=False)
+    return get_off_dates(web, fetch_all=True, me=False, page_count=1)
 
 
 def get_staff_leave_dates(test_mode=False):
@@ -343,6 +343,6 @@ def last_card_age(last_card_date):
 
 
 if __name__ == '__main__':
-    print(otl_submit(test_mode=True, weeks_in_advance=2))
-    # print(get_staff_leave_dates(test_mode=True))
+    # print(otl_submit(test_mode=True, weeks_in_advance=2))
+    get_staff_leave_dates(test_mode=False)
     # print(last_card_age('25-Mar-2024'))

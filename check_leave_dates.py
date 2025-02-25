@@ -1,4 +1,6 @@
 from datetime import datetime
+from time import sleep
+
 from selenium.webdriver.common.by import By
 from oracle import go_to_oracle_page
 import outlook
@@ -51,28 +53,49 @@ def check_leave_dates():
     return toast
 
 
-def get_oracle_off_dates():
+def get_oracle_off_dates(page_count=1):
     web = go_to_oracle_page(('RCUK Self-Service Employee', 'Attendance Management'))
     try:
-        off_dates = get_off_dates(web)
+        off_dates = get_off_dates(web, page_count=page_count)
     finally:
         web.quit()
     return off_dates
 
 
-def get_off_dates(web, fetch_all=False, me=True):
-    """Get absence dates from an Oracle 'Attendance Management' page."""
-    cells = web.find_elements(By.CLASS_NAME, 'x1w')
-    columns = 8 if me else 9  # staff under me get a 'delete' column too
-    start_dates = cells[::columns]
-    if start_dates[0].text == 'No results found.':
-        return_value = set()
-    else:
+def get_off_dates(web, fetch_all=False, me=True, page_count=1):
+    """Get absence dates from an Oracle 'Attendance Management' page.
+    If fetch_all is True, looks for all absences, otherwise just ones with "Leave" in the "Absence Type".
+    Fetches one page by default: specify page_count for more (or set to 0 for all)."""
+    pages_done = 0
+    return_value = set()
+    while pages_done < page_count or page_count < 1:
+        cells = web.find_elements(By.CLASS_NAME, 'x1w')
+        columns = 8 if me else 9  # staff under me get a 'delete' column too
+        start_dates = cells[::columns]
+        if start_dates[0].text == 'No results found.':
+            break
         end_dates = cells[1::columns]
-        absence_type = cells[2::columns]
-        return_value = outlook.to_set(
-            outlook.get_date_list(from_dmy(st.text), from_dmy(end.text)) if fetch_all or 'Leave' in ab_type.text else []
-            for st, end, ab_type in zip(start_dates, end_dates, absence_type))
+        absence_types = cells[2::columns]
+        day_counts = cells[3::columns]
+        for start, end, day_count, absence_type_cell in zip(start_dates, end_dates, day_counts, absence_types):
+            absence_type = absence_type_cell.text
+            if fetch_all or 'Leave' in absence_type:
+                date_list = outlook.get_date_list(from_dmy(start.text), count=round(float(day_count.text)))
+                # for date in date_list:
+                #     print(date, absence_type, sep='\t')
+                # end_date = from_dmy(end.text)
+                # if date_list[-1] != end_date:
+                #     print('\t\tlisted end date', end_date)
+                return_value |= set(date_list)
+        nav_links = web.find_elements(By.CLASS_NAME, 'x48')  # Prev and Next buttons
+        for link in nav_links:
+            if link.text.startswith('Next'):
+                link.click()  # go to next page
+                sleep(1)
+                pages_done += 1
+                break
+        else:
+            break  # out of while loop: no more pages
     if not me:  # click 'Return to People in Hierarchy'
         web.find_element(By.ID, 'Return').click()
     print(len(return_value), 'absences, latest:', max(return_value) if return_value else 'N/A')
@@ -85,4 +108,4 @@ def from_dmy(text):
 
 
 if __name__ == '__main__':
-    check_leave_dates()
+    get_oracle_off_dates(page_count=0)
