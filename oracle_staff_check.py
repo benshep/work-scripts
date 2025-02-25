@@ -106,7 +106,7 @@ def annual_leave_check(test_mode=False):
                          show_window=test_mode) + f'\n{days_left_in_year=}'
 
 
-def otl_submit(test_mode=False, weeks_in_advance=0):
+def otl_submit(test_mode=False, weeks_in_advance=0, staff_names=None):
     """Submit this week's OTL timecard for each staff member."""
     # don't bother before Thursday (to give people time to book the end of the week off)
     if not test_mode:
@@ -125,15 +125,16 @@ def otl_submit(test_mode=False, weeks_in_advance=0):
     all_hours = get_project_hours()
 
     # get Oracle holiday dates
-    all_off_dates = get_staff_leave_dates(test_mode)
+    all_off_dates = get_staff_leave_dates(test_mode, staff_names=staff_names)
 
     # everyone else's first
     def submit_card(web):
         return submit_staff_timecard(web, all_hours, all_off_dates, weeks_in_advance=weeks_in_advance)
 
-    toast = iterate_staff(supervisor_page, submit_card, show_window=test_mode)
+    toast = iterate_staff(supervisor_page, submit_card, show_window=test_mode, staff_names=staff_names)
     # now do mine
-    web = go_to_oracle_page(('STFC OTL Timecards', 'Time', 'Recent Timecards'), show_window=test_mode)
+    if staff_names is None or 'me' in staff_names:
+        web = go_to_oracle_page(('STFC OTL Timecards', 'Time', 'Recent Timecards'), show_window=test_mode)
     try:
         toast = '\n'.join([toast, submit_staff_timecard(web, all_hours, weeks_in_advance=weeks_in_advance)]).strip()
     finally:
@@ -145,16 +146,17 @@ def get_all_off_dates(web):
     return get_off_dates(web, fetch_all=True, me=False, page_count=1)
 
 
-def get_staff_leave_dates(test_mode=False):
+def get_staff_leave_dates(test_mode=False, staff_names=None):
     """Get leave dates in Oracle for each staff member."""
     return iterate_staff(('RCUK Self-Service Manager', 'Attendance Management'),
-                         get_all_off_dates, show_window=test_mode)
+                         get_all_off_dates, show_window=test_mode, staff_names=staff_names)
 
 
-def iterate_staff(page, check_function, show_window=False):
+def iterate_staff(page, check_function, show_window=False, staff_names=None):
     """Go to a specific page for each staff member and perform a function.
     If the function returns a string, concatenate them all together and return a toast.
-    Otherwise, return a dict of {name: value}."""
+    Otherwise, return a dict of {name: value}.
+    Specify a list of staff names to only perform the function for a subset. Otherwise, it will go through them all."""
     web = go_to_oracle_page(page, show_window=show_window)
     print(page)
     try:
@@ -163,12 +165,15 @@ def iterate_staff(page, check_function, show_window=False):
 
         toast = []
         return_dict = {}
+        tag_id = 'N26'
         for i in range(1, row_count):  # first one is mine - ignore this
-            # id changes after you've clicked 'Action' link once!
-            tag_id = 'N25' if i > 1 and page == supervisor_page else 'N26'
             name = ' '.join(translate_name(web.find_element(By.ID, f'N3:{tag_id}:{i}').text))
+            if staff_names and name not in staff_names:
+                continue
             print(name)
             web.find_element(By.ID, f'N3:Y:{i}').click()  # link from 'Action' column at far right
+            if page == supervisor_page:
+                tag_id = 'N25'  # id changes after you've clicked 'Action' link once!
             with contextlib.suppress(selenium.common.exceptions.NoSuchElementException):
                 if web.find_element(By.CLASS_NAME, 'x5y').text == 'Error':  # got an error page, not the expected page
                     web.find_element(By.CLASS_NAME, 'x7n').click()  # click 'OK'
@@ -343,6 +348,6 @@ def last_card_age(last_card_date):
 
 
 if __name__ == '__main__':
-    # print(otl_submit(test_mode=True, weeks_in_advance=2))
-    get_staff_leave_dates(test_mode=False)
+    print(otl_submit(test_mode=True, weeks_in_advance=4, staff_names=['me']))
+    # get_staff_leave_dates(test_mode=False)
     # print(last_card_age('25-Mar-2024'))
