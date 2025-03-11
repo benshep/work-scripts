@@ -1,6 +1,10 @@
-﻿ProgramFilesX86 = C:\Program Files (x86)
+﻿;Note: using v1 as Teams is currently incompatible with v2
+#include <Teams>
+
+ProgramFilesX86 = C:\Program Files (x86)
 SetTitleMatchMode, 2
 
+EnvGet, UserProfile, UserProfile
 DocsDir = %UserProfile%\STFC\Documents
 MusicDir = %UserProfile%\Music
 
@@ -47,10 +51,20 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 #IfWinActive ahk_class XLMAIN
 !d::ControlFocus Edit1
 ;shift+wheel for horizontal scrolling in Excel
-;+WheelDown::ComObjActive("Excel.Application").ActiveWindow.SmallScroll(0,0,2,0)
-;+WheelUp::ComObjActive("Excel.Application").ActiveWindow.SmallScroll(0,0,0,2)
++WheelDown::ComObjActive("Excel.Application").ActiveWindow.SmallScroll(0,0,2,0)
++WheelUp::ComObjActive("Excel.Application").ActiveWindow.SmallScroll(0,0,0,2)
 
 #IfWinActive
+
+F1:: ;mute/unmute both Teams and Zoom
+    Teams_Mute()
+    ControlSend, , {F1}, Zoom Meeting
+    Return
+    
+F4:: ;toggle video for Teams and Zoom
+    Teams_Video()
+    ControlSend, , {F4}, Zoom Meeting
+    Return
 
 #z::Send {Media_Play_Pause}
 #+z::Send {Media_Next}
@@ -190,5 +204,4 @@ toggleDarkMode()
     RegWrite REG_DWORD, % key, AppsUseLightTheme   , % mode
     RegWrite REG_DWORD, % key, SystemUsesLightTheme, % mode
 }
-
 
