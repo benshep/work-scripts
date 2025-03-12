@@ -49,7 +49,7 @@ def get_project_hours():
         daily_hours = ftes * 7.4  # turn percentages to daily hours
         hours[name] = daily_hours  # turn percentages to daily hours
 
-    return hours
+    return hours, set(booking_plan['Change date'].dropna())  # a list of dates when the booking formula changes
 
 
 def get_staff_table(web):
@@ -116,7 +116,7 @@ def otl_submit(test_mode=False, weeks_in_advance=0, staff_names=None):
             print('Too early in the week')
             return now + timedelta(days=3 - weekday)
     # get standard booking formula
-    all_hours = get_project_hours()
+    all_hours, change_dates = get_project_hours()
 
     # get Oracle holiday dates
     off_dates_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'off_dates.db')
@@ -129,14 +129,15 @@ def otl_submit(test_mode=False, weeks_in_advance=0, staff_names=None):
 
     # everyone else's first
     def submit_card(web):
-        return submit_staff_timecard(web, all_hours, all_off_dates, weeks_in_advance=weeks_in_advance)
+        return submit_staff_timecard(web, all_hours, change_dates, all_off_dates, weeks_in_advance=weeks_in_advance)
 
     toast = iterate_staff(supervisor_page, submit_card, show_window=test_mode, staff_names=staff_names)
     # now do mine
     if staff_names is None or 'me' in staff_names:
         web = go_to_oracle_page(('STFC OTL Timecards', 'Time', 'Recent Timecards'), show_window=test_mode)
     try:
-        toast = '\n'.join([toast, submit_staff_timecard(web, all_hours, weeks_in_advance=weeks_in_advance)]).strip()
+        toast = '\n'.join([toast, submit_staff_timecard(web, all_hours, change_dates,
+                                                        weeks_in_advance=weeks_in_advance)]).strip()
     finally:
         web.quit()
     return toast
@@ -188,7 +189,7 @@ def iterate_staff(page, check_function, show_window=False, staff_names=None):
     return return_dict or '\n'.join(filter(None, toast))
 
 
-def submit_staff_timecard(web, all_hours, all_absences=None, weeks_in_advance=0):
+def submit_staff_timecard(web, all_hours, change_dates, all_absences=None, weeks_in_advance=0):
     """On an individual OTL timecards submitted page, submit a timecard for the current week if necessary.
     Specify weeks_in_advance to do the given number of extra cards after this current week."""
     this_fy = fy(datetime.now())
@@ -260,17 +261,23 @@ def submit_staff_timecard(web, all_hours, all_absences=None, weeks_in_advance=0)
             print('Creating timecard for', card_date_text)
             if doing_my_cards:
                 web.find_element(By.ID, 'A150N1display').send_keys('Angal-Kalinin, Doctor Deepa (Deepa)')  # approver
+        def date_in_week(day):
+            return wb_date + timedelta(days=day)
         # list of True/False for on holiday that day
-        on_leave = [wb_date + timedelta(days=day) in days_away for day in range(5)]
+        on_leave = [date_in_week(day) in days_away for day in range(5)]
         print(f'{on_leave=}')
 
         # enter hours
         hours_box_class = 'x1v'
         hours_boxes = web.find_elements(By.CLASS_NAME, hours_box_class)  # 7x6 of these
         # figure out which boxes to fill: if updating, some will be filled already
-        days_to_fill = [i for i in range(5) if hours_boxes[i].get_attribute('value') == '']  # limitation: only checks first row!
+        days_to_fill = [day for day in range(5) if hours_boxes[day].get_attribute('value') == '']  # limitation: only checks first row!
         # don't cross over financial years
-        days_to_fill = [i for i in days_to_fill if fy(wb_date + timedelta(days=i)) == this_fy]
+        days_to_fill = [day for day in days_to_fill if fy(date_in_week(day)) == this_fy]
+        # bookings will change on given dates: fill in up to there
+        for change_date in change_dates:
+            after_change = [date_in_week(day) >= change_date for day in days_to_fill]
+            days_to_fill = [day for day, is_after in zip(days_to_fill, after_change) if is_after == after_change[0]]
         if len(days_to_fill) == 0:  # didn't find any to fill, must be up to date
             print('Up to date')
             break
@@ -292,7 +299,7 @@ def submit_staff_timecard(web, all_hours, all_absences=None, weeks_in_advance=0)
                 boxes, row = get_boxes(web)
                 fill_boxes(boxes, row, project, task)
                 for day in days_to_fill:
-                    hrs = 0 if on_leave[day] or wb_date + timedelta(days=day) in end_of_year_time_off else rounded_hours
+                    hrs = 0 if on_leave[day] or date_in_week(day) in end_of_year_time_off else rounded_hours
                     hours_boxes[row * 7 + day].send_keys(f'{hrs:.2f}')
                     wait_until_page_ready(web)
                 row = len(hours)
@@ -302,7 +309,7 @@ def submit_staff_timecard(web, all_hours, all_absences=None, weeks_in_advance=0)
         # do a row for leave and holidays
         fill_boxes(boxes, row, 'STRA00009', '01.01')
         for day in days_to_fill:
-            hrs = end_of_year_time_off.get(wb_date + timedelta(days=day), 7.4 if on_leave[day] else 0)
+            hrs = end_of_year_time_off.get(date_in_week(day), 7.4 if on_leave[day] else 0)
             hours_boxes[row * 7 + day].send_keys(f'{hrs:.2f}')
 
 
