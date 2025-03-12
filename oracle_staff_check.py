@@ -109,8 +109,8 @@ def annual_leave_check(test_mode=False):
 def otl_submit(test_mode=False, weeks_in_advance=0, staff_names=None):
     """Submit this week's OTL timecard for each staff member."""
     # don't bother before Thursday (to give people time to book the end of the week off)
+    now = datetime.now()
     if not test_mode:
-        now = datetime.now()
         weekday = now.weekday()
         if weekday < 3:
             print('Too early in the week')
@@ -119,13 +119,12 @@ def otl_submit(test_mode=False, weeks_in_advance=0, staff_names=None):
     all_hours, change_dates = get_project_hours()
 
     # get Oracle holiday dates
-    off_dates_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'off_dates.db')
-    if (file_exists(off_dates_filename) and
-            (datetime.now() - datetime.fromtimestamp(os.path.getmtime(off_dates_filename))).days < 1):
-        all_off_dates = pickle.load(open(off_dates_filename, 'rb'))
+    off_dates_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'off_dates.db')
+    if file_exists(off_dates_file) and (now - datetime.fromtimestamp(os.path.getmtime(off_dates_file))).days < 1:
+        all_off_dates = pickle.load(open(off_dates_file, 'rb'))
     else:
         all_off_dates = get_staff_leave_dates(test_mode, staff_names=staff_names)
-        pickle.dump(all_off_dates, open(off_dates_filename, 'wb'))
+        pickle.dump(all_off_dates, open(off_dates_file, 'wb'))
 
     # everyone else's first
     def submit_card(web):
@@ -140,6 +139,9 @@ def otl_submit(test_mode=False, weeks_in_advance=0, staff_names=None):
                                                         weeks_in_advance=weeks_in_advance)]).strip()
     finally:
         web.quit()
+    for change_date in change_dates:
+        if now <= change_date < now + timedelta(days=7):
+            toast = f'Project code change this week\n{toast}'
     return toast
 
 
