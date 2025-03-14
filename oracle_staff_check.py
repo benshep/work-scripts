@@ -1,5 +1,7 @@
 import contextlib
 import os
+import shutil
+import tempfile
 import time
 import pickle
 import selenium.common.exceptions
@@ -10,6 +12,7 @@ from pandas.io.common import file_exists
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 
+from folders import user_profile
 from oracle import go_to_oracle_page
 from check_leave_dates import get_off_dates
 import outlook
@@ -29,9 +32,13 @@ supervisor_page = ('STFC OTL Supervisor',)
 
 def get_project_hours():
     """Fetch the standard hours worked on each project from a spreadsheet."""
-    filename = os.path.join(os.environ['UserProfile'], 'STFC', 'Documents',
-                            'Group Leader', 'MaRS staff and projects.xlsx')
-    booking_plan = pandas.read_excel(filename, sheet_name='Book', header=0, index_col=2, skiprows=1)
+    excel_filename = os.path.join(user_profile, 'STFC', 'Documents', 'Group Leader', 'MaRS staff and projects.xlsx')
+    # copy to a temporary file to get around permission errors due to workbook being open
+    handle, temp_filename = tempfile.mkstemp(suffix='.xlsx')
+    os.close(handle)
+    shutil.copy2(excel_filename, temp_filename)
+    booking_plan = pandas.read_excel(temp_filename, sheet_name='Book', header=0, index_col=2, skiprows=1)
+    os.remove(temp_filename)
     booking_plan = booking_plan[booking_plan.index.notnull()]  # remove any rows without a project code
     print(booking_plan)
     hours = {}
