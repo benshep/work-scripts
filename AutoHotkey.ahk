@@ -1,7 +1,8 @@
 ﻿;Note: using v1 as Teams is currently incompatible with v2
 #include <Teams>
 
-GroupAdd, firefox, ahk_class MozillaWindowClass ; Add only Internet Explorer windows to this group.
+GroupAdd, firefox, ahk_class MozillaWindowClass ; Add only Firefox windows to this group.
+GroupAdd, excel, ahk_class XLMAIN ; Add only Excel windows to this group.
 return ; End of autoexecute section.
 
 ProgramFilesX86 = C:\Program Files (x86)
@@ -27,7 +28,7 @@ Esc::!F4
 
 ;activate Excel/Firefox/Outlook/Word/PPT if they exist, otherwise start them
 #IfWinExist ahk_class XLMAIN
-#x::WinActivate
+#x::GroupActivate, excel, r
 
 #IfWinExist ahk_class MozillaWindowClass
 ;!\::
