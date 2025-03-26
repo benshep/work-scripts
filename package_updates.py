@@ -1,4 +1,5 @@
 import os
+import sys
 import subprocess
 import re
 import feedparser
@@ -7,7 +8,10 @@ from natsort import natsorted
 from folders import user_profile
 
 def list_packages():
-    env_name = os.environ['CONDA_DEFAULT_ENV']
+    version = sys.version_info
+    # guess name if env not defined: convention is e.g. py313
+    env_name = os.environ.get('CONDA_DEFAULT_ENV', f'py{version.major}{version.minor}')
+    # list command will fail and raise an exception here if env_name is invalid
     command = [os.path.join(user_profile, "Miniconda3", "Scripts", "conda.exe"), 'list', '-n', env_name]
     output = subprocess.check_output(command).decode('utf-8').split('\r\n')
     conda_packages = {}
