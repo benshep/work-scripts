@@ -1,6 +1,9 @@
 ﻿;Note: using v1 as Teams is currently incompatible with v2
 #include <Teams>
 
+GroupAdd, firefox, ahk_class MozillaWindowClass ; Add only Internet Explorer windows to this group.
+return ; End of autoexecute section.
+
 ProgramFilesX86 = C:\Program Files (x86)
 SetTitleMatchMode, 2
 
@@ -32,7 +35,7 @@ Esc::!F4
 ;    Send {Alt Down}d{Alt Up}`%
 ;    Return
 
-#a::WinActivate
+#a::GroupActivate, firefox, r
 #IfWinExist ahk_exe OUTLOOK.EXE
 #o::WinActivate
 #IfWinExist ahk_class OpusApp
@@ -54,6 +57,12 @@ Up::Send {Shift Down}{TAB 15}{Shift Up}
 +WheelDown::ComObjActive("Excel.Application").ActiveWindow.SmallScroll(0,0,2,0)
 +WheelUp::ComObjActive("Excel.Application").ActiveWindow.SmallScroll(0,0,0,2)
 
+#IfWinNotActive ahk_class XLMAIN  ;still want to use F4 in Excel
+F4:: ;toggle video for Teams and Zoom
+    Teams_Video()
+    ControlSend, , {F4}, Zoom Meeting
+    Return
+
 #IfWinActive
 
 F1:: ;mute/unmute both Teams and Zoom
@@ -61,11 +70,6 @@ F1:: ;mute/unmute both Teams and Zoom
     ControlSend, , {F1}, Zoom Meeting
     Return
     
-F4:: ;toggle video for Teams and Zoom
-    Teams_Video()
-    ControlSend, , {F4}, Zoom Meeting
-    Return
-
 #z::Send {Media_Play_Pause}
 #+z::Send {Media_Next}
 !F1::Send {Volume_Mute}
