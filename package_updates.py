@@ -40,7 +40,7 @@ def get_rss():
 
 def check_chocolatey_packages():
     """Use Chocolatey to check if any of its packages need updating."""
-    outdated = run_command(['choco', 'list', '-r'])
+    outdated = run_command(['choco', 'outdated', '-r'])
     to_upgrade = ''
     for line in outdated:  # e.g. autohotkey|1.1.37.1|2.0.19|true
         if line.count('|') < 3:
@@ -51,11 +51,11 @@ def check_chocolatey_packages():
         to_upgrade += f'{package}: {old} ➡ {new}\n'
         # display release notes if available
         info = run_command(['choco', 'info', package])
-        for line in info:
+        for info_line in info:
             notes_header = ' Release Notes:'
-            if line.startswith(notes_header):
+            if info_line.startswith(notes_header):
                 print(package)
-                print(line[len(notes_header):])
+                print(info_line[len(notes_header):])
     return to_upgrade
 
 
@@ -83,4 +83,4 @@ def find_new_python_packages():
 
 
 if __name__ == '__main__':
-    print(find_new_python_packages())
+    print(check_chocolatey_packages())
