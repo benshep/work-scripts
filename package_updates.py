@@ -12,8 +12,7 @@ def list_packages():
     # guess name if env not defined: convention is e.g. py313
     env_name = os.environ.get('CONDA_DEFAULT_ENV', f'py{version.major}{version.minor}')
     # list command will fail and raise an exception here if env_name is invalid
-    command = [os.path.join(user_profile, "Miniconda3", "Scripts", "conda.exe"), 'list', '-n', env_name]
-    output = subprocess.check_output(command).decode('utf-8').split('\r\n')
+    output = run_command([os.path.join(user_profile, "Miniconda3", "Scripts", "conda.exe"), 'list', '-n', env_name])
     conda_packages = {}
     for line in output:
         if line.startswith('#'):
@@ -39,6 +38,32 @@ def get_rss():
     return packages
 
 
+def check_chocolatey_packages():
+    """Use Chocolatey to check if any of its packages need updating."""
+    outdated = run_command(['choco', 'list', '-r'])
+    to_upgrade = ''
+    for line in outdated:  # e.g. autohotkey|1.1.37.1|2.0.19|true
+        if line.count('|') < 3:
+            continue
+        package, old, new, pinned = line.split('|')
+        if pinned == 'true':
+            continue
+        to_upgrade += f'{package}: {old} ➡ {new}\n'
+        # display release notes if available
+        info = run_command(['choco', 'info', package])
+        for line in info:
+            notes_header = ' Release Notes:'
+            if line.startswith(notes_header):
+                print(package)
+                print(line[len(notes_header):])
+    return to_upgrade
+
+
+def run_command(command: list[str]) -> list[str]:
+    """Runs a command and returns the output split into lines."""
+    return subprocess.check_output(command).decode('utf-8').split('\r\n')
+
+
 def find_new_python_packages():
     installed_packages = list_packages()
     available_packages = get_rss()
@@ -52,8 +77,9 @@ def find_new_python_packages():
             if ('numpy' in name and new_version == '2.0.0') or name == 'certifi':
                 continue  # numpy upgrades aren't working right now
             (pip_new if 'pypi' in build_channel else conda_new).append(name)
+    choco_new = check_chocolatey_packages()
     return (f'conda upgrade {" ".join(conda_new)}\n' if conda_new else '') + \
-        (f'pip install {" ".join(pip_new)} -U' if pip_new else '')
+        (f'pip install {" ".join(pip_new)} -U\n' if pip_new else '') + choco_new
 
 
 if __name__ == '__main__':
