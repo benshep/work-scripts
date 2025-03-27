@@ -44,7 +44,9 @@ Esc::!F4
 #IfWinExist ahk_class PPTFrameClass
 #q::WinActivate
 #IfWinExist Python
-#c::WinActivate 
+#c::WinActivate
+#IfWinExist ahk_class TeamsWebView
+#!c::WinActivate
 
 ;shortcuts for timesheet entry page
 #IfWinActive,Time Entry:
@@ -65,6 +67,8 @@ F4:: ;toggle video for Teams and Zoom
     Return
 
 #IfWinActive
+
+#!c::Teams_Launcher()
 
 F1:: ;mute/unmute both Teams and Zoom
     Teams_Mute()
