@@ -3,7 +3,6 @@
 
 GroupAdd, firefox, ahk_class MozillaWindowClass ; Add only Firefox windows to this group.
 GroupAdd, excel, ahk_class XLMAIN ; Add only Excel windows to this group.
-return ; End of autoexecute section.
 
 ProgramFilesX86 = C:\Program Files (x86)
 SetTitleMatchMode, 2
