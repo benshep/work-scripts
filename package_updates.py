@@ -13,7 +13,7 @@ from pushbullet import Pushbullet  # to show notifications
 from pushbullet_api_key import api_key  # local file, keep secret!
 
 
-def list_packages():
+def list_packages() -> dict[str, str]:
     version = sys.version_info
     # guess name if env not defined: convention is e.g. py313
     env_name = os.environ.get('CONDA_DEFAULT_ENV', f'py{version.major}{version.minor}')
@@ -31,7 +31,7 @@ def list_packages():
     return conda_packages
 
 
-def get_rss():
+def get_rss() -> dict[str, str]:
     url = 'https://repo.anaconda.com/pkgs/rss.xml'
     feed = feedparser.parse(url)
     if feed.status != 200:
@@ -44,7 +44,7 @@ def get_rss():
     return packages
 
 
-def check_chocolatey_packages():
+def check_chocolatey_packages() -> str:
     """Use Chocolatey to check if any of its packages need updating."""
     outdated = run_command(['choco', 'outdated', '-r'])
     to_upgrade = ''
@@ -70,7 +70,7 @@ def run_command(command: list[str]) -> list[str]:
     return subprocess.check_output(command).decode('utf-8').split('\r\n')
 
 
-def find_new_python_packages():
+def find_new_python_packages() -> str:
     installed_packages = list_packages()
     available_packages = get_rss()
     conda_new = []
