@@ -4,15 +4,21 @@ import subprocess
 import re
 import feedparser
 from natsort import natsorted
+from platform import node
 
-from folders import user_profile
+import folders
+
+sys.path.append(os.path.join(folders.misc_folder, 'Scripts'))
+from pushbullet import Pushbullet  # to show notifications
+from pushbullet_api_key import api_key  # local file, keep secret!
+
 
 def list_packages():
     version = sys.version_info
     # guess name if env not defined: convention is e.g. py313
     env_name = os.environ.get('CONDA_DEFAULT_ENV', f'py{version.major}{version.minor}')
     # list command will fail and raise an exception here if env_name is invalid
-    output = run_command([os.path.join(user_profile, "Miniconda3", "Scripts", "conda.exe"), 'list', '-n', env_name])
+    output = run_command([os.path.join(folders.user_profile, "Miniconda3", "Scripts", "conda.exe"), 'list', '-n', env_name])
     conda_packages = {}
     for line in output:
         if line.startswith('#'):
@@ -82,5 +88,27 @@ def find_new_python_packages():
         (f'pip install {" ".join(pip_new)} -U\n' if pip_new else '') + choco_new
 
 
+def check_updated():
+    """Read the list of updated packages and notify."""
+    toast = ''
+    upgrade_output_file = f'choco-upgrade-{node()}.txt'
+    upgrade_output = open(upgrade_output_file).read().splitlines()
+    try:
+        i = upgrade_output.index('Upgraded:')
+    except ValueError:
+        try:
+            i = upgrade_output.index('Failures')
+        except ValueError:
+            toast = f'No upgrades, no failures\nCheck {upgrade_output_file}'
+    if not toast:
+        if 'pinned' in upgrade_output[-1]:  # don't need to notify that packages are pinned
+            upgrade_output.pop(-1)
+        if upgrade_output[-1] == 'Warnings:':  # if that's the only warning, skip the headline
+            upgrade_output.pop(-1)
+        toast = '\n'.join(upgrade_output[i:])
+    Pushbullet(api_key).push_note('🍫 Chocolatey updates', toast)
+
+
 if __name__ == '__main__':
-    print(check_chocolatey_packages())
+    if len(sys.argv) > 1 and sys.argv[1] == 'check_updated':  # this runs from choco-update.bat - don't change
+        check_updated()
