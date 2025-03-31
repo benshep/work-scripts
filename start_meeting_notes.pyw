@@ -17,7 +17,7 @@ import outlook
 from folders import docs_folder, sharepoint_folder
 
 
-def folder_match(name: str, test_against: str):
+def folder_match(name: str, test_against: str) -> bool:
     """Case-insensitive string comparison."""
     # Add optional 's' to end of keyword - sometimes the folder contains a plural of a name
     return re.search(fr'\b{re.escape(name)}s?\b', test_against, re.IGNORECASE) is not None
@@ -51,11 +51,16 @@ def create_note_file():
     description = description.replace('o   ', '  * ')  # second-level lists
     description = description.replace('\r\n\r\n', '\n')  # double-spaced paragraphs
     # snip out Zoom joining instructions
-    start = description.find(' <http://zoom.us/> ')  # begins with this
+    start = description.find(' <http://zoom.us> 	')  # begins with this
     if start >= 0:
-        # last bit is "Skype on a SurfaceHub" link, only one with @lync in it - or sometime SIP: xxxx@zoomcrc.com
+        # last bit is "Skype on a SurfaceHub" link, only one with @lync in it - or sometimes SIP: xxxx@zoomcrc.com
         end = max(description.rfind('@lync.zoom.us'), description.rfind('@zoomcrc.com'))
         end = description.find('\r\n', end)  # end of line
+        description = (description[:start] + description[end:]).strip()
+    # snip out Teams joining instructions
+    start = description.find('Microsoft Teams Need help?')
+    if start >= 0:
+        end = description.rfind('_' * 80)  # horizontal line
         description = (description[:start] + description[end:]).strip()
 
     if match := re.search(r'https://[\w\.]+/event/\d+', meeting.Body):  # Indico link: look for an agenda
@@ -71,7 +76,7 @@ def create_note_file():
     os.startfile(filename)
 
 
-def target_meeting():
+def target_meeting() -> outlook.AppointmentItem:
     os.system('title 📓 Start meeting notes')
     hours_ahead = 12
     time_format = "%H:%M"
