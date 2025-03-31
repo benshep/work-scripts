@@ -1,12 +1,13 @@
 from datetime import datetime
 from time import sleep
+from typing import Any
 
 from selenium.webdriver.common.by import By
 from oracle import go_to_oracle_page
 import outlook
 
 
-def list_missing(date_set):
+def list_missing(date_set : set[datetime]) -> str:
     """Convert a set of missing dates to a comma-separated string."""
     return ', '.join(date.strftime("%#d %b") for date in sorted(list(date_set)))  # e.g. 4 Aug
 
@@ -39,7 +40,7 @@ def list_missing(date_set):
 #     print("Grouped list is : " + str(res))
 
 
-def check_leave_dates():
+def check_leave_dates() -> str:
     """Compare annual leave dates in an Outlook calendar and in the list submitted to Oracle."""
     oracle_off_dates = get_oracle_off_dates()
     outlook_off_dates = outlook.get_away_dates(min(oracle_off_dates), 0, look_for=outlook.is_annual_leave)
@@ -54,7 +55,7 @@ def check_leave_dates():
 
 
 def get_oracle_off_dates(page_count=1):
-    web = go_to_oracle_page(('RCUK Self-Service Employee', 'Attendance Management'))
+    web = go_to_oracle_page('RCUK Self-Service Employee', 'Attendance Management')
     try:
         off_dates = get_off_dates(web, page_count=page_count)
     finally:
@@ -62,7 +63,7 @@ def get_oracle_off_dates(page_count=1):
     return off_dates
 
 
-def get_off_dates(web, fetch_all=False, me=True, page_count=1):
+def get_off_dates(web: object, fetch_all: bool = False, me: bool = True, page_count: object = 1) -> set[Any]:
     """Get absence dates from an Oracle 'Attendance Management' page.
     If fetch_all is True, looks for all absences, otherwise just ones with "Leave" in the "Absence Type".
     Fetches one page by default: specify page_count for more (or set to 0 for all)."""
@@ -108,4 +109,4 @@ def from_dmy(text):
 
 
 if __name__ == '__main__':
-    get_oracle_off_dates(page_count=0)
+    print(sorted(list(get_oracle_off_dates())))

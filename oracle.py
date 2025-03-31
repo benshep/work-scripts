@@ -7,14 +7,16 @@ from selenium.webdriver.common.by import By
 
 from folders import user_profile
 
-def go_to_oracle_page(links=(), show_window=False):
+
+def go_to_oracle_page(*links: str,
+                      show_window: bool = False) -> webdriver.firefox.webdriver.WebDriver:
     """Open a selenium web driver and log in to Oracle e-Business Suite, opening the specified tuple of links.
     If links is 'obi' or 'taleo', open that app instead.
     Returns the web driver instance, so you can do more things with it."""
 
     quoted_path = quote('/shared/STFC Shared/_portal/STFC Projects', safe='')
-    apps = {'obi': f'https://obi.ssc.rcuk.ac.uk/analytics/saw.dll?dashboard&PortalPath={quoted_path}',
-            'taleo': "https://careersportal.taleo.net/enterprise/fluid?isNavigationCompleted=true"}
+    apps = {('obi',): f'https://obi.ssc.rcuk.ac.uk/analytics/saw.dll?dashboard&PortalPath={quoted_path}',
+            ('taleo',): "https://careersportal.taleo.net/enterprise/fluid?isNavigationCompleted=true"}
     url = apps.get(links, 'https://ebs.ssc.rcuk.ac.uk/OA_HTML/AppsLogin')
     if not show_window:
         os.environ['MOZ_HEADLESS'] = '1'
@@ -37,5 +39,4 @@ def go_to_oracle_page(links=(), show_window=False):
 
 
 if __name__ == '__main__':
-    go_to_oracle_page(show_window=True, links=('STFC OTL Timecards', 'Time', 'Recent Timecards'))
-
+    go_to_oracle_page('STFC OTL Timecards', 'Time', 'Recent Timecards', show_window=True)

@@ -140,12 +140,12 @@ def otl_submit(test_mode=False, weeks_in_advance=0, staff_names=None):
     toast = iterate_staff(supervisor_page, submit_card, show_window=test_mode, staff_names=staff_names)
     # now do mine
     if staff_names is None or 'me' in staff_names:
-        web = go_to_oracle_page(('STFC OTL Timecards', 'Time', 'Recent Timecards'), show_window=test_mode)
-    try:
-        toast = '\n'.join([toast, submit_staff_timecard(web, all_hours, change_dates,
-                                                        weeks_in_advance=weeks_in_advance)]).strip()
-    finally:
-        web.quit()
+        web = go_to_oracle_page('STFC OTL Timecards', 'Time', 'Recent Timecards', show_window=test_mode)
+        try:
+            toast = '\n'.join([toast, submit_staff_timecard(web, all_hours, change_dates,
+                                                            weeks_in_advance=weeks_in_advance)]).strip()
+        finally:
+            web.quit()
     for change_date in change_dates:
         if now <= change_date < now + timedelta(days=7):
             toast = f'Project code change this week\n{toast}'

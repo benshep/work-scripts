@@ -46,7 +46,7 @@ def get_one_slip(web, index):
 
 def get_payslips(only_latest=True, test_mode=False):
     """Download all my payslips, or just the latest."""
-    web = go_to_oracle_page(('RCUK Self-Service Employee', 'Payslip'), show_window=test_mode)
+    web = go_to_oracle_page('RCUK Self-Service Employee', 'Payslip', show_window=test_mode)
 
     try:
         payslip_count = len(get_options(web))

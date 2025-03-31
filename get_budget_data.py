@@ -30,6 +30,8 @@ def poll(target, arg=None, ignore_exceptions=(selenium.common.exceptions.NoSuchE
 
 def search_via_prompt(web, field_name, search_term, check_in_dropdown=False):
     """Search using the dropdown box and the pop-up prompt."""
+    if isinstance(search_term, str):
+        search_term = [search_term, ]
     print(f'Searching for {search_term} in box {field_name}')
     prompt_labels = web.find_elements(By.CLASS_NAME, 'promptLabel')
     index = next(i for i, label in enumerate(prompt_labels) if label.text == field_name)
@@ -156,4 +158,4 @@ def get_task_data(web, project_code, task):
 
 
 if __name__ == '__main__':
-    get_budget_data(project_names='MaRS Group', test_mode=True)
+    get_budget_data(project_names='ZEPTO CLARA', test_mode=False)
