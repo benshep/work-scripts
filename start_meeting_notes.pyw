@@ -10,6 +10,8 @@ and start a Markdown notes file for the closest one to the current time.
 import contextlib
 import os
 import re
+from typing import Any, Generator, Iterator
+
 import requests
 from icalendar import Calendar
 from time import sleep
@@ -23,7 +25,7 @@ def folder_match(name: str, test_against: str) -> bool:
     return re.search(fr'\b{re.escape(name)}s?\b', test_against, re.IGNORECASE) is not None
 
 
-def create_note_file():
+def create_note_file() -> None:
     """Start a file for notes relating to the given meeting. Find a relevant folder in the user's Documents folder,
      searching first the subject then the body of the meeting for a folder name. Use Other if none found.
      Don't use the Zoom folder (this is often found in the meeting body).
@@ -32,13 +34,14 @@ def create_note_file():
         return  # no current meeting
     go_to_folder(meeting)
     # Hierarchy of responses: (we want to list attendees from the top)
-    # olResponseOrganized 	    1 	On the Organizer's calendar or the recipient is the Organizer of the meeting.
-    # olResponseAccepted 	    3 	Meeting accepted.
-    # olResponseTentative 	    2 	Meeting tentatively accepted.
-    # olResponseNone 	        0 	The appointment is a simple appointment and does not require a response.
-    # olResponseNotResponded 	5 	Recipient has not responded.
-    # olResponseDeclined 	    4 	Meeting declined.
-    priority = [1, 3, 2, 0, 5, 4]
+    priority = [
+        outlook.OlResponseStatus.organized,
+        outlook.OlResponseStatus.accepted,
+        outlook.OlResponseStatus.tentative,
+        outlook.OlResponseStatus.none,
+        outlook.OlResponseStatus.not_responded,
+        outlook.OlResponseStatus.declined
+    ]
     response = {r.Name: r.MeetingResponseStatus for r in meeting.Recipients}
     attendees = filter(None, '; '.join([meeting.RequiredAttendees, meeting.OptionalAttendees]).split('; '))
     attendees = sorted(attendees, key=lambda r: priority.index(response[r]))
@@ -86,7 +89,7 @@ def target_meeting() -> outlook.AppointmentItem:
         current_events = filter(lambda event: event.Subject != 'ASTeC/CI Coffee', current_events)
 
         # put all the declined meetings at the end of the list
-        current_events = sorted(list(current_events), key=lambda event: event.Subject.startswith('Declined: '))
+        current_events = sorted(list(current_events), key=lambda event: event.Subject.startswith('declined: '))
         meeting_count = len(current_events)
         [print(f'{i:2d}. {event.Start.strftime(time_format)} {event.Subject}') for i, event in enumerate(current_events)]
         print(f'{meeting_count:2d}. More...')
@@ -103,7 +106,7 @@ def target_meeting() -> outlook.AppointmentItem:
     return current_events[i]
 
 
-def walk(top, max_depth):
+def walk(top: str, max_depth: int) -> Iterator[tuple[str, list[str]]]:
     """Pared-down version of os.walk that just lists folders and is limited to a given max depth."""
     # https://stackoverflow.com/questions/35315873/travel-directory-tree-with-limited-recursion-depth
     dirs = [name for name in os.listdir(top) if os.path.isdir(os.path.join(top, name))]
@@ -113,7 +116,7 @@ def walk(top, max_depth):
             yield from walk(os.path.join(top, name), max_depth - 1)
 
 
-def find_folder_from_text(top_folder, text):
+def find_folder_from_text(top_folder: str, text: str) -> str:
     """Choose an appropriate folder based on some text. Traverse the first-level folders, then the second level."""
     for path, folders in walk(top_folder, 2):
         if is_banned(os.path.split(path)[1]):
@@ -123,10 +126,10 @@ def find_folder_from_text(top_folder, text):
                 continue
             if folder_match(folder, text):
                 return os.path.join(path, folder)
-    return False
+    return ''
 
 
-def find_subject_folder(folder, text):
+def find_subject_folder(folder: str, text: str) -> str:
     """Find a folder which names the specific text provided."""
     subject_match_file = 'meeting_subjects.txt'
     for path, folders, files in os.walk(folder):
@@ -135,10 +138,10 @@ def find_subject_folder(folder, text):
         subjects = open(os.path.join(path, subject_match_file)).read().splitlines()
         if text in subjects:
             return path
-    return False
+    return ''
 
 
-def is_banned(name):
+def is_banned(name: str) -> bool:
     """Test banned state of folders. Folders are banned for the following reasons:
     - Name is Zoom, Other, or Old work - don't put notes in those
     - Name is lowercase only
@@ -146,7 +149,7 @@ def is_banned(name):
     return name in ('Zoom', 'Other', 'Old work') or name.lower() == name or len(name) <= 3
 
 
-def go_to_folder(meeting):
+def go_to_folder(meeting: outlook.AppointmentItem) -> str:
     """Pick a folder in which to place the meeting notes, looking at the subject and the body."""
     folder = find_subject_folder(docs_folder, meeting.Subject) or \
              find_subject_folder(sharepoint_folder, meeting.Subject) or \
@@ -157,7 +160,7 @@ def go_to_folder(meeting):
     return folder
 
 
-def format_name(person_name, response):
+def format_name(person_name: str, response: outlook.OlResponseStatus) -> str:
     """Convert display name to more readable Firstname Surname format. Works with Surname, Firstname (ORG,DEPT,GROUP)
     or firstname.surname@company.com."""
     # match "Surname, Firstname (ORG,DEPT,GROUP)" - last bit in brackets is optional
@@ -170,15 +173,15 @@ def format_name(person_name, response):
         # title case, but preserve upper case words
         return_value = ' '.join([word if word.isupper() else word.title() for word in person_name.split()])
         return_value = return_value.replace(' - UKRI', '')
-    if response == 4:  # declined
+    if response == outlook.OlResponseStatus.declined:
         return f'~~{return_value}~~'  # strikethrough
-    elif response in (1, 3):  # organised, accepted
+    elif response in (outlook.OlResponseStatus.organized, outlook.OlResponseStatus.accepted):
         return f'**{return_value}**'  # bold
     else:
         return return_value
 
 
-def ical_to_markdown(url):
+def ical_to_markdown(url: str) -> str:
     """Given an Indico event URL, return a Markdown agenda."""
     # url = 'https://indico.desy.de/event/35655/event.ics?scope=contribution'
     if not url.endswith('/'):

@@ -12,12 +12,72 @@ from icalendar import Calendar
 from folders import hr_info_folder
 
 
+class OlResponseStatus(Enum):
+    """Indicates the response to a meeting request."""
+    # https://learn.microsoft.com/en-us/office/vba/api/outlook.olresponsestatus
+
+    accepted = 3
+    """Meeting accepted."""
+    declined = 4
+    """Meeting declined."""
+    none = 0
+    """The appointment is a simple appointment and does not require a response."""
+    not_responded = 5
+    """Recipient has not responded."""
+    organized = 1
+    """The AppointmentItem is on the Organizer's calendar or the recipient is the Organizer of the meeting."""
+    tentative = 2
+    """Meeting tentatively accepted."""
+
+
 class Recipient(Protocol):
+    """Represents a user or resource in Outlook, generally a mail or mobile message addressee."""
+    # https://learn.microsoft.com/en-us/office/vba/api/outlook.recipient
+
     Name: str
     """The display name for the Recipient."""
     Address: str
     """The email address of the Recipient."""
+    MeetingResponseStatus: OlResponseStatus
+    """The overall status of the response to the meeting request for the recipient."""
+    AddressEntry: object
+    Application: object
+    AutoResponse: str
+    """The text of an automatic response for a Recipient."""
+    Class: object
+    DisplayType: object
+    EntryID: str
+    """The unique Entry ID of the object."""
+    Index: int
+    """The position of the object within the collection."""
+    Parent: object
+    PropertyAccessor: object
+    Resolved: bool
+    """Indicates True if the recipient has been validated against the Address Book."""
+    Sendable: bool
+    """Indicates whether a meeting request can be sent to the Recipient."""
+    Session: object
+    TrackingStatus: object
+    TrackingStatusTime: object
+    Type: int
 
+    def Delete(self) -> None:
+        """Deletes an object from the collection."""
+        pass
+
+    def FreeBusy(self, start: pywintypes.TimeType, min_per_char: int, complete_format: bool = False) -> str:
+        """Returns free/busy information for the recipient.
+        The default is to return a string representing one month of free/busy information compatible with the
+        Microsoft Schedule+ Automation format (that is, the string contains one character for each MinPerChar minute,
+        up to one month of information from the specified Start date).
+        If the optional argument complete_format is omitted or False, then "free" is indicated by the character 0
+        and all other states by the character 1.
+        If CompleteFormat is True, then the same length string is returned as defined above,
+        but the characters now correspond to the OlBusyStatus constants."""
+
+    def Resolve(self) -> bool:
+        """Attempts to resolve a Recipient object against the Address Book.
+        Returns true if the object was resolved; otherwise, false."""
 
 class OlBusyStatus(Enum):
     busy = 2
@@ -33,6 +93,9 @@ class OlBusyStatus(Enum):
 
 
 class AppointmentItem(Protocol):
+    """Represents a meeting, a one-time appointment, or a recurring appointment or meeting in the Calendar folder."""
+    # https://learn.microsoft.com/en-us/office/vba/api/outlook.appointmentitem
+
     Subject: str
     """The subject for the Outlook item."""
     Body: str
@@ -53,6 +116,10 @@ class AppointmentItem(Protocol):
     """Duration in minutes."""
     Recipients: list[Recipient]
     """All the recipients for the Outlook item."""
+    RequiredAttendees: str
+    """A semicolon-delimited String of required attendee names for the meeting appointment."""
+    OptionalAttendees: str
+    """A semicolon-delimited String of optional attendee names for the meeting appointment."""
 
 
 date_spec = datetime | date | float | int
