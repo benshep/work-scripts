@@ -120,7 +120,66 @@ class AppointmentItem(Protocol):
     """A semicolon-delimited String of required attendee names for the meeting appointment."""
     OptionalAttendees: str
     """A semicolon-delimited String of optional attendee names for the meeting appointment."""
-
+    Location: str
+    """The specific office location (for example, Building 1 Room 1 or Suite 123) for the appointment."""
+    Actions: object
+    Application: object
+    Attachments: object
+    AutoResolvedWinner: object
+    BillingInformation: object
+    Categories: object
+    Class: object
+    Companies: object
+    Conflicts: object
+    ConversationID: object
+    ConversationIndex: object
+    ConversationTopic: object
+    CreationTime: object
+    DownloadState: object
+    EndInEndTimeZone: object
+    EndTimeZone: object
+    EntryID: object
+    ForceUpdateToAllAttendees: object
+    FormDescription: object
+    GetInspector: object
+    GlobalAppointmentID: object
+    Importance: object
+    InternetCodepage: object
+    IsConflict: object
+    IsRecurring: object
+    ItemProperties: object
+    LastModificationTime: object
+    MarkForDownload: object
+    MeetingStatus: object
+    MeetingWorkspaceURL: object
+    MessageClass: object
+    Mileage: object
+    NoAging: object
+    Organizer: object
+    OutlookInternalVersion: object
+    OutlookVersion: object
+    Parent: object
+    PropertyAccessor: object
+    RecurrenceState: object
+    ReminderMinutesBeforeStart: object
+    ReminderOverrideDefault: object
+    ReminderPlaySound: object
+    ReminderSet: object
+    ReminderSoundFile: object
+    ReplyTime: object
+    Resources: object
+    ResponseRequested: object
+    ResponseStatus: object
+    RTFBody: object
+    Saved: object
+    SendUsingAccount: object
+    Sensitivity: object
+    Session: object
+    Size: object
+    StartInStartTimeZone: object
+    StartTimeZone: object
+    UnRead: object
+    UserProperties: object
 
 date_spec = datetime | date | float | int
 """A date/datetime or relative days from today."""

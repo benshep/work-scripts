@@ -1,12 +1,3 @@
-#!python3
-# -*- coding: utf-8 -*-
-
-"""join_zoom_meeting
-Ben Shepherd, 2020
-Look through today's events in an Outlook calendar, and follow the Zoom link contained within the subject or body
-of the closest one to the current time.
-"""
-
 import os
 import re
 import subprocess
