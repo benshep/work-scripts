@@ -1,11 +1,13 @@
 import os
 from datetime import datetime
 from time import sleep
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from hosp_credentials import username, password
 
-def get_bookings(test_mode=False):
+
+def get_bookings(test_mode: bool = False) -> str:
     """Open the STFC Hospitality bookings and find the DL ones booked for the next week."""
     # bookings = open('catering_bookings.txt').read().splitlines()
     toast = ''
