@@ -18,7 +18,8 @@ def list_packages() -> dict[str, str]:
     # guess name if env not defined: convention is e.g. py313
     env_name = os.environ.get('CONDA_DEFAULT_ENV', f'py{version.major}{version.minor}')
     # list command will fail and raise an exception here if env_name is invalid
-    output = run_command([os.path.join(folders.user_profile, "Miniconda3", "Scripts", "conda.exe"), 'list', '-n', env_name])
+    output = run_command(
+        [os.path.join(folders.user_profile, "Miniconda3", "Scripts", "conda.exe"), 'list', '-n', env_name])
     conda_packages = {}
     for line in output:
         if line.startswith('#'):
@@ -84,8 +85,11 @@ def find_new_python_packages() -> str:
                 continue  # numpy upgrades aren't working right now
             (pip_new if 'pypi' in build_channel else conda_new).append(name)
     choco_new = check_chocolatey_packages()
-    return (f'conda upgrade {" ".join(conda_new)}\n' if conda_new else '') + \
-        (f'pip install {" ".join(pip_new)} -U\n' if pip_new else '') + choco_new
+    return ''.join([
+        f'conda upgrade {" ".join(conda_new)}\n' if conda_new else '',
+        f'pip install {" ".join(pip_new)} -U\n' if pip_new else '',
+        choco_new
+    ])
 
 
 def check_updated():
