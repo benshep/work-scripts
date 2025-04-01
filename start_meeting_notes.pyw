@@ -42,7 +42,7 @@ def create_note_file() -> None:
         outlook.OlResponseStatus.not_responded,
         outlook.OlResponseStatus.declined
     ]
-    response = {r.Name: r.MeetingResponseStatus for r in meeting.Recipients}
+    response = {r.Name: outlook.OlResponseStatus(r.MeetingResponseStatus) for r in meeting.Recipients}
     attendees = filter(None, '; '.join([meeting.RequiredAttendees, meeting.OptionalAttendees]).split('; '))
     attendees = sorted(attendees, key=lambda r: priority.index(response[r]))
     people_list = ', '.join(format_name(person_name, response[person_name]) for person_name in attendees)
@@ -54,7 +54,7 @@ def create_note_file() -> None:
     description = description.replace('o   ', '  * ')  # second-level lists
     description = description.replace('\r\n\r\n', '\n')  # double-spaced paragraphs
     # snip out Zoom joining instructions
-    start = description.find(' <http://zoom.us> 	')  # begins with this
+    start = description.find(' <http://zoom.us>')  # begins with this
     if start >= 0:
         # last bit is "Skype on a SurfaceHub" link, only one with @lync in it - or sometimes SIP: xxxx@zoomcrc.com
         end = max(description.rfind('@lync.zoom.us'), description.rfind('@zoomcrc.com'))

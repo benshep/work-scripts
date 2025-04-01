@@ -122,36 +122,60 @@ class AppointmentItem(Protocol):
     """A semicolon-delimited String of optional attendee names for the meeting appointment."""
     Location: str
     """The specific office location (for example, Building 1 Room 1 or Suite 123) for the appointment."""
+    ReminderSet: bool
+    """Indicates whether a reminder has been set for the appointment."""
+    ReminderMinutesBeforeStart: int
+    """The number of minutes before the start of the appointment when the reminder should occur."""
+    MeetingStatus: int
+    """The status of the meeting (e.g., non-meeting, meeting, meeting request, meeting cancellation)."""
+    Importance: int
+    """The importance level of the appointment (e.g., low, normal, high)."""
+    Sensitivity: int
+    """The sensitivity level of the appointment (e.g., normal, personal, private, confidential)."""
+    Categories: str
+    """The categories assigned to the appointment."""
+    Class: int
+    """OlObjectClass constant indicating the object's class."""
+    CreationTime: pywintypes.TimeType
+    """The creation time of the appointment."""
+    LastModificationTime: pywintypes.TimeType
+    """The last modification time of the appointment."""
+    RecurrenceState: int
+    """The recurrence state of the appointment."""
+    ResponseRequested: bool
+    """Indicates whether a response is requested for the appointment."""
+    SendUsingAccount: str
+    """The account used to send the appointment."""
+    StartInStartTimeZone: datetime
+    """The start time in the start time zone."""
+    EndInEndTimeZone: datetime
+    """The end time in the end time zone."""
+    IsRecurring: bool
+    """Indicates whether the appointment is recurring."""
+    MeetingWorkspaceURL: str
+    """The URL of the meeting workspace."""
+
     Actions: object
     Application: object
     Attachments: object
     AutoResolvedWinner: object
     BillingInformation: object
-    Categories: object
-    Class: object
     Companies: object
     Conflicts: object
     ConversationID: object
     ConversationIndex: object
     ConversationTopic: object
-    CreationTime: object
     DownloadState: object
-    EndInEndTimeZone: object
     EndTimeZone: object
     EntryID: object
     ForceUpdateToAllAttendees: object
     FormDescription: object
     GetInspector: object
     GlobalAppointmentID: object
-    Importance: object
     InternetCodepage: object
     IsConflict: object
-    IsRecurring: object
     ItemProperties: object
-    LastModificationTime: object
     MarkForDownload: object
-    MeetingStatus: object
-    MeetingWorkspaceURL: object
     MessageClass: object
     Mileage: object
     NoAging: object
@@ -160,26 +184,38 @@ class AppointmentItem(Protocol):
     OutlookVersion: object
     Parent: object
     PropertyAccessor: object
-    RecurrenceState: object
-    ReminderMinutesBeforeStart: object
     ReminderOverrideDefault: object
     ReminderPlaySound: object
-    ReminderSet: object
     ReminderSoundFile: object
     ReplyTime: object
     Resources: object
-    ResponseRequested: object
     ResponseStatus: object
     RTFBody: object
     Saved: object
-    SendUsingAccount: object
-    Sensitivity: object
     Session: object
     Size: object
-    StartInStartTimeZone: object
     StartTimeZone: object
     UnRead: object
     UserProperties: object
+
+    def Save(self) -> None:
+        """Saves the appointment item."""
+
+    def Delete(self) -> None:
+        """Deletes the appointment item."""
+
+    def Send(self) -> None:
+        """Sends the appointment item."""
+
+    def Display(self) -> None:
+        """Displays the appointment item."""
+
+    def Close(self) -> None:
+        """Closes the appointment item."""
+
+    def ForwardAsVcal(self) -> object:
+        """Forwards the AppointmentItem as a vCal; virtual calendar item."""
+
 
 date_spec = datetime | date | float | int
 """A date/datetime or relative days from today."""
@@ -276,7 +312,7 @@ def is_wfh(event: AppointmentItem) -> bool:
 
 
 def get_away_dates(start: date_spec = -30, end: date_spec = 90,
-                   user: str = 'me', look_for: callable = is_out_of_office) -> set[AppointmentItem]:
+                   user: str = 'me', look_for: callable = is_out_of_office) -> set[date]:
     """Return a set of the days in the given range that the user is away from the office.
     The look_for parameter can be:
      - is_my_all_day_event: look for any all day event with only the user as an attendee
@@ -287,16 +323,18 @@ def get_away_dates(start: date_spec = -30, end: date_spec = 90,
     events = filter(look_for, get_appointments_in_range(start, end, user=user))
     # Need to subtract a day here since the end time of an all-day event is 00:00 on the next day
     try:
-        away_list = [get_date_list(event.Start.date(), event.End.date() - timedelta(days=1)) for event in events]
+        away_list = [get_date_list(event.Start.date(),
+                                   event.End.date() - timedelta(days=1))
+                     for event in events]
         return to_set(away_list)
     except pywintypes.com_error:
         print(f"Warning: couldn't fetch away dates for {user}")
         return set()
 
 
-def get_date_list(start: datetime,
-                  end: datetime | None = None,
-                  count: int = 0) -> list[datetime]:
+def get_date_list(start: date,
+                  end: date | None = None,
+                  count: int = 0) -> list[date]:
     """Return a list of business dates (i.e. Mon-Fri) in a given date range, inclusive.
     Specify count instead of end to return a fixed number of dates."""
     if end is None and count == 0:  # neither optional argument specified - assume one day
@@ -314,7 +352,7 @@ def get_date_list(start: datetime,
     return date_list
 
 
-def to_set(date_lists: list[list[date | datetime]]) -> set[date | datetime]:
+def to_set(date_lists: list[list]) -> set:
     """Convert a list of date lists to a flat set."""
     return set(sum(date_lists, []))
 

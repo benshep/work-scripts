@@ -3,13 +3,14 @@ import os
 from urllib.parse import quote
 
 from selenium import webdriver
+from selenium.webdriver.firefox.webdriver import RemoteWebDriver
 from selenium.webdriver.common.by import By
 
 from folders import user_profile
 
 
 def go_to_oracle_page(*links: str,
-                      show_window: bool = False) -> webdriver.firefox.webdriver.WebDriver:
+                      show_window: bool = False) -> RemoteWebDriver:
     """Open a selenium web driver and log in to Oracle e-Business Suite, opening the specified tuple of links.
     If links is 'obi' or 'taleo', open that app instead.
     Returns the web driver instance, so you can do more things with it."""

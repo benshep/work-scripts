@@ -1,10 +1,11 @@
 import os
 from time import sleep
+
 from winsound import Beep
 from folders import docs_folder
 
 
-def monitor_file(filename):
+def monitor_file(filename: str) -> None:
     """Monitor a file for changes."""
     original_mtime = os.path.getmtime(filename)
     print(f'Monitoring {filename}, last changed {original_mtime}')

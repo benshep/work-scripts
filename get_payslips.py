@@ -1,22 +1,25 @@
 import os
 import time
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from calendar import monthrange
 from shutil import move
+
 from selenium.webdriver.common.by import By
 from pypdf import PdfReader
 from govuk_bank_holidays.bank_holidays import BankHolidays
+from selenium.webdriver.firefox.webdriver import WebDriver
+from selenium.webdriver.remote.webelement import WebElement
 
 from oracle import go_to_oracle_page
 from folders import misc_folder, downloads_folder
 
 
-def get_options(web):
+def get_options(web: WebDriver) -> list[WebElement]:
     return web.find_element(By.ID, 'AdvicePicker').find_elements(By.TAG_NAME, 'option')
 
 
-def get_one_slip(web, index):
+def get_one_slip(web: WebDriver, index: int) -> str:
     option = get_options(web)[index]
     name = option.text
     slip_date = datetime.strptime(name.split(' - ')[0], '%d %b %Y')
@@ -44,7 +47,7 @@ def get_one_slip(web, index):
     return f'Net pay for {date_text}: £{net_pay:.2f}\n{payments}'
 
 
-def get_payslips(only_latest=True, test_mode=False):
+def get_payslips(only_latest: bool = True, test_mode: bool = False) -> None | str | date:
     """Download all my payslips, or just the latest."""
     web = go_to_oracle_page('RCUK Self-Service Employee', 'Payslip', show_window=test_mode)
 

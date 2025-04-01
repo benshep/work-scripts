@@ -4,11 +4,15 @@ import shutil
 import tempfile
 import time
 import pickle
+from typing import Any, Callable, TypedDict
+
 import selenium.common.exceptions
 import pandas
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 from pandas.io.common import file_exists
+from selenium.webdriver.firefox.webdriver import WebDriver
+from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 
@@ -27,10 +31,10 @@ end_of_year_time_off = {
     datetime(2025, 1, 1): 7.4
 }
 
-supervisor_page = ('STFC OTL Supervisor',)
+supervisor_page = 'STFC OTL Supervisor'
 
 
-def get_project_hours():
+def get_project_hours() -> tuple[dict[str, pandas.Series], set[pandas.Timestamp]]:
     """Fetch the standard hours worked on each project from a spreadsheet."""
     excel_filename = os.path.join(user_profile, 'STFC', 'Documents', 'Group Leader', 'MaRS staff and projects.xlsx')
     # copy to a temporary file to get around permission errors due to workbook being open
@@ -59,7 +63,7 @@ def get_project_hours():
     return hours, set(booking_plan['Change date'].dropna())  # a list of dates when the booking formula changes
 
 
-def get_staff_table(web):
+def get_staff_table(web: WebDriver) -> int:
     """Return the list of staff from the People in Hierarchy page."""
     # expand all rows
     i = 0
@@ -82,19 +86,19 @@ def get_staff_table(web):
     return len(rows) - 5  # table has a few extra rows!
 
 
-def wait_until_page_ready(web, timeout=2):
+def wait_until_page_ready(web: WebDriver, timeout: float = 2.0) -> None:
     """Wait until a page has finished loading or a background request is completed."""
     wait = WebDriverWait(web, timeout)
     wait.until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
 
 
-def get_name(web):
+def get_name(web: WebDriver) -> str:
     """Return the first and last name from the recent timecards page."""
     name = web.find_element(By.CLASS_NAME, 'x1f').text.split(': ')[1]  # Recent Timecards heading
     return translate_name(name)
 
 
-def translate_name(name):
+def translate_name(name: str) -> tuple[str, str]:
     name_translate = {'Alexander': 'Alex'}
     surname, first, *number = name.split(', ')  # e.g. 'Bainbridge, Doctor Alexander Robert, 155807'
     if ' ' in first:
@@ -103,13 +107,13 @@ def translate_name(name):
     return first, surname
 
 
-def annual_leave_check(test_mode=False):
+def annual_leave_check(test_mode: bool = False) -> str:
     """Check remaining annual leave days for each staff member."""
     today = pandas.to_datetime('today')
     last_day = f'{today.year}-12-31'
     # assume full week of public holidays / privilege days at end of December
     days_left_in_year = len(pandas.bdate_range('today', last_day)) - 5
-    return iterate_staff(('RCUK Self-Service Manager', 'Attendance Management'), check_al_page,
+    return iterate_staff(check_al_page, 'RCUK Self-Service Manager', 'Attendance Management',
                          show_window=test_mode) + f'\n{days_left_in_year=}'
 
 
@@ -137,7 +141,7 @@ def otl_submit(test_mode=False, weeks_in_advance=0, staff_names=None):
     def submit_card(web):
         return submit_staff_timecard(web, all_hours, change_dates, all_off_dates, weeks_in_advance=weeks_in_advance)
 
-    toast = iterate_staff(supervisor_page, submit_card, show_window=test_mode, staff_names=staff_names)
+    toast = iterate_staff(submit_card, supervisor_page, show_window=test_mode, staff_names=staff_names)
     # now do mine
     if staff_names is None or 'me' in staff_names:
         web = go_to_oracle_page('STFC OTL Timecards', 'Time', 'Recent Timecards', show_window=test_mode)
@@ -152,22 +156,26 @@ def otl_submit(test_mode=False, weeks_in_advance=0, staff_names=None):
     return toast
 
 
-def get_all_off_dates(web):
+def get_all_off_dates(web: WebDriver) -> set[date]:
     return get_off_dates(web, fetch_all=True, me=False, page_count=1)
 
 
-def get_staff_leave_dates(test_mode=False, staff_names=None):
+def get_staff_leave_dates(test_mode: bool = False,
+                          staff_names: bool = None) -> dict[str, set[date]]:
     """Get leave dates in Oracle for each staff member."""
-    return iterate_staff(('RCUK Self-Service Manager', 'Attendance Management'),
-                         get_all_off_dates, show_window=test_mode, staff_names=staff_names)
+    return iterate_staff(get_all_off_dates, 'RCUK Self-Service Manager', 'Attendance Management',
+                         show_window=test_mode, staff_names=staff_names)
 
 
-def iterate_staff(page, check_function, show_window=False, staff_names=None):
+def iterate_staff(check_function: Callable[[WebDriver], Any],
+                  *page: str,
+                  show_window: bool = False,
+                  staff_names: list[str] | None = None) -> None | dict[str, Any] | str:
     """Go to a specific page for each staff member and perform a function.
     If the function returns a string, concatenate them all together and return a toast.
     Otherwise, return a dict of {name: value}.
     Specify a list of staff names to only perform the function for a subset. Otherwise, it will go through them all."""
-    web = go_to_oracle_page(page, show_window=show_window)
+    web = go_to_oracle_page(*page, show_window=show_window)
     print(page)
     try:
         row_count = get_staff_table(web)
@@ -198,7 +206,11 @@ def iterate_staff(page, check_function, show_window=False, staff_names=None):
     return return_dict or '\n'.join(filter(None, toast))
 
 
-def submit_staff_timecard(web, all_hours, change_dates, all_absences=None, weeks_in_advance=0):
+def submit_staff_timecard(web: WebDriver,
+                          all_hours: dict[str, pandas.Series],
+                          change_dates: set[pandas.Timestamp],
+                          all_absences: dict[str, set[date]] | None = None,
+                          weeks_in_advance: object = 0) -> str:
     """On an individual OTL timecards submitted page, submit a timecard for the current week if necessary.
     Specify weeks_in_advance to do the given number of extra cards after this current week."""
     this_fy = fy(datetime.now())
@@ -338,18 +350,25 @@ def submit_staff_timecard(web, all_hours, change_dates, all_absences=None, weeks
         return ''
 
 
-def fy(date: datetime):
+def fy(this_date: datetime) -> int:
     """Return the financial year, given a date."""
-    return date.year if date.month > 3 else (date.year - 1)
+    return this_date.year if this_date.month > 3 else (this_date.year - 1)
 
-def fill_boxes(boxes, row, project, task):
+
+Boxes = TypedDict('Boxes', {'Project': list[WebElement], 
+                            'Task': list[WebElement], 
+                            'Type': list[WebElement]})
+"""A dict pointing to the boxes for project, type and task."""
+
+
+def fill_boxes(boxes: Boxes, row: int, project: str, task: str) -> None:
     """Fill in project, task, type boxes."""
     boxes['Project'][row].send_keys(project.strip())
     boxes['Task'][row].send_keys(task.strip())
     boxes['Type'][row].send_keys('Labour - (Straight Time)')
 
 
-def get_boxes(web):
+def get_boxes(web: WebDriver) -> tuple[Boxes, int]:
     """Find boxes to fill in."""
     boxes = {title: web.find_elements(By.XPATH, f'//*[@class="x8" and @title="{title}"]') for title in
              ('Project', 'Task', 'Type')}
@@ -357,7 +376,7 @@ def get_boxes(web):
     return boxes, first_empty
 
 
-def check_al_page(web):
+def check_al_page(web: WebDriver) -> str | None:
     """On an individual annual leave balance page, check the remaining balance, and return toast text."""
     if web.find_elements(By.CLASS_NAME, 'x5y'):  # error - not available for honorary scientists
         web.back()
@@ -374,7 +393,7 @@ def check_al_page(web):
     return f'{first} {surname}: {remaining_days:g} days' if remaining_days > 10 else None
 
 
-def last_card_age(last_card_date):
+def last_card_age(last_card_date: date) -> int:
     """Return weeks since supplied Monday, starting on Mondays.
     Returns 0 for this week, 1 for last week, -1 for next week."""
     now = datetime.now()
