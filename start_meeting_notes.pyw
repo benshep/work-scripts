@@ -1,16 +1,8 @@
-#!python3
-# -*- coding: utf-8 -*-
-
-"""start_meeting_notes
-Ben Shepherd, 2021
-Look through today's events in an Outlook calendar,
-and start a Markdown notes file for the closest one to the current time.
-"""
-
 import contextlib
 import os
 import re
-from typing import Any, Generator, Iterator
+from typing import Iterator
+from win32api import GetKeyState
 
 import requests
 from icalendar import Calendar
@@ -25,24 +17,24 @@ def folder_match(name: str, test_against: str) -> bool:
     return re.search(fr'\b{re.escape(name)}s?\b', test_against, re.IGNORECASE) is not None
 
 
-def create_note_file() -> None:
+def create_note_file(force_sync: bool = False) -> None:
     """Start a file for notes relating to the given meeting. Find a relevant folder in the user's Documents folder,
      searching first the subject then the body of the meeting for a folder name. Use Other if none found.
      Don't use the Zoom folder (this is often found in the meeting body).
      The file is in Markdown format, with the meeting title, date and attendees filled in at the top."""
-    if not (meeting := target_meeting()):
+    if not (meeting := target_meeting(force_sync)):
         return  # no current meeting
     go_to_folder(meeting)
     # Hierarchy of responses: (we want to list attendees from the top)
     priority = [
-        outlook.OlResponseStatus.organized,
-        outlook.OlResponseStatus.accepted,
-        outlook.OlResponseStatus.tentative,
-        outlook.OlResponseStatus.none,
-        outlook.OlResponseStatus.not_responded,
-        outlook.OlResponseStatus.declined
+        outlook.ResponseStatus.organized,
+        outlook.ResponseStatus.accepted,
+        outlook.ResponseStatus.tentative,
+        outlook.ResponseStatus.none,
+        outlook.ResponseStatus.not_responded,
+        outlook.ResponseStatus.declined
     ]
-    response = {r.Name: outlook.OlResponseStatus(r.MeetingResponseStatus) for r in meeting.Recipients}
+    response = {r.Name: outlook.ResponseStatus(r.MeetingResponseStatus) for r in meeting.Recipients}
     attendees = filter(None, '; '.join([meeting.RequiredAttendees, meeting.OptionalAttendees]).split('; '))
     attendees = sorted(attendees, key=lambda r: priority.index(response[r]))
     people_list = ', '.join(format_name(person_name, response[person_name]) for person_name in attendees)
@@ -79,11 +71,16 @@ def create_note_file() -> None:
     os.startfile(filename)
 
 
-def target_meeting() -> outlook.AppointmentItem:
+def target_meeting(force_sync: bool = False) -> outlook.AppointmentItem:
     os.system('title 📓 Start meeting notes')
     hours_ahead = 12
     time_format = "%H:%M"
+    done_sync = False
     while True:
+        if force_sync:
+            outlook.perform_sync()
+            done_sync = True
+            force_sync = False
         current_events = outlook.get_current_events(hours_ahead=hours_ahead)
         current_events = filter(lambda event: not outlook.is_wfh(event), current_events)
         current_events = filter(lambda event: event.Subject != 'ASTeC/CI Coffee', current_events)
@@ -92,15 +89,20 @@ def target_meeting() -> outlook.AppointmentItem:
         current_events = sorted(list(current_events), key=lambda event: event.Subject.startswith('declined: '))
         meeting_count = len(current_events)
         [print(f'{i:2d}. {event.Start.strftime(time_format)} {event.Subject}') for i, event in enumerate(current_events)]
-        print(f'{meeting_count:2d}. More...')
+        final_option = 'More...' if done_sync else 'Force sync...'
+        print(f'{meeting_count:2d}. {final_option}')
         try:
             i = min(int(input('Choose meeting for note file [0]: ')), meeting_count)
         except ValueError:
             i = 0
         if i < meeting_count:  # valid meeting
             break
-        hours_ahead += 24 * 7  # look ahead to next week
-        time_format = "%a %d/%m %H:%M"
+        # final option selected: more or force sync
+        if done_sync:
+            hours_ahead += 24 * 7  # look ahead to next week
+            time_format = "%a %d/%m %H:%M"
+        else:
+            force_sync = True
         print()
 
     return current_events[i]
@@ -160,7 +162,7 @@ def go_to_folder(meeting: outlook.AppointmentItem) -> str:
     return folder
 
 
-def format_name(person_name: str, response: outlook.OlResponseStatus) -> str:
+def format_name(person_name: str, response: outlook.ResponseStatus) -> str:
     """Convert display name to more readable Firstname Surname format. Works with Surname, Firstname (ORG,DEPT,GROUP)
     or firstname.surname@company.com."""
     # match "Surname, Firstname (ORG,DEPT,GROUP)" - last bit in brackets is optional
@@ -173,9 +175,9 @@ def format_name(person_name: str, response: outlook.OlResponseStatus) -> str:
         # title case, but preserve upper case words
         return_value = ' '.join([word if word.isupper() else word.title() for word in person_name.split()])
         return_value = return_value.replace(' - UKRI', '')
-    if response == outlook.OlResponseStatus.declined:
+    if response == outlook.ResponseStatus.declined:
         return f'~~{return_value}~~'  # strikethrough
-    elif response in (outlook.OlResponseStatus.organized, outlook.OlResponseStatus.accepted):
+    elif response in (outlook.ResponseStatus.organized, outlook.ResponseStatus.accepted):
         return f'**{return_value}**'  # bold
     else:
         return return_value
@@ -209,4 +211,4 @@ def ical_to_markdown(url: str) -> str:
 if __name__ == '__main__':
     # for meeting in outlook.get_appointments_in_range(-30, 30):
     #     print(meeting.Subject, go_to_folder(meeting), sep='; ')
-    create_note_file()
+    create_note_file(GetKeyState(0x11) < 0)  # Ctrl

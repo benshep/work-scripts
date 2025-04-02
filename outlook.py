@@ -1,18 +1,81 @@
-# import pandas
 import os
-from typing import Protocol, Any
+from time import sleep
+from typing import Protocol, Callable
 
 import win32com.client
 import pywintypes
 import re
 from datetime import date, datetime, timedelta
-from enum import Enum
 import pythoncom
 from icalendar import Calendar
 from folders import hr_info_folder
+from enum import IntEnum
 
 
-class OlResponseStatus(Enum):
+class DefaultFolders(IntEnum):
+    """Specifies the folder type for a specified folder in Outlook."""
+    deleted_items = 3
+    """The Deleted Items folder."""
+
+    outbox = 4
+    """The Outbox folder."""
+
+    sent_mail = 5
+    """The Sent Mail folder."""
+
+    inbox = 6
+    """The Inbox folder."""
+
+    calendar = 9
+    """The Calendar folder."""
+
+    contacts = 10
+    """The Contacts folder."""
+
+    journal = 11
+    """The Journal folder."""
+
+    notes = 12
+    """The Notes folder."""
+
+    tasks = 13
+    """The Tasks folder."""
+
+    drafts = 16
+    """The Drafts folder."""
+
+    all_public_folders = 18
+    """The All Public Folders folder in the Exchange Public Folders store. Only available for an Exchange account."""
+
+    conflicts = 19
+    """The Conflicts folder (subfolder of the Sync Issues folder). Only available for an Exchange account."""
+
+    sync_issues = 20
+    """The Sync Issues folder. Only available for an Exchange account."""
+
+    local_failures = 21
+    """The Local Failures folder (subfolder of the Sync Issues folder). Only available for an Exchange account."""
+
+    server_failures = 22
+    """The Server Failures folder (subfolder of the Sync Issues folder). Only available for an Exchange account."""
+
+    junk = 23
+    """The Junk E-Mail folder."""
+
+    rss_feeds = 25
+    """The RSS Feeds folder."""
+
+    to_do = 28
+    """The To Do folder."""
+
+    managed_email = 29
+    """The top-level folder in the Managed Folders group. Only available for an Exchange account."""
+
+    suggested_contacts = 30
+    """The Suggested Contacts folder."""
+
+
+class ResponseStatus(IntEnum):
     """Indicates the response to a meeting request."""
     # https://learn.microsoft.com/en-us/office/vba/api/outlook.olresponsestatus
 
@@ -38,7 +101,7 @@ class Recipient(Protocol):
     """The display name for the Recipient."""
     Address: str
     """The email address of the Recipient."""
-    MeetingResponseStatus: OlResponseStatus
+    MeetingResponseStatus: ResponseStatus
     """The overall status of the response to the meeting request for the recipient."""
     AddressEntry: object
     Application: object
@@ -79,7 +142,47 @@ class Recipient(Protocol):
         """Attempts to resolve a Recipient object against the Address Book.
         Returns true if the object was resolved; otherwise, false."""
 
-class OlBusyStatus(Enum):
+
+class Folder(Protocol):
+    """Represents an Outlook folder."""
+
+
+class SyncObject(Protocol):
+    """Represents a Send/Receive group for a user.
+    A Send/Receive group lets users configure different synchronization scenarios, selecting which folders and which filters apply."""
+    Name: str
+    """The display name for the object."""
+
+    def Start(self):
+        """Begins synchronizing a user's folders using the specified Send/Receive group."""
+
+    def Stop(self):
+        """Immediately ends synchronizing a user's folders using the specified Send/Receive group."""
+
+
+class NameSpace(Protocol):
+    """Represents an abstract root object for any data source."""
+    SyncObjects: list[SyncObject]
+    """Contains a set of SyncObject objects representing the Send/Receive groups for a user."""
+
+    def GetDefaultFolder(self, folder_type: DefaultFolders) -> Folder:
+        """Returns a Folder object that represents the default folder of the requested type for the current profile;
+        for example, obtains the default Calendar folder for the user who is currently logged on."""
+
+    def CreateRecipient(self, recipient_name: str) -> Recipient:
+        """Creates a Recipient object."""
+
+    def GetSharedDefaultFolder(self, recipient: Recipient, folder_type: DefaultFolders) -> Folder:
+        """Returns a Folder object that represents the specified default folder for the specified user."""
+
+
+class OutlookApplication(Protocol):
+    """Represents the entire Microsoft Outlook application."""
+    def GetNamespace(self, namespace_type: str) -> NameSpace:
+        """Returns a NameSpace object of the specified type."""
+
+
+class OlBusyStatus(IntEnum):
     busy = 2
     """The user is busy."""
     free = 0
@@ -217,6 +320,116 @@ class AppointmentItem(Protocol):
         """Forwards the AppointmentItem as a vCal; virtual calendar item."""
 
 
+class SyncState(IntEnum):
+    sync_started = 1
+    """Synchronization started."""
+    sync_stopped = 0
+    """Synchronization stopped."""
+
+
+class SyncObjectEventHandler:
+    name: str = ''
+    """The name of the sync object."""
+    syncing: bool = False
+    """True if the object is currently syncing, otherwise False."""
+    description: str = ''
+    """A description of the current state of the sync process."""
+    value: int = 0
+    """The current value of the synchronization process (such as the number of items synchronized)."""
+    max_value: int = 0
+    """The maximum that `value` can reach."""
+    sync_start_callback: Callable[[str], None] | None = None
+    sync_end_callback: Callable[[str], None] | None = None
+    progress_callback: Callable[[str, SyncState, str, int, int], None] | None = None
+    error_callback: Callable[[str, int, str], None] | None = None
+
+    def set_name(self, name: str) -> None:
+        """Set the name of the object being synced."""
+        self.name = name
+
+    def set_callbacks(self,
+                      sync_start_callback: Callable[[str], None] | None = None,
+                      sync_end_callback: Callable[[str], None] | None = None,
+                      progress_callback: Callable[[str, SyncState, str, int, int], None] | None = None,
+                      error_callback: Callable[[str, int, str], None] | None = None,
+                      ):
+        """Specify a function to be called when a given event is raised."""
+        self.sync_start_callback = sync_start_callback
+        self.sync_end_callback = sync_end_callback
+        self.progress_callback = progress_callback
+        self.error_callback = error_callback
+
+    def OnSyncStart(self) -> None:
+        """Event handler for the start of the sync process."""
+        print(f"{self.name}: sync started")
+        self.syncing = True
+        if self.sync_start_callback:
+            self.sync_start_callback(self.name)
+
+    def OnSyncEnd(self) -> None:
+        """Event handler for the end of the sync process."""
+        print(f"{self.name}: sync completed")
+        self.syncing = False
+        if self.sync_end_callback:
+            self.sync_end_callback(self.name)
+
+    def OnProgress(self, state: SyncState, description: str, value: int, max_value: int) -> None:
+        """Occurs periodically while Outlook is synchronizing a user's folders using the specified Send/Receive group.
+        :param state: A value that identifies the current state of the synchronization process.
+        :param description: A textual description of the current state of the synchronization process.
+        :param value: Specifies the current value of the synchronization process (such as the number of items synchronized).
+        :param max_value: The maximum that `value` can reach. The ratio of `value` to `max_value` represents the percent complete of the synchronization process.
+        """
+        print(f"{self.name}: synced {value} of {max_value}, {SyncState(state).name}, {description}")
+        self.syncing = state == SyncState.sync_started
+        self.description = description
+        self.value = value
+        self.max_value = max_value
+        if self.progress_callback:
+            self.progress_callback(self.name, state, description, value, max_value)
+
+    def OnError(self, code: int, description: str) -> None:
+        """Occurs when Outlook encounters an error while synchronizing a user's folders using the specified Send/Receive group.
+        :param code: A unique value that identifies the error.
+        :param description: A textual description of the error.
+        """
+        print(f'{self.name}: error occurred, {code=}, {description=}')
+        self.syncing = False
+        if self.error_callback:
+            self.error_callback(self.name, code, description)
+
+
+def perform_sync(sync_start_callback: Callable[[str], None] | None = None,
+                 sync_end_callback: Callable[[str], None] | None = None,
+                 progress_callback: Callable[[str, SyncState, str, int, int], None] | None = None,
+                 error_callback: Callable[[str, int, str], None] | None = None,
+                 ) -> None:
+    """Carries out a sync of all the SyncObjects in Outlook's MAPI namespace.
+    If a sync_end_callback is provided, the function will return immediately and sync will continue in the background.
+    Otherwise, this function blocks until sync is completed.
+    Supply other callbacks to be notified of sync start, progress and errors."""
+    namespace = get_outlook().GetNamespace('MAPI')
+    sync_objects = namespace.SyncObjects
+    event_handlers: list[SyncObjectEventHandler] = []
+    for sync_object in sync_objects:
+        sync_object_events: SyncObjectEventHandler = win32com.client.WithEvents(sync_object, SyncObjectEventHandler)
+        event_handlers.append(sync_object_events)
+        sync_object_events.set_name(sync_object.Name)
+        sync_object_events.set_callbacks(
+            sync_end_callback=sync_end_callback,
+            sync_start_callback=sync_start_callback,
+            progress_callback=progress_callback,
+            error_callback=error_callback
+        )
+        sync_object.Start()
+    if sync_end_callback:
+        return
+    while all(handler.syncing for handler in event_handlers):
+        pythoncom.PumpWaitingMessages()
+        sleep(0.1)
+
+
+
 date_spec = datetime | date | float | int
 """A date/datetime or relative days from today."""
 
@@ -241,18 +454,18 @@ def get_appointments(restriction: str, sort_order: str = 'Start', user: str = 'm
     return appointments.Restrict(restriction)
 
 
-def get_calendar(user: str = 'me'):
+def get_calendar(user: str = 'me') -> Folder:
     """Return the calendar folder for a given user. If none supplied, default to my calendar."""
     namespace = get_outlook().GetNamespace('MAPI')
     if user == 'me':
-        return namespace.GetDefaultFolder(9)
+        return namespace.GetDefaultFolder(DefaultFolders.calendar)
     recipient = namespace.CreateRecipient(user)
     if not recipient.Resolve():
         raise RuntimeError(f'User "{user}" not found.')
-    return namespace.GetSharedDefaultFolder(recipient, 9)
+    return namespace.GetSharedDefaultFolder(recipient, DefaultFolders.calendar)
 
 
-def get_outlook():
+def get_outlook() -> OutlookApplication:
     """Return a reference to the Outlook application."""
     pythoncom.CoInitialize()  # try to combat the "CoInitialize has not been called" error
     return win32com.client.Dispatch('Outlook.Application')
