@@ -1,3 +1,4 @@
+from __future__ import annotations  # forward definitions for type-hinting classes we haven't defined yet
 import os
 from time import sleep
 from typing import Protocol, Callable
@@ -93,6 +94,373 @@ class ResponseStatus(IntEnum):
     """Meeting tentatively accepted."""
 
 
+class AddressEntryUserTypeEnum(IntEnum):
+    """Represents the type of user for the AddressEntry or object derived from AddressEntry."""
+
+    exchange_agent = 3
+    """An address entry that is an Exchange agent."""
+    exchange_distribution_list = 1
+    """An address entry that is an Exchange distribution list."""
+    exchange_organization = 4
+    """An address entry that is an Exchange organization."""
+    exchange_public_folder = 2
+    """An address entry that is an Exchange public folder."""
+    exchange_remote_user = 5
+    """An Exchange user that belongs to a different Exchange forest."""
+    exchange_user = 0
+    """An Exchange user that belongs to the same Exchange forest."""
+    ldap = 20
+    """An address entry that uses the Lightweight Directory Access Protocol (LDAP)."""
+    other = 40
+    """A custom or some other type of address entry such as FAX."""
+    outlook_contact = 10
+    """An address entry in an Outlook Contacts folder."""
+    outlook_distribution_list = 11
+    """An address entry that is an Outlook distribution list."""
+    smtp = 30
+    """An address entry that uses the Simple Mail Transfer Protocol (SMTP)."""
+
+
+class ObjectClass(IntEnum):
+    """Specifies constants that represent the different Microsoft Outlook object classes."""
+    Account = 105
+    """An Account object."""
+    AccountRuleCondition = 135
+    """An AccountRuleCondition object."""
+    Accounts = 106
+    """An Accounts object."""
+    Action = 32
+    """An Action object."""
+    Actions = 33
+    """An Actions object."""
+    AddressEntries = 21
+    """An AddressEntries object."""
+    AddressEntry = 8
+    """An AddressEntry object."""
+    AddressList = 7
+    """An AddressList object."""
+    AddressLists = 20
+    """An AddressLists object."""
+    AddressRuleCondition = 170
+    """An AddressRuleCondition object."""
+    Application = 0
+    """An Application object."""
+    Appointment = 26
+    """An AppointmentItem object."""
+    AssignToCategoryRuleAction = 122
+    """An AssignToCategoryRuleAction object."""
+    Attachment = 5
+    """An Attachment object."""
+    Attachments = 18
+    """An Attachments object."""
+    AttachmentSelection = 169
+    """An AttachmentSelection object."""
+    AutoFormatRule = 147
+    """An AutoFormatRule object."""
+    AutoFormatRules = 148
+    """An AutoFormatRules object."""
+    CalendarModule = 159
+    """A CalendarModule object."""
+    CalendarSharing = 151
+    """A CalendarSharing object."""
+    Categories = 153
+    """A Categories object."""
+    Category = 152
+    """A Category object."""
+    CategoryRuleCondition = 130
+    """A CategoryRuleCondition object."""
+    ClassBusinessCardView = 168
+    """A BusinessCardView object."""
+    ClassCalendarView = 139
+    """A CalendarView object."""
+    ClassCardView = 138
+    """A CardView object."""
+    ClassIconView = 137
+    """An IconView object."""
+    ClassNavigationPane = 155
+    """A NavigationPane object."""
+    ClassPeopleView = 183
+    """A PeopleView object."""
+    ClassTableView = 136
+    """A TableView object."""
+    ClassTimeLineView = 140
+    """A TimelineView object."""
+    ClassTimeZone = 174
+    """A TimeZone object."""
+    ClassTimeZones = 175
+    """A TimeZones object."""
+    Column = 154
+    """A Column object."""
+    ColumnFormat = 149
+    """A ColumnFormat object."""
+    Columns = 150
+    """A Columns object."""
+    Conflict = 102
+    """A Conflict object."""
+    Conflicts = 103
+    """A Conflicts object."""
+    Contact = 40
+    """A ContactItem object."""
+    ContactsModule = 160
+    """A ContactsModule object."""
+    Conversation = 178
+    """A Conversation object."""
+    ConversationHeader = 182
+    """A ConversationHeader object."""
+    DistributionList = 69
+    """An ExchangeDistributionList object."""
+    Document = 41
+    """A DocumentItem object."""
+    Exception = 30
+    """An Exception object."""
+    Exceptions = 29
+    """An Exceptions object."""
+    ExchangeDistributionList = 111
+    """An ExchangeDistributionList object."""
+    ExchangeUser = 110
+    """An ExchangeUser object."""
+    Explorer = 34
+    """An Explorer object."""
+    Explorers = 60
+    """An Explorers object."""
+    Folder = 2
+    """A Folder object."""
+    Folders = 15
+    """A Folders object."""
+    FolderUserProperties = 172
+    """A UserDefinedProperties object."""
+    FolderUserProperty = 171
+    """A UserDefinedProperty object."""
+    FormDescription = 37
+    """A FormDescription object."""
+    FormNameRuleCondition = 131
+    """A FormNameRuleCondition object."""
+    FormRegion = 129
+    """A FormRegion object."""
+    FromRssFeedRuleCondition = 173
+    """A FromRssFeedRuleCondition object."""
+    FromRuleCondition = 132
+    """A ToOrFromRuleCondition object."""
+    ImportanceRuleCondition = 128
+    """An ImportanceRuleCondition object."""
+    Inspector = 35
+    """An Inspector object."""
+    Inspectors = 61
+    """An Inspectors object."""
+    ItemProperties = 98
+    """An ItemProperties object."""
+    ItemProperty = 99
+    """An ItemProperty object."""
+    Items = 16
+    """An Items object."""
+    Journal = 42
+    """A JournalItem object."""
+    JournalModule = 162
+    """A JournalModule object."""
+    Mail = 43
+    """A MailItem object."""
+    MailModule = 158
+    """A MailModule object."""
+    MarkAsTaskRuleAction = 124
+    """A MarkAsTaskRuleAction object."""
+    MeetingCancellation = 54
+    """A MeetingItem object that is a meeting cancellation notice."""
+    MeetingForwardNotification = 181
+    """A MeetingItem object that is a notice about forwarding the meeting request."""
+    MeetingRequest = 53
+    """A MeetingItem object that is a meeting request."""
+    MeetingResponseNegative = 55
+    """A MeetingItem object that is a refusal of a meeting request."""
+    MeetingResponsePositive = 56
+    """A MeetingItem object that is an acceptance of a meeting request."""
+    MeetingResponseTentative = 57
+    """A MeetingItem object that is a tentative acceptance of a meeting request."""
+    MoveOrCopyRuleAction = 118
+    """A MoveOrCopyRuleAction object."""
+    Namespace = 1
+    """A NameSpace object."""
+    NavigationFolder = 167
+    """A NavigationFolder object."""
+    NavigationFolders = 166
+    """A NavigationFolders object."""
+    NavigationGroup = 165
+    """A NavigationGroup object."""
+    NavigationGroups = 164
+    """A NavigationGroups object."""
+    NavigationModule = 157
+    """A NavigationModule object."""
+    NavigationModules = 156
+    """A NavigationModules object."""
+    NewItemAlertRuleAction = 125
+    """A NewItemAlertRuleAction object."""
+    Note = 44
+    """A NoteItem object."""
+    NotesModule = 163
+    """A NotesModule object."""
+    OrderField = 144
+    """An OrderField object."""
+    OrderFields = 145
+    """An OrderFields object."""
+    OutlookBarGroup = 66
+    """An OutlookBarGroup object."""
+    OutlookBarGroups = 65
+    """An OutlookBarGroups object."""
+    OutlookBarPane = 63
+    """An OutlookBarPane object."""
+    OutlookBarShortcut = 68
+    """An OutlookBarShortcut object."""
+    OutlookBarShortcuts = 67
+    """An OutlookBarShortcuts object."""
+    OutlookBarStorage = 64
+    """An OutlookBarStorage object."""
+    Outspace = 180
+    """An AccountSelector object."""
+    Pages = 36
+    """A Pages object."""
+    Panes = 62
+    """A Panes object."""
+    PlaySoundRuleAction = 123
+    """A PlaySoundRuleAction object."""
+    Post = 45
+    """A PostItem object."""
+    PropertyAccessor = 112
+    """A PropertyAccessor object."""
+    PropertyPages = 71
+    """A PropertyPages object."""
+    PropertyPageSite = 70
+    """A PropertyPageSite object."""
+    Recipient = 4
+    """A Recipient object."""
+    Recipients = 17
+    """A Recipients object."""
+    RecurrencePattern = 28
+    """A RecurrencePattern object."""
+    Reminder = 101
+    """A Reminder object."""
+    Reminders = 100
+    """A Reminders object."""
+    Remote = 47
+    """A RemoteItem object."""
+    Report = 46
+    """A ReportItem object."""
+    Results = 78
+    """A Results object."""
+    Row = 121
+    """A Row object."""
+    Rule = 115
+    """A Rule object."""
+    RuleAction = 117
+    """A RuleAction object."""
+    RuleActions = 116
+    """A RuleActions object."""
+    RuleCondition = 127
+    """A RuleCondition object."""
+    RuleConditions = 126
+    """A RuleConditions object."""
+    Rules = 114
+    """A Rules object."""
+    Search = 77
+    """A Search object."""
+    Selection = 74
+    """A Selection object."""
+    SelectNamesDialog = 109
+    """A SelectNamesDialog object."""
+    SenderInAddressListRuleCondition = 133
+    """A SenderInAddressListRuleCondition object."""
+    SendRuleAction = 119
+    """A SendRuleAction object."""
+    Sharing = 104
+    """A SharingItem object."""
+    SimpleItems = 179
+    """A SimpleItems object."""
+    SolutionsModule = 177
+    """A SolutionsModule object."""
+    StorageItem = 113
+    """A StorageItem object."""
+    Store = 107
+    """A Store object."""
+    Stores = 108
+    """A Stores object."""
+    SyncObject = 72
+    """A SyncObject object."""
+    SyncObjects = 73
+    """A SyncObjects object."""
+    Table = 120
+    """A Table object."""
+    Task = 48
+    """A TaskItem object."""
+    TaskRequest = 49
+    """A TaskRequestItem object."""
+    TaskRequestAccept = 51
+    """A TaskRequestAcceptItem object."""
+    TaskRequestDecline = 52
+    """A TaskRequestDeclineItem object."""
+    TaskRequestUpdate = 50
+    """A TaskRequestUpdateItem object."""
+    TasksModule = 161
+    """A TasksModule object."""
+    TextRuleCondition = 134
+    """A TextRuleCondition object."""
+    UserDefinedProperties = 172
+    """A UserDefinedProperties object."""
+    UserDefinedProperty = 171
+    """A UserDefinedProperty object."""
+    UserProperties = 38
+    """A UserProperties object."""
+    UserProperty = 39
+    """A UserProperty object."""
+    View = 80
+    """A View object."""
+    ViewField = 142
+    """A ViewField object."""
+    ViewFields = 141
+    """A ViewFields object."""
+    ViewFont = 146
+    """A ViewFont object."""
+    Views = 79
+    """A Views object."""
+
+
+class DisplayTypeEnum(IntEnum):
+    """Describes the nature of the address."""
+    agent = 3
+    """Agent address."""
+    dist_list = 1
+    """Exchange distribution list."""
+    forum = 2
+    """Forum address."""
+    organization = 4
+    """Organization address."""
+    private_dist_list = 5
+    """Outlook private distribution list."""
+    remote_user = 6
+    """Remote user address."""
+    user = 0
+    """User address."""
+
+
+class AddressEntryType(Protocol):
+    """Represents a person, group, or public folder to which the messaging system can deliver messages."""
+    Address: str
+    """The email address."""
+    AddressEntryUserType: AddressEntryUserTypeEnum
+    """The user type."""
+    Application: OutlookApplication
+    """An Application object that represents the parent Outlook application for the object."""
+    Class: ObjectClass
+    """The object's class."""
+    DisplayType: DisplayTypeEnum
+    """Describes the nature of the AddressEntry."""
+    ID: str
+    """The unique identifier for the object."""
+    Name: str
+    """The display name for the object."""
+    Parent: object
+    """The parent object of the specified object."""
+    PropertyAccessor: object
+    Session: object
+    Type: object
+
 class Recipient(Protocol):
     """Represents a user or resource in Outlook, generally a mail or mobile message addressee."""
     # https://learn.microsoft.com/en-us/office/vba/api/outlook.recipient
@@ -103,11 +471,15 @@ class Recipient(Protocol):
     """The email address of the Recipient."""
     MeetingResponseStatus: ResponseStatus
     """The overall status of the response to the meeting request for the recipient."""
-    AddressEntry: object
+    AddressEntry: AddressEntryType
+    """Returns the AddressEntry object corresponding to the resolved recipient.
+    Accessing the AddressEntry property forces resolution of an unresolved recipient name. If the name cannot be resolved, an error is returned. If the recipient is resolved, the Resolved property is True."""
     Application: object
+    """An Application object that represents the parent Outlook application for the object."""
     AutoResponse: str
     """The text of an automatic response for a Recipient."""
     Class: object
+    """The object's class."""
     DisplayType: object
     EntryID: str
     """The unique Entry ID of the object."""
@@ -145,7 +517,36 @@ class Recipient(Protocol):
 
 class Folder(Protocol):
     """Represents an Outlook folder."""
-
+    AddressBookName: str
+    """The Address Book name for the Folder object representing a Contacts folder."""
+    Application: OutlookApplication
+    """An Application object that represents the parent Outlook application for the object."""
+    Class: ObjectClass
+    """The object's class."""
+    CurrentView: object
+    CustomViewsOnly: object
+    DefaultItemType: object
+    DefaultMessageClass: object
+    Description: object
+    EntryID: object
+    FolderPath: object
+    Folders: object
+    InAppFolderSyncObject: object
+    IsSharePointFolder: object
+    Items: object
+    Name: object
+    Parent: object
+    PropertyAccessor: object
+    Session: object
+    ShowAsOutlookAB: object
+    ShowItemCount: object
+    Store: object
+    StoreID: object
+    UnReadItemCount: object
+    UserDefinedProperties: object
+    Views: object
+    WebViewOn: object
+    WebViewURL: object
 
 class SyncObject(Protocol):
     """Represents a Send/Receive group for a user.
@@ -183,6 +584,8 @@ class OutlookApplication(Protocol):
 
 
 class OlBusyStatus(IntEnum):
+    """Indicates a user's availability."""
+
     busy = 2
     """The user is busy."""
     free = 0
@@ -237,8 +640,8 @@ class AppointmentItem(Protocol):
     """The sensitivity level of the appointment (e.g., normal, personal, private, confidential)."""
     Categories: str
     """The categories assigned to the appointment."""
-    Class: int
-    """OlObjectClass constant indicating the object's class."""
+    Class: ObjectClass
+    """Constant indicating the object's class."""
     CreationTime: pywintypes.TimeType
     """The creation time of the appointment."""
     LastModificationTime: pywintypes.TimeType
