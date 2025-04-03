@@ -6,7 +6,7 @@ from typing import Protocol, Callable
 import win32com.client
 import pywintypes
 import re
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, time
 import pythoncom
 from icalendar import Calendar
 from folders import hr_info_folder
@@ -984,12 +984,35 @@ def get_dl_ral_holidays() -> set[date]:
     """Return a list of holiday dates for DL/RAL. Fetches ICS file from STFC HR info folder (synced via OneDrive)."""
     filename = os.path.join(hr_info_folder, f'DL_RAL_Site_Holidays_{datetime.now().year}.ics')
     calendar = Calendar.from_ical(open(filename, encoding='utf-8').read())
-    return {event.decoded('dtstart') for event in calendar.walk('VEVENT')}
+
+    # Mostly these are date values. HOWEVER, sometimes we get two events as two half-days. Let's deal with that.
+    whole_days = set()
+    hours = {}
+    for event in calendar.walk('VEVENT'):
+        start = event.decoded('dtstart')
+        end = event.decoded('dtend')
+        if isinstance(start, datetime):  # more specific than date, test first
+            # print('part day', start, end)
+            hour = start.replace(minute=0, second=0)
+            while hour < end:
+                hours.setdefault(start.date(), set()).add(hour)
+                hour += timedelta(hours=1)
+        elif isinstance(start, date):
+            whole_days.add(start)
+
+    for day, hour_set in hours.items():
+        # print(sorted(list(h.hour for h in hour_set)), sep='\n')
+        if sorted(list(h.hour for h in hour_set)) == list(range(24)):
+            # print('added', day)
+            whole_days.add(day)
+
+    return whole_days
 
 
 if __name__ == '__main__':
+    print(*sorted(list(get_dl_ral_holidays())), sep='\n')
     # away_dates = sorted(
     #     list(get_away_dates(datetime.date(2024, 2, 12), 0, look_for=is_annual_leave)))
     # print(len(away_dates))
     # print(*away_dates, sep='\n')
-    print(list_meetings())
+    # print(list_meetings())
