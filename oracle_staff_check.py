@@ -92,7 +92,7 @@ def wait_until_page_ready(web: WebDriver, timeout: float = 2.0) -> None:
     wait.until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
 
 
-def get_name(web: WebDriver) -> str:
+def get_name(web: WebDriver) -> tuple[str, str]:
     """Return the first and last name from the recent timecards page."""
     name = web.find_element(By.CLASS_NAME, 'x1f').text.split(': ')[1]  # Recent Timecards heading
     return translate_name(name)
@@ -117,7 +117,9 @@ def annual_leave_check(test_mode: bool = False) -> str:
                          show_window=test_mode) + f'\n{days_left_in_year=}'
 
 
-def otl_submit(test_mode=False, weeks_in_advance=0, staff_names=None):
+def otl_submit(test_mode: bool = False,
+               weeks_in_advance: int = 0,
+               staff_names: list[str] | None = None) -> Any:
     """Submit this week's OTL timecard for each staff member."""
     # don't bother before Thursday (to give people time to book the end of the week off)
     now = datetime.now()
@@ -135,11 +137,13 @@ def otl_submit(test_mode=False, weeks_in_advance=0, staff_names=None):
         all_off_dates = pickle.load(open(off_dates_file, 'rb'))
     else:
         all_off_dates = get_staff_leave_dates(test_mode, staff_names=staff_names)
+        # noinspection PyTypeChecker
         pickle.dump(all_off_dates, open(off_dates_file, 'wb'))
 
     # everyone else's first
-    def submit_card(web):
-        return submit_staff_timecard(web, all_hours, change_dates, all_off_dates, weeks_in_advance=weeks_in_advance)
+    def submit_card(web_driver: WebDriver) -> str:
+        return submit_staff_timecard(web_driver, all_hours, change_dates,
+                                     all_off_dates, weeks_in_advance=weeks_in_advance)
 
     toast = iterate_staff(submit_card, supervisor_page, show_window=test_mode, staff_names=staff_names)
     # now do mine
@@ -149,7 +153,8 @@ def otl_submit(test_mode=False, weeks_in_advance=0, staff_names=None):
             toast = '\n'.join([toast, submit_staff_timecard(web, all_hours, change_dates,
                                                             weeks_in_advance=weeks_in_advance)]).strip()
         finally:
-            web.quit()
+            if not test_mode:
+                web.quit()
     for change_date in change_dates:
         if now <= change_date < now + timedelta(days=7):
             toast = f'Project code change this week\n{toast}'
@@ -161,7 +166,7 @@ def get_all_off_dates(web: WebDriver) -> set[date]:
 
 
 def get_staff_leave_dates(test_mode: bool = False,
-                          staff_names: bool = None) -> dict[str, set[date]]:
+                          staff_names: list[str] | None = None) -> dict[str, set[date]]:
     """Get leave dates in Oracle for each staff member."""
     return iterate_staff(get_all_off_dates, 'RCUK Self-Service Manager', 'Attendance Management',
                          show_window=test_mode, staff_names=staff_names)
@@ -210,7 +215,7 @@ def submit_staff_timecard(web: WebDriver,
                           all_hours: dict[str, pandas.Series],
                           change_dates: set[pandas.Timestamp],
                           all_absences: dict[str, set[date]] | None = None,
-                          weeks_in_advance: object = 0) -> str:
+                          weeks_in_advance: int = 0) -> str:
     """On an individual OTL timecards submitted page, submit a timecard for the current week if necessary.
     Specify weeks_in_advance to do the given number of extra cards after this current week."""
     this_fy = fy(datetime.now())
@@ -245,16 +250,16 @@ def submit_staff_timecard(web: WebDriver,
         hours = all_hours[name]
         # find out of office dates in the next 3 months (and previous 1)
         outlook_off_dates = outlook.get_away_dates(-30, 90, user=email)
-        if outlook_off_dates is False:  # error fetching dates
+        if not outlook_off_dates:  # error fetching dates
             print(f'Warning: no away dates fetched. Suggest manual check for {name}')
-            outlook_off_dates = set()
         days_away = outlook_off_dates | outlook.get_dl_ral_holidays() | all_absences[name]
+        # print(*sorted(list(days_away)), sep='\n')
 
     cards_done = 0
     total_days_away = 0
     while do_timecards:  # loop to do all outstanding timecards - break out when done
         first_card_in_list_start = web.find_elements(By.ID, 'Hxctcarecentlist:Hxctcaperiodstarts:0')
-        last_card_date = datetime.strptime(first_card_in_list_start[0].text, '%d-%b-%Y')
+        last_card_date = datetime.strptime(first_card_in_list_start[0].text, '%d-%b-%Y').date()
         first_card_in_list_hours = web.find_elements(By.ID, 'Hxctcarecentlist:Hxctcahoursworked:0')
         last_card_hours = float(first_card_in_list_hours[0].text)
         # recorded_hours = [float(el.text) for el in web.find_elements(By.CLASS_NAME, 'x1u x57')]
@@ -267,6 +272,7 @@ def submit_staff_timecard(web: WebDriver,
         if last_card_hours < 37:  # last card <37 hours, click update link in table
             web.find_element(By.ID, 'Hxctcarecentlist:UpdEnable:0').click()
             print('Updating timecard for', last_card_date)
+            card_date_text = last_card_date.strftime('%B %d, %Y')
             wb_date = last_card_date
         else:  # new one instead: Create Timecard
             web.find_element(By.ID, 'Hxccreatetcbutton').click()
@@ -282,8 +288,10 @@ def submit_staff_timecard(web: WebDriver,
             print('Creating timecard for', card_date_text)
             if doing_my_cards:
                 web.find_element(By.ID, 'A150N1display').send_keys('Angal-Kalinin, Doctor Deepa (Deepa)')  # approver
-        def date_in_week(day):
+
+        def date_in_week(day: int) -> date:
             return wb_date + timedelta(days=day)
+
         # list of True/False for on holiday that day
         on_leave = [date_in_week(day) in days_away for day in range(5)]
         print(f'{on_leave=}')
@@ -292,17 +300,18 @@ def submit_staff_timecard(web: WebDriver,
         hours_box_class = 'x1v'
         hours_boxes = web.find_elements(By.CLASS_NAME, hours_box_class)  # 7x6 of these
         # figure out which boxes to fill: if updating, some will be filled already
-        days_to_fill = [day for day in range(5) if hours_boxes[day].get_attribute('value') == '']  # limitation: only checks first row!
+        days_to_fill = [day for day in range(5) if
+                        hours_boxes[day].get_attribute('value') == '']  # limitation: only checks first row!
         # don't cross over financial years
         days_to_fill = [day for day in days_to_fill if fy(date_in_week(day)) == this_fy]
         # bookings will change on given dates: fill in up to there
         for change_date in change_dates:
-            after_change = [date_in_week(day) >= change_date for day in days_to_fill]
+            after_change = [date_in_week(day) >= change_date.date() for day in days_to_fill]
             days_to_fill = [day for day, is_after in zip(days_to_fill, after_change) if is_after == after_change[0]]
         if len(days_to_fill) == 0:  # didn't find any to fill, must be up to date
             print('Up to date')
             break
-        if not all(on_leave):
+        if not all(on_leave) and len(hours) > 0:
             # Compensate for rounding errors using 'cascade rounding' method
             # https://stackoverflow.com/questions/13483430/how-to-make-rounded-percentages-add-up-to-100#answer-13483486
             # Needed because Oracle only accepts 2 decimal places, and STFC need exactly 7.4 hours per day
@@ -333,7 +342,6 @@ def submit_staff_timecard(web: WebDriver,
             hrs = end_of_year_time_off.get(date_in_week(day), 7.4 if on_leave[day] else 0)
             hours_boxes[row * 7 + day].send_keys(f'{hrs:.2f}')
 
-
         web.find_element(By.ID, 'review').click()  # Continue button
         web.find_element(By.ID, 'HxcSubmit').click()  # Submit button
         cards_done += 1
@@ -350,13 +358,13 @@ def submit_staff_timecard(web: WebDriver,
         return ''
 
 
-def fy(this_date: datetime) -> int:
+def fy(this_date: date) -> int:
     """Return the financial year, given a date."""
     return this_date.year if this_date.month > 3 else (this_date.year - 1)
 
 
-Boxes = TypedDict('Boxes', {'Project': list[WebElement], 
-                            'Task': list[WebElement], 
+Boxes = TypedDict('Boxes', {'Project': list[WebElement],
+                            'Task': list[WebElement],
                             'Type': list[WebElement]})
 """A dict pointing to the boxes for project, type and task."""
 
@@ -372,7 +380,8 @@ def get_boxes(web: WebDriver) -> tuple[Boxes, int]:
     """Find boxes to fill in."""
     boxes = {title: web.find_elements(By.XPATH, f'//*[@class="x8" and @title="{title}"]') for title in
              ('Project', 'Task', 'Type')}
-    first_empty = next(i for i, project_box in enumerate(boxes['Project']) if project_box.get_attribute('value') == '')  # first blank row
+    first_empty = next(i for i, project_box in enumerate(boxes['Project']) if
+                       project_box.get_attribute('value') == '')  # first blank row
     return boxes, first_empty
 
 
@@ -396,13 +405,13 @@ def check_al_page(web: WebDriver) -> str | None:
 def last_card_age(last_card_date: date) -> int:
     """Return weeks since supplied Monday, starting on Mondays.
     Returns 0 for this week, 1 for last week, -1 for next week."""
-    now = datetime.now()
-    this_monday = now - timedelta(days=now.weekday())
+    today = datetime.now().date()
+    this_monday = today - timedelta(days=today.weekday())
     delta = this_monday - last_card_date  # e.g. 12-Jul-2021
     return round(delta.days / 7)
 
 
 if __name__ == '__main__':
-    print(otl_submit(test_mode=True, weeks_in_advance=3))
+    print(otl_submit(test_mode=True, weeks_in_advance=0, staff_names=['Alex Bainbridge']))
     # get_staff_leave_dates(test_mode=False)
     # print(last_card_age('25-Mar-2024'))
