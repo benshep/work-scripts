@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 from datetime import datetime, date
 
@@ -22,7 +23,7 @@ def get_one_slip(web: WebDriver, index: int) -> str:
     name = option.text
     slip_date = datetime.strptime(name.split(' - ')[0], '%d %b %Y')
     date_text = slip_date.strftime('%b %Y')
-    new_filename = slip_date.strftime('%y-%m.pdf')
+    new_filename = slip_date.strftime('%Y-%m.pdf')
     if os.path.exists(new_filename):
         print(f'Already got payslip for {date_text}')
         return ''
@@ -41,8 +42,10 @@ def get_one_slip(web: WebDriver, index: int) -> str:
 
 def get_payslips(only_latest: bool = True, test_mode: bool = False) -> None | str | date:
     """Download all my payslips, or just the latest."""
+    print('Starting Oracle')
     web = go_to_oracle_page('RCUK Self-Service Employee', 'Payslip', show_window=test_mode)
 
+    print('Downloading payslips')
     try:
         payslip_count = len(get_options(web))
         os.chdir(downloads_folder)
@@ -55,4 +58,5 @@ def get_payslips(only_latest: bool = True, test_mode: bool = False) -> None | st
 
 
 if __name__ == '__main__':
-    print(get_payslips(test_mode=True, only_latest=False))
+    show_window = 'show' in sys.argv
+    print(get_payslips(test_mode=show_window, only_latest=False))
