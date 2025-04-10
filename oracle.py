@@ -6,7 +6,7 @@ from selenium import webdriver
 from selenium.webdriver.firefox.webdriver import RemoteWebDriver
 from selenium.webdriver.common.by import By
 
-from folders import user_profile
+user_profile = os.environ['UserProfile']
 
 
 def go_to_oracle_page(*links: str,
