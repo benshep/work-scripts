@@ -1,5 +1,4 @@
 import os
-import sys
 import time
 from datetime import datetime, date
 
@@ -7,6 +6,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 
+import oracle
 from oracle import go_to_oracle_page
 
 user_profile = os.environ['UserProfile']
@@ -40,10 +40,10 @@ def get_one_slip(web: WebDriver, index: int) -> str:
     os.rename(new_file, new_filename)
     return new_filename
 
-def get_payslips(only_latest: bool = True, test_mode: bool = False) -> None | str | date:
+def get_payslips(only_latest: bool = True) -> None | str | date:
     """Download all my payslips, or just the latest."""
-    print('Starting Oracle')
-    web = go_to_oracle_page('RCUK Self-Service Employee', 'Payslip', show_window=test_mode)
+    web = go_to_oracle_page('RCUK Self-Service Employee', 'Payslip',
+                            browser=oracle.Browser.edge, manual_login=True)
 
     print('Downloading payslips')
     try:
@@ -58,5 +58,4 @@ def get_payslips(only_latest: bool = True, test_mode: bool = False) -> None | st
 
 
 if __name__ == '__main__':
-    show_window = 'show' in sys.argv
-    print(get_payslips(test_mode=show_window, only_latest=False))
+    print(get_payslips(only_latest=False))
