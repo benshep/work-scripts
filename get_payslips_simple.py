@@ -27,6 +27,8 @@ def get_one_slip(web: WebDriver, index: int) -> str:
     if os.path.exists(new_filename):
         print(f'Already got payslip for {date_text}')
         return ''
+    else:
+        print(f'Downloading payslip for {date_text}')
     print(name)
     option.click()
     time.sleep(2)
@@ -45,14 +47,16 @@ def get_payslips(only_latest: bool = True) -> None | str | date:
     web = go_to_oracle_page('RCUK Self-Service Employee', 'Payslip',
                             browser=oracle.Browser.edge, manual_login=True)
 
-    print('Downloading payslips')
+    print(f'Downloading payslips to {downloads_folder}')
     try:
         payslip_count = len(get_options(web))
+        print(f'Found {payslip_count} payslips on Oracle')
         os.chdir(downloads_folder)
 
         result = '\n'.join(get_one_slip(web, i) for i in ((-1,) if only_latest else range(payslip_count)))
     finally:
         web.quit()
+    print('Finished')
 
     return result
 
