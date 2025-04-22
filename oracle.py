@@ -6,7 +6,7 @@ from selenium import webdriver
 from selenium.webdriver.firefox.webdriver import RemoteWebDriver
 from selenium.webdriver.common.by import By
 
-user_profile = os.environ['UserProfile']
+user_profile = os.path.expanduser('~')
 
 
 class Browser(Enum):
@@ -32,11 +32,12 @@ def go_to_oracle_page(*links: str,
         ('obi',): f'https://obi.ssc.rcuk.ac.uk/analytics/saw.dll?dashboard&PortalPath={quoted_path}',
         ('taleo',): "https://careersportal.taleo.net/enterprise/fluid?isNavigationCompleted=true"
     }
+    # which URL to go to? OBI, Taleo, or just default to Oracle
     url = apps.get(links, 'https://ebs.ssc.rcuk.ac.uk/OA_HTML/AppsLogin')
     firefox_options = webdriver.FirefoxOptions()
     edge_options = webdriver.EdgeOptions()
     chrome_options = webdriver.ChromeOptions()
-    if not (show_window or manual_login):
+    if not (show_window or manual_login):  # try to open an invisible browser window
         os.environ['MOZ_HEADLESS'] = '1'
         edge_options.add_argument("--headless=new")
         chrome_options.add_argument("--headless=new")
@@ -67,8 +68,8 @@ def go_to_oracle_page(*links: str,
         case _:
             raise ValueError(f'Invalid browser {browser}')
 
-    web.implicitly_wait(10)
-    web.get(url)
+    web.implicitly_wait(10)  # add an automatic wait to the browser handling
+    web.get(url)  # go to the URL
     web.find_element(By.ID, 'ssoUKRIBtn').click()  # UKRI User Login
     if manual_login:
         print('\nBrowser started.')
