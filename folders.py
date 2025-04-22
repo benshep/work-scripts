@@ -1,6 +1,6 @@
 import os
 
-user_profile = os.environ['UserProfile' if os.name == 'nt' else 'HOME']
+user_profile = os.path.expanduser('~')
 music_folder = os.path.join(user_profile, 'Music')
 docs_folder = os.path.join(user_profile, 'STFC', 'Documents')
 downloads_folder = os.path.join(user_profile, 'Downloads')

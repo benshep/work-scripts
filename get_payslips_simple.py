@@ -9,8 +9,7 @@ from selenium.webdriver.remote.webelement import WebElement
 import oracle
 from oracle import go_to_oracle_page
 
-user_profile = os.environ['UserProfile']
-docs_folder = os.path.join(user_profile, 'STFC', 'Documents')
+user_profile = os.path.expanduser('~')
 downloads_folder = os.path.join(user_profile, 'Downloads')
 
 
