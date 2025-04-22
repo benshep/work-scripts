@@ -49,7 +49,7 @@ def go_to_oracle_page(*links: str,
     if manual_login:
         print('This script will now launch a browser instance to log in to Oracle.')
         print('Return to this screen when you have logged in.')
-        input('Press ENTER to start browser, or Ctrl-C to exit:')
+        input('Press ENTER to start browser, or Ctrl-C to exit: ')
     else:
         # use a specifically-created Selenium profile, where I've already logged in - no need to enter credentials again
         profile_dir = os.path.join(user_profile, 'AppData', 'Roaming', 'Mozilla', 'Firefox', 'Profiles')
@@ -72,8 +72,9 @@ def go_to_oracle_page(*links: str,
     web.get(url)  # go to the URL
     web.find_element(By.ID, 'ssoUKRIBtn').click()  # UKRI User Login
     if manual_login:
+        time.sleep(3)  # wait for error messages to appear
         print('\nBrowser started.')
-        input('Press ENTER after logging in to Oracle, or Ctrl-C to exit:')
+        input('Press ENTER after logging in to Oracle, or Ctrl-C to exit: ')
 
     if links not in apps:  # list of links rather than an app to open
         for link in links:
