@@ -41,8 +41,14 @@ def get_one_slip(web: WebDriver, index: int) -> str:
     # we will already be in the downloads folder
     old_files = set(os.listdir())  # list files before download
     web.find_element(By.ID, 'Export').click()  # start the download
-    sleep(2)  # wait for download
-    new_file = (set(os.listdir()) - old_files).pop()  # find the file that's been added
+    for _ in range(10):
+        sleep(2)  # wait for download
+        new_files = set(os.listdir()) - old_files  # only files that weren't there before
+        if new_files:
+            break
+    else:  # didn't break out of loop - no new files
+        raise FileNotFoundError('Timed out waiting for download')
+    new_file = new_files.pop()  # find the file that's been added
     os.rename(new_file, new_filename)  # rename from Oracle's unhelpful names
     return new_filename
 
@@ -58,7 +64,13 @@ def get_payslips(only_latest: bool = True) -> None | str | date:
         print(f'Found {payslip_count} payslips on Oracle')
         os.chdir(downloads_folder)
 
-        result = '\n'.join(get_one_slip(web, i) for i in ((-1,) if only_latest else range(payslip_count)))
+        result = '\n'.join(
+            get_one_slip(web, i)
+            for i in (
+                (-1,) if only_latest
+                else range(payslip_count)
+            )
+        )
     finally:
         web.quit()  # close the browser even if errors occurred
     print('Finished')
