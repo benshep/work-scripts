@@ -19,28 +19,43 @@ def get_options(web: WebDriver) -> list[WebElement]:
     return web.find_element(By.ID, 'AdvicePicker').find_elements(By.TAG_NAME, 'option')
 
 
-def get_one_slip(web: WebDriver, index: int) -> str:
+def get_radio_options(web: WebDriver) -> list[WebElement]:
+    """Find the options in the P60 radio buttons."""
+    return web.find_elements(By.NAME, 'YearGroup')
+
+
+def get_one_slip(web: WebDriver, index: int, p60: bool) -> str:
     """Download one payslip from Oracle."""
-    option = get_options(web)[index]
-    name = option.text
-    # The date format in the dropdown is e.g. 31 Mar 2025
-    slip_date = datetime.strptime(name.split(' - ')[0], '%d %b %Y')
-    date_text = slip_date.strftime('%b %Y')  # convert to e.g. Mar 2025
-    new_filename = slip_date.strftime('%Y-%m.pdf')  # filename is e.g. "2025-03.pdf"
+    options_func = get_radio_options if p60 else get_options
+    option = options_func(web)[index]
+    if p60:
+        # Need to look for span elements with the year, there will be the same number as input elements
+        text_options = web.find_elements(By.CLASS_NAME, 'xo')
+        name = text_options[index].text
+        # The date format in the P60 radio button starts with the year
+        date_text = name[:4]
+        new_filename = f'P60 {date_text}.pdf'  # filename is e.g. "2024.pdf"
+    else:
+        name = option.text
+        # The date format in the payslip dropdown is e.g. 31 Mar 2025
+        slip_date = datetime.strptime(name.split(' - ')[0], '%d %b %Y')
+        date_text = slip_date.strftime('%b %Y')  # convert to e.g. Mar 2025
+        new_filename = slip_date.strftime('Payslip %Y-%m.pdf')  # filename is e.g. "Payslip 2025-03.pdf"
     if os.path.exists(new_filename):
-        print(f'Already got payslip for {date_text}')
+        print(f'Already got file for {date_text}')
         return ''
     else:
-        print(f'Downloading payslip for {date_text}')
+        print(f'Downloading file for {date_text}')
     print(name)
     option.click()  # select the option from the dropdown list
-    sleep(2)  # wait a moment
-    for _ in range(2):  # Click 'Go' twice, it doesn't work first time!
-        web.find_element(By.ID, 'Go').click()
-        sleep(5)  # wait again
+    if not p60:
+        sleep(2)  # wait a moment
+        for _ in range(2):  # Click 'Go' twice, it doesn't work first time!
+            web.find_element(By.ID, 'Go').click()
+            sleep(5)  # wait again
     # we will already be in the downloads folder
     old_files = set(os.listdir())  # list files before download
-    web.find_element(By.ID, 'Export').click()  # start the download
+    web.find_element(By.ID, 'ViewReport' if p60 else 'Export').click()  # start the download
     for _ in range(10):
         sleep(2)  # wait for download
         new_files = set(os.listdir()) - old_files  # only files that weren't there before
@@ -53,30 +68,34 @@ def get_one_slip(web: WebDriver, index: int) -> str:
     return new_filename
 
 
-def get_payslips(only_latest: bool = True) -> None | str | date:
-    """Download all my payslips, or just the latest."""
-    web = oracle.go_to_oracle_page('RCUK Self-Service Employee', 'Payslip',
+def get_payslips() -> None | str | date:
+    """Download all my payslips from Oracle."""
+    web = oracle.go_to_oracle_page('RCUK Self-Service Employee',
                                    browser=oracle.Browser.edge, manual_login=True)
+    pages = ['Payslip', 'P60 - 2018 Onwards', 'P60 - 2017 and Prior Years']
+    result = ''
+    for page in pages:
+        web.find_element(By.LINK_TEXT, page).click()
+        p60 = page.startswith('P60')
 
-    print(f'Downloading payslips to {downloads_folder}')
-    try:
-        payslip_count = len(get_options(web))
-        print(f'Found {payslip_count} payslips on Oracle')
-        os.chdir(downloads_folder)
+        print(f'{page.split(" ")[0]}s downloading to {downloads_folder}')
+        try:
+            options_func = get_radio_options if p60 else get_options
+            payslip_count = len(options_func(web))
+            print(f'Found {payslip_count} files to download')
+            os.chdir(downloads_folder)
 
-        result = '\n'.join(
-            get_one_slip(web, i)
-            for i in (
-                (-1,) if only_latest
-                else range(payslip_count)
+            result = '\n'.join(
+                get_one_slip(web, i, p60)
+                for i in range(payslip_count)
             )
-        )
-    finally:
-        web.quit()  # close the browser even if errors occurred
+        finally:
+            web.find_element(By.LINK_TEXT, 'Home').click()
+    web.quit()  # close the browser even if errors occurred
     print('Finished')
 
     return result
 
 
 if __name__ == '__main__':
-    print(get_payslips(only_latest=False))
+    print(get_payslips())
