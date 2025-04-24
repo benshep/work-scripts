@@ -23,12 +23,12 @@ import outlook
 
 # At Christmas, we get guidance for filling in OTLs. This gives hours to book to the leave code for each day
 end_of_year_time_off = {
-    datetime(2024, 12, 25): 7.4,
-    datetime(2024, 12, 26): 7.4,
-    datetime(2024, 12, 27): 7.4,
-    datetime(2024, 12, 30): 3.7,
-    datetime(2024, 12, 31): 0,
-    datetime(2025, 1, 1): 7.4
+    date(2024, 12, 25): 7.4,
+    date(2024, 12, 26): 7.4,
+    date(2024, 12, 27): 7.4,
+    date(2024, 12, 30): 3.7,
+    date(2024, 12, 31): 0,
+    date(2025, 1, 1): 7.4
 }
 
 supervisor_page = 'STFC OTL Supervisor'
@@ -145,7 +145,8 @@ def otl_submit(test_mode: bool = False,
         return submit_staff_timecard(web_driver, all_hours, change_dates,
                                      all_off_dates, weeks_in_advance=weeks_in_advance)
 
-    toast = iterate_staff(submit_card, supervisor_page, show_window=test_mode, staff_names=staff_names)
+    toast = iterate_staff(submit_card, supervisor_page,
+                          show_window=test_mode, staff_names=staff_names)
     # now do mine
     if staff_names is None or 'me' in staff_names:
         web = go_to_oracle_page('STFC OTL Timecards', 'Time', 'Recent Timecards', show_window=test_mode)
@@ -195,7 +196,7 @@ def iterate_staff(check_function: Callable[[WebDriver], Any],
                 continue
             print(name)
             web.find_element(By.ID, f'N3:Y:{i}').click()  # link from 'Action' column at far right
-            if page == supervisor_page:
+            if page == (supervisor_page,):
                 tag_id = 'N25'  # id changes after you've clicked 'Action' link once!
             with contextlib.suppress(selenium.common.exceptions.NoSuchElementException):
                 if web.find_element(By.CLASS_NAME, 'x5y').text == 'Error':  # got an error page, not the expected page
@@ -207,7 +208,8 @@ def iterate_staff(check_function: Callable[[WebDriver], Any],
             elif result:  # make sure we're not returning a None
                 return_dict[name] = result
     finally:
-        web.quit()
+        if not show_window:
+            web.quit()
     return return_dict or '\n'.join(filter(None, toast))
 
 
@@ -256,6 +258,7 @@ def submit_staff_timecard(web: WebDriver,
         # print(*sorted(list(days_away)), sep='\n')
 
     cards_done = 0
+    failed_cards = 0
     total_days_away = 0
     while do_timecards:  # loop to do all outstanding timecards - break out when done
         first_card_in_list_start = web.find_elements(By.ID, 'Hxctcarecentlist:Hxctcaperiodstarts:0')
@@ -297,8 +300,7 @@ def submit_staff_timecard(web: WebDriver,
         print(f'{on_leave=}')
 
         # enter hours
-        hours_box_class = 'x1v'
-        hours_boxes = web.find_elements(By.CLASS_NAME, hours_box_class)  # 7x6 of these
+        boxes, hours_boxes, empty_rows = get_boxes(web)
         # figure out which boxes to fill: if updating, some will be filled already
         days_to_fill = [day for day in range(5) if
                         hours_boxes[day].get_attribute('value') == '']  # limitation: only checks first row!
@@ -308,6 +310,7 @@ def submit_staff_timecard(web: WebDriver,
         for change_date in change_dates:
             after_change = [date_in_week(day) >= change_date.date() for day in days_to_fill]
             days_to_fill = [day for day, is_after in zip(days_to_fill, after_change) if is_after == after_change[0]]
+        print(f'{days_to_fill=}')
         if len(days_to_fill) == 0:  # didn't find any to fill, must be up to date
             print('Up to date')
             break
@@ -317,43 +320,59 @@ def submit_staff_timecard(web: WebDriver,
             # Needed because Oracle only accepts 2 decimal places, and STFC need exactly 7.4 hours per day
             running_total = 0
             total_rounded = 0
+            boxes, hours_boxes, empty_rows = get_boxes(web)
             for project_task, daily_hours in hours.items():
+                print(project_task, daily_hours)
                 running_total += daily_hours
                 previous_total_rounded = round(running_total, 2)
                 rounded_hours = previous_total_rounded - total_rounded
                 total_rounded = previous_total_rounded
                 project, task = project_task.split(' ')
-                web.find_element(By.XPATH, '//button[contains(text(), "Add Another Row")]').click()
+
+                if not empty_rows:
+                    boxes, hours_boxes, empty_rows = get_boxes(web, add_more_first=True)
                 wait_until_page_ready(web)
-                hours_boxes = web.find_elements(By.CLASS_NAME, hours_box_class)  # 7x6 of these
-                boxes, row = get_boxes(web)
-                fill_boxes(boxes, row, project, task)
+                row_to_fill = empty_rows.pop(0)
+                fill_boxes(boxes, row_to_fill, project, task)
                 for day in days_to_fill:
                     hrs = 0 if on_leave[day] or date_in_week(day) in end_of_year_time_off else rounded_hours
-                    hours_boxes[row * 7 + day].send_keys(f'{hrs:.2f}')
+                    hours_boxes[row_to_fill * 7 + day].send_keys(f'{hrs:.2f}')
                     wait_until_page_ready(web)
-                row = len(hours)
-        else:
-            hours_boxes = web.find_elements(By.CLASS_NAME, hours_box_class)  # 7x6 of these
-            boxes, row = get_boxes(web)
+
+        boxes, hours_boxes, empty_rows = get_boxes(web)
         # do a row for leave and holidays
-        fill_boxes(boxes, row, 'STRA00009', '01.01')
+        row_to_fill = empty_rows.pop(0)
+        fill_boxes(boxes, row_to_fill, 'STRA00009', '01.01')
         for day in days_to_fill:
             hrs = end_of_year_time_off.get(date_in_week(day), 7.4 if on_leave[day] else 0)
-            hours_boxes[row * 7 + day].send_keys(f'{hrs:.2f}')
+            hours_boxes[row_to_fill * 7 + day].send_keys(f'{hrs:.2f}')
 
+        wait_until_page_ready(web)
         web.find_element(By.ID, 'review').click()  # Continue button
-        web.find_element(By.ID, 'HxcSubmit').click()  # Submit button
-        cards_done += 1
-        total_days_away += sum(on_leave)
-        print('Submitted timecard for', card_date_text)
-        time.sleep(0.5)
-        web.find_element(By.LINK_TEXT, 'Return to Recent Timecards').click()
+        wait_until_page_ready(web)
+        try:
+            web.find_element(By.ID, 'HxcSubmit').click()  # Submit button
+        except selenium.common.exceptions.NoSuchElementException:
+            print('Submit button not present: suspect an error')
+            web.find_element(By.ID, 'Hxctccancelbutton').click()  # Cancel button
+        else:
+            cards_done += 1
+            total_days_away += sum(on_leave)
+            print('Submitted timecard for', card_date_text)
+            time.sleep(0.5)
+            web.find_element(By.LINK_TEXT, 'Return to Recent Timecards').click()
     if not doing_my_cards:
         print('Return to hierarchy')
         web.find_element(By.ID, 'HxcHieReturnButton').click()  # Return to Hierarchy button
-    if cards_done > 0:
-        return f'{name}: {cards_done=}' + (f', {total_days_away=}' if total_days_away else '')
+    toast = []
+    if cards_done:
+        toast.append(f'{cards_done=}')
+        if total_days_away:
+            toast.append(f'{total_days_away=}')
+    if failed_cards:
+        toast.append(f'{failed_cards=}')
+    if toast:
+        return f'{name}: ' + ', '.join(toast)
     else:
         return ''
 
@@ -376,13 +395,22 @@ def fill_boxes(boxes: Boxes, row: int, project: str, task: str) -> None:
     boxes['Type'][row].send_keys('Labour - (Straight Time)')
 
 
-def get_boxes(web: WebDriver) -> tuple[Boxes, int]:
+def get_boxes(web: WebDriver,
+              add_more_first: bool = False) -> tuple[Boxes, list[WebElement], list[int]]:
     """Find boxes to fill in."""
-    boxes = {title: web.find_elements(By.XPATH, f'//*[@class="x8" and @title="{title}"]') for title in
-             ('Project', 'Task', 'Type')}
-    first_empty = next(i for i, project_box in enumerate(boxes['Project']) if
-                       project_box.get_attribute('value') == '')  # first blank row
-    return boxes, first_empty
+    if add_more_first:
+        web.find_element(By.XPATH, '//button[contains(text(), "Add Another Row")]').click()
+
+    wait_until_page_ready(web)
+    boxes = {title: web.find_elements(By.XPATH, f'//*[@class="x8" and @title="{title}"]')
+             for title in ('Project', 'Task', 'Type')}
+    # find all the empty rows
+    empty_rows = [i for i, project_box in enumerate(boxes['Project']) if
+                       project_box.get_attribute('value') == '']
+    if not empty_rows:
+        return get_boxes(web, add_more_first=True)
+    hours_boxes = web.find_elements(By.CLASS_NAME, 'x1v')  # 7x6 of these
+    return boxes, hours_boxes, empty_rows
 
 
 def check_al_page(web: WebDriver) -> str | None:
@@ -412,6 +440,6 @@ def last_card_age(last_card_date: date) -> int:
 
 
 if __name__ == '__main__':
-    print(otl_submit(test_mode=True, weeks_in_advance=0, staff_names=['Alex Bainbridge']))
+    print(otl_submit(test_mode=True, weeks_in_advance=0))
     # get_staff_leave_dates(test_mode=False)
     # print(last_card_age('25-Mar-2024'))

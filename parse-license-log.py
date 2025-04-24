@@ -1,5 +1,8 @@
 import os
 import re
+from enum import Enum
+from typing import Any, Protocol
+
 import dateutil.parser
 from collections import defaultdict
 import datetime
@@ -7,6 +10,58 @@ import operator
 import win32com.client
 import sys
 from folders import docs_folder
+
+
+class ADSNameType(Enum):
+    """Specifies the format of the name used to identify an object."""
+    type_1779 = 1
+    """Distinguished Name (e.g., CN=Jeff Smith,OU=Sales,DC=Fabrikam,DC=COM)."""
+
+    canonical = 2
+    """Canonical Name (e.g., fabrikam.com/Users/Jeff Smith)."""
+
+    nt4 = 3
+    """NT 4.0 Account Name (e.g., FABRIKAM\JeffSmith)."""
+
+    display = 4
+    """Display Name (e.g., Jeff Smith)."""
+
+    domain_simple = 5
+    """Simple Domain Name (e.g., JeffSmith)."""
+
+    enterprise_simple = 6
+    """Enterprise Simple Name (e.g., JeffSmith)."""
+
+    guid = 7
+    """Globally Unique Identifier (GUID) (e.g., {95ee9fff-3436-11d1-b2b0-d15ae3ac8436})."""
+
+    unknown = 8
+    """Unknown Name Type."""
+
+    user_principal_name = 9
+    """User Principal Name (e.g., jeffsmith@fabrikam.com)."""
+
+    canonical_ex = 10
+    """Extended Canonical Name (e.g., fabrikam.com/Users Jeff Smith)."""
+
+    service_principal_name = 11
+    """Service Principal Name (e.g., www/www.fabrikam.com@fabrikam.com)."""
+
+    sid_or_sid_history_name = 12
+    """Security Identifier (SID) or SID History Name."""
+
+    dns_domain = 13
+    """DNS Domain Name (e.g., fabrikam.com)."""
+
+
+class NameTranslate(Protocol):
+    def Set(self, set_type: ADSNameType, ads_path: str) -> None:
+        """Directs the directory service to set up a specified object for name translation."""
+
+    def Get(self, format_type: ADSNameType):
+        """Retrieves the name of a directory object in the specified format. The distinguished name must have been
+        set in the appropriate format by the NameTranslate.Set method."""
+
 
 name_resolver = win32com.client.Dispatch(dispatch='NameTranslate')
 
@@ -69,10 +124,10 @@ class Module():
         return "<Module, current checkouts %d, max %d at %s>" % (self.checkouts, self.max_checkouts, str(self.max_checkout_time))
 
 
-def email_to_id(email):
+def email_to_id(email: str) -> str:
     """Given an email address, resolve to a user id."""
-    name_resolver.Set(8, email)
-    ldap_query = f'LDAP://{name_resolver.Get(1)}'
+    name_resolver.Set(ADSNameType.unknown, email)
+    ldap_query = f'LDAP://{name_resolver.Get(ADSNameType.type_1779)}'
     ldap = win32com.client.GetObject(ldap_query)
     return ldap.get('CN')
 
@@ -172,4 +227,4 @@ def read_licenses():
 
 
 if __name__ == '__main__':
-    print(email_to_id('@stfc.ac.uk'))
+    print(email_to_id('neil.thompson@stfc.ac.uk'))

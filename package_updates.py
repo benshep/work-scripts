@@ -13,13 +13,13 @@ from pushbullet import Pushbullet  # to show notifications
 from pushbullet_api_key import api_key  # local file, keep secret!
 
 
-def list_packages() -> dict[str, str]:
+def list_packages() -> dict[str, tuple[str, str]]:
     version = sys.version_info
     # guess name if env not defined: convention is e.g. py313
     env_name = os.environ.get('CONDA_DEFAULT_ENV', f'py{version.major}{version.minor}')
     # list command will fail and raise an exception here if env_name is invalid
-    output = run_command(
-        [os.path.join(folders.user_profile, "Miniconda3", "Scripts", "conda.exe"), 'list', '-n', env_name])
+    conda_path = os.path.join(folders.user_profile, "Miniconda3", "Scripts", "conda.exe")
+    output = run_command([conda_path, 'list', '-n', env_name])
     conda_packages = {}
     for line in output:
         if line.startswith('#'):
@@ -36,7 +36,7 @@ def get_rss() -> dict[str, str]:
     url = 'https://repo.anaconda.com/pkgs/rss.xml'
     feed = feedparser.parse(url)
     if feed.status != 200:
-        return None
+        return {}
     packages = {}
     for entry in feed.entries:
         if match := re.findall(r'([\w\-_]+)-(\d[\w\.,\-]+)', entry.title):
@@ -63,10 +63,23 @@ def check_chocolatey_packages() -> str:
             if info_line.startswith(notes_header):
                 print(package)
                 print(info_line[len(notes_header):])
+    if to_upgrade:
+        print('Running Chocolatey upgrade process')
+        # generate the custom event that runs Chocolatey update
+        # see https://qtechbabble.wordpress.com/2021/09/09/use-system-events-to-trigger-administrator-scheduled-tasks-from-a-standard-user-account/
+        # source: BenShepherdCustomEvent
+        # id: 8072
+        trigger_update()
     return to_upgrade
 
 
-def run_command(command: list[str]) -> list[str]:
+def trigger_update() -> None:
+    powershell_command = 'powershell -command "Write-EventLog -LogName Application -Source ' + \
+                         "'BenShepherdCustomEvent' -EntryType Information -EventId 8072 -Message 'Admin session started.'\""
+    run_command(powershell_command)
+
+
+def run_command(command: str | list[str]) -> list[str]:
     """Runs a command and returns the output split into lines."""
     return subprocess.check_output(command).decode('utf-8').split('\r\n')
 
@@ -92,7 +105,7 @@ def find_new_python_packages() -> str:
     ])
 
 
-def check_updated():
+def check_updated() -> None:
     """Read the list of updated packages and notify."""
     toast = ''
     upgrade_output_file = f'choco-upgrade-{node()}.txt'
@@ -116,3 +129,5 @@ def check_updated():
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == 'check_updated':  # this runs from choco-update.bat - don't change
         check_updated()
+    else:
+        print(trigger_update())

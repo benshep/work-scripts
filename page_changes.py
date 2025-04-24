@@ -5,14 +5,15 @@ from datetime import datetime
 from glob import glob
 from types import SimpleNamespace
 from selenium import webdriver
+from selenium.webdriver.common.by import By
 from folders import user_profile
 
 
-def check_page_changes(show_window=False):
+def check_page_changes(show_window: bool = False) -> str:
     pickle_file = 'page_changes.db'
     prev_dir = os.getcwd()
     os.chdir(os.path.split(__file__)[0])  # script dir
-    check_pages : list = pickle.load(open(pickle_file, 'rb'))
+    check_pages: list = pickle.load(open(pickle_file, 'rb'))
     url_list_filename = 'page_changes.txt'
     url_list = open(url_list_filename).read().splitlines()
     urls = []
@@ -27,13 +28,13 @@ def check_page_changes(show_window=False):
         os.environ['MOZ_HEADLESS'] = '1'
     profile_dir = os.path.join(user_profile, 'AppData', 'Roaming', 'Mozilla', 'Firefox', 'Profiles')
     selenium_profile = next(folder for folder in os.listdir(profile_dir) if folder.endswith('.Selenium'))
-    from selenium.webdriver.common.by import By
     options = webdriver.FirefoxOptions()
     options.profile = webdriver.FirefoxProfile(os.path.join(profile_dir, selenium_profile))
     web = webdriver.Firefox(options=options)
     web.implicitly_wait(10)
     toast = ''
     for page in check_pages:
+        print(page.url)
         if page.url.startswith('http'):
             web.get(page.url)
             new_content = web.find_element(By.CLASS_NAME, 'mainContent').text
@@ -61,6 +62,7 @@ def check_page_changes(show_window=False):
                 toast += f'{page.name}: modified {datetime.fromtimestamp(modified_time).strftime("%d %b at %H:%M")}\n'
             page.old_content = modified_time
 
+    # noinspection PyTypeChecker
     pickle.dump(check_pages, open(pickle_file, 'wb'))
     web.quit()
     os.chdir(prev_dir)

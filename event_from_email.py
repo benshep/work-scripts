@@ -5,7 +5,7 @@ from datetime import datetime
 
 outlook_app = outlook.get_outlook()
 namespace = outlook_app.GetNamespace('MAPI')
-inbox = namespace.GetDefaultFolder(6)
+inbox = namespace.GetDefaultFolder(outlook.DefaultFolders.inbox)
 messages = inbox.Items
 messages.Sort('[Received]', Descending=True)
 
