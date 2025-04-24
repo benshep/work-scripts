@@ -1,4 +1,5 @@
 import os  # for working with files and folders
+import sys
 from time import sleep  # for waiting in the script
 from datetime import datetime, date  # for working with dates
 
@@ -70,8 +71,15 @@ def get_one_slip(web: WebDriver, index: int, p60: bool) -> str:
 
 def get_payslips() -> None | str | date:
     """Download all my payslips from Oracle."""
-    web = oracle.go_to_oracle_page('RCUK Self-Service Employee',
-                                   browser=oracle.Browser.edge, manual_login=True)
+    # Try to be smart about browser choice
+    browser = {'win32': oracle.Browser.edge,
+               'darwin': oracle.Browser.safari,  # untested!
+               'linux': oracle.Browser.firefox
+               }.get(
+        sys.platform,  # possible values: aix, android, emscripten, ios, linux, darwin, win32, cygwin, wasi
+        oracle.Browser.chrome  # default for 'none of the above',
+    )
+    web = oracle.go_to_oracle_page('RCUK Self-Service Employee', browser=browser, manual_login=True)
     pages = ['Payslip', 'P60 - 2018 Onwards', 'P60 - 2017 and Prior Years']
     result = ''
     for page in pages:

@@ -47,7 +47,7 @@ def go_to_oracle_page(*links: str,
     # please specify a unique value for --user-data-dir argument, or don't use --user-data-dir
     edge_options.add_argument('--edge-skip-compat-layer-relaunch')
     if manual_login:
-        print('This script will now launch a browser instance to log in to Oracle.')
+        print(f'This script will now launch a browser window ({browser.name.title()}) to log in to Oracle.')
         print('Return to this screen when you have logged in.')
         input('Press ENTER to start browser, or Ctrl-C to exit: ')
     else:
