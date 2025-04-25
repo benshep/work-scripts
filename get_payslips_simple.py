@@ -73,7 +73,7 @@ def get_payslips() -> None | str | date:
     """Download all my payslips from Oracle."""
     # Try to be smart about browser choice
     browser = {'win32': oracle.Browser.edge,
-               'darwin': oracle.Browser.safari,  # untested!
+               'darwin': oracle.Browser.chrome,  # for Mac, apparently better choice than Safari, thanks Jeyan
                'linux': oracle.Browser.firefox
                }.get(
         sys.platform,  # possible values: aix, android, emscripten, ios, linux, darwin, win32, cygwin, wasi
