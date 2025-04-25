@@ -3,9 +3,12 @@ import pickle
 import difflib
 from datetime import datetime
 from glob import glob
+from time import sleep
 from types import SimpleNamespace
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.firefox.webdriver import WebDriver
+
 from folders import user_profile
 
 
@@ -24,14 +27,7 @@ def check_page_changes(show_window: bool = False) -> str:
             check_pages.append(SimpleNamespace(name=name, url=url, old_content=None))
     check_pages = [page for page in check_pages if page.url in urls]  # remove any that aren't in the text list
 
-    if not show_window:
-        os.environ['MOZ_HEADLESS'] = '1'
-    profile_dir = os.path.join(user_profile, 'AppData', 'Roaming', 'Mozilla', 'Firefox', 'Profiles')
-    selenium_profile = next(folder for folder in os.listdir(profile_dir) if folder.endswith('.Selenium'))
-    options = webdriver.FirefoxOptions()
-    options.profile = webdriver.FirefoxProfile(os.path.join(profile_dir, selenium_profile))
-    web = webdriver.Firefox(options=options)
-    web.implicitly_wait(10)
+    web = open_browser(show_window)
     toast = ''
     for page in check_pages:
         print(page.url)
@@ -69,5 +65,36 @@ def check_page_changes(show_window: bool = False) -> str:
     return toast
 
 
+def open_browser(show_window: bool = False) -> WebDriver:
+    """Open a browser window and return a WebDriver instance."""
+    if not show_window:
+        os.environ['MOZ_HEADLESS'] = '1'
+    profile_dir = os.path.join(user_profile, 'AppData', 'Roaming', 'Mozilla', 'Firefox', 'Profiles')
+    selenium_profile = next(folder for folder in os.listdir(profile_dir) if folder.endswith('.Selenium'))
+    options = webdriver.FirefoxOptions()
+    options.profile = webdriver.FirefoxProfile(os.path.join(profile_dir, selenium_profile))
+    web = webdriver.Firefox(options=options)
+    web.implicitly_wait(10)
+    return web
+
+
+def live_update(show_window: bool = False) -> str:
+    web = open_browser(show_window)
+    web.get('https://engage.cloud.microsoft/main/org/stfc.ac.uk/threads/eyJfdHlwZSI6IlRocmVhZCIsImlkIjoiMzI5NDM3NDg3MTg4Mzc3NiJ9/eyJfdHlwZSI6Ik1lc3NhZ2UiLCJpZCI6IjMyOTc3NDkxNTc3MDc3NzYifQ')
+    sleep(10)
+    fake_links = web.find_elements(By.CLASS_NAME, 'y-fakeLink')
+    start_text = 'Seen by '
+    end_text = ' others'
+    toast = ''
+    for element in fake_links:
+        text = element.text
+        if text.startswith(start_text):
+            toast += text[len(start_text):]
+        elif text.endswith(end_text):
+            toast += f' 👍 {text[:-len(end_text)]} '
+    web.quit()
+    return toast
+
+
 if __name__ == '__main__':
-    print(check_page_changes(True))
+    print(live_update(True))
