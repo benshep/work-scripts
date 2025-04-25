@@ -71,14 +71,6 @@ def get_one_slip(web: WebDriver, index: int, p60: bool) -> str:
 
 def get_payslips() -> None | str | date:
     """Download all my payslips from Oracle."""
-    # Try to be smart about browser choice
-    browser = {'win32': oracle.Browser.edge,
-               'darwin': oracle.Browser.chrome,  # for Mac, apparently better choice than Safari, thanks Jeyan
-               'linux': oracle.Browser.firefox
-               }.get(
-        sys.platform,  # possible values: aix, android, emscripten, ios, linux, darwin, win32, cygwin, wasi
-        oracle.Browser.chrome  # default for 'none of the above',
-    )
     web = oracle.go_to_oracle_page('RCUK Self-Service Employee', browser=browser, manual_login=True)
     pages = ['Payslip', 'P60 - 2018 Onwards', 'P60 - 2017 and Prior Years']
     result = ''
@@ -106,4 +98,22 @@ def get_payslips() -> None | str | date:
 
 
 if __name__ == '__main__':
+    if len(sys.argv) > 1:  # argument specified: browser name
+        name = sys.argv[1]
+        all_names = [browser.name for browser in oracle.Browser]
+        if name in all_names:
+            browser = oracle.Browser[name]
+        else:
+            print(f'Unknown browser choice: {name}')
+            print('Valid choices:', ', '.join(all_names))
+            exit()
+    else:
+        # Automatic browser choice based on OS
+        browser = {'win32': oracle.Browser.edge,
+                   'darwin': oracle.Browser.chrome,  # for Mac, apparently better choice than Safari, thanks Jeyan
+                   'linux': oracle.Browser.firefox
+                   }.get(
+            sys.platform,  # possible values: aix, android, emscripten, ios, linux, darwin, win32, cygwin, wasi
+            oracle.Browser.chrome  # default for 'none of the above',
+        )
     print(get_payslips())
