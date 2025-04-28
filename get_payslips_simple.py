@@ -59,7 +59,11 @@ def get_one_slip(web: WebDriver, index: int, p60: bool) -> str:
     web.find_element(By.ID, 'ViewReport' if p60 else 'Export').click()  # start the download
     for _ in range(10):
         sleep(2)  # wait for download
-        new_files = set(os.listdir()) - old_files  # only files that weren't there before
+        new_files = set(
+            filename
+            for filename in os.listdir()
+            if filename.lower().endswith('.pdf')
+        ) - old_files  # only files that weren't there before
         if new_files:
             break
     else:  # didn't break out of loop - no new files
