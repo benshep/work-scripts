@@ -72,7 +72,7 @@ def go_to_oracle_page(*links: str,
     web.get(url)  # go to the URL
     web.find_element(By.ID, 'ssoUKRIBtn').click()  # UKRI User Login
     if manual_login:
-        time.sleep(3)  # wait for error messages to appear
+        time.sleep(10)  # wait for error messages to appear
         print('\nBrowser started.')
         input('Press ENTER after logging in to Oracle, or Ctrl-C to exit: ')
 
