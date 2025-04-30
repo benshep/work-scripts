@@ -35,8 +35,11 @@ def go_to_oracle_page(*links: str,
     # which URL to go to? OBI, Taleo, or just default to Oracle
     url = apps.get(links, 'https://ebs.ssc.rcuk.ac.uk/OA_HTML/AppsLogin')
     firefox_options = webdriver.FirefoxOptions()
+    firefox_options.add_argument('--MOZ_LOG=')  # try to silence errors
     edge_options = webdriver.EdgeOptions()
+    edge_options.add_argument('--log-level=3')  # try to silence errors
     chrome_options = webdriver.ChromeOptions()
+    chrome_options.add_argument('--log-level=3')  # try to silence errors
     if not (show_window or manual_login):  # try to open an invisible browser window
         os.environ['MOZ_HEADLESS'] = '1'
         edge_options.add_argument("--headless=new")
