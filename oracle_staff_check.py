@@ -123,7 +123,7 @@ def otl_submit(test_mode: bool = False,
     """Submit this week's OTL timecard for each staff member."""
     # don't bother before Thursday (to give people time to book the end of the week off)
     now = datetime.now()
-    if not test_mode:
+    if not test_mode and __name__ != '__main__':
         weekday = now.weekday()
         if weekday < 3:
             print('Too early in the week')
@@ -145,8 +145,11 @@ def otl_submit(test_mode: bool = False,
         return submit_staff_timecard(web_driver, all_hours, change_dates,
                                      all_off_dates, weeks_in_advance=weeks_in_advance)
 
-    toast = iterate_staff(submit_card, supervisor_page,
-                          show_window=test_mode, staff_names=staff_names)
+    toast = ''
+    if staff_names != ['me']:
+        toast = iterate_staff(submit_card, supervisor_page,
+                              show_window=test_mode, staff_names=staff_names)
+
     # now do mine
     if staff_names is None or 'me' in staff_names:
         web = go_to_oracle_page('STFC OTL Timecards', 'Time', 'Recent Timecards', show_window=test_mode)
@@ -235,7 +238,7 @@ def submit_staff_timecard(web: WebDriver,
     period_starts = 'HxcPeriodStarts'
     header = web.find_element(By.ID, period_starts)
     header.click()  # sort ascending
-    time.sleep(0.5)
+    time.sleep(1)
     header = web.find_element(By.ID, period_starts)  # try to prevent element going stale
     try:
         sort_arrow = header.find_element(By.TAG_NAME, 'img')
@@ -285,12 +288,14 @@ def submit_staff_timecard(web: WebDriver,
             next_option = next(opt for opt in reversed(options) if not opt.text.endswith('~') and ' - ' in opt.text)
             card_date_text = next_option.text
             wb_date = datetime.strptime(card_date_text.split(' - ')[0], '%B %d, %Y').date()  # e.g. August 16, 2021
-            # if not doing_my_cards and datetime.now().date() < wb_date != end_of_year_wb:
-            #     continue  # don't do future cards for other staff
-            next_option.click()
-            print('Creating timecard for', card_date_text)
-            if doing_my_cards:
-                web.find_element(By.ID, 'A150N1display').send_keys('Angal-Kalinin, Doctor Deepa (Deepa)')  # approver
+            weeks = last_card_age(wb_date)
+            if weeks > -weeks_in_advance:
+                # if not doing_my_cards and datetime.now().date() < wb_date != end_of_year_wb:
+                #     continue  # don't do future cards for other staff
+                next_option.click()
+                print('Creating timecard for', card_date_text)
+                if doing_my_cards:
+                    web.find_element(By.ID, 'A150N1display').send_keys('Angal-Kalinin, Doctor Deepa (Deepa)')  # approver
 
         def date_in_week(day: int) -> date:
             return wb_date + timedelta(days=day)
@@ -335,9 +340,11 @@ def submit_staff_timecard(web: WebDriver,
                 row_to_fill = empty_rows.pop(0)
                 fill_boxes(boxes, row_to_fill, project, task)
                 for day in days_to_fill:
-                    hrs = 0 if on_leave[day] or date_in_week(day) in end_of_year_time_off else rounded_hours
+                    hrs = 0 if (on_leave[day] or date_in_week(day) in end_of_year_time_off) else rounded_hours
                     hours_boxes[row_to_fill * 7 + day].send_keys(f'{hrs:.2f}')
+                    time.sleep(0.5)  # a bit of extra wait time
                     wait_until_page_ready(web)
+                time.sleep(1)  # try waiting a bit - things were getting messed up
 
         boxes, hours_boxes, empty_rows = get_boxes(web)
         # do a row for leave and holidays
@@ -346,6 +353,7 @@ def submit_staff_timecard(web: WebDriver,
         for day in days_to_fill:
             hrs = end_of_year_time_off.get(date_in_week(day), 7.4 if on_leave[day] else 0)
             hours_boxes[row_to_fill * 7 + day].send_keys(f'{hrs:.2f}')
+            time.sleep(0.5)
 
         wait_until_page_ready(web)
         web.find_element(By.ID, 'review').click()  # Continue button
@@ -440,6 +448,7 @@ def last_card_age(last_card_date: date) -> int:
 
 
 if __name__ == '__main__':
-    print(otl_submit(test_mode=True, weeks_in_advance=0))
+    print(otl_submit(test_mode=True, weeks_in_advance=4,
+                     staff_names=['Alex Hinton', 'Matthew King', 'Amelia Pollard', 'me', 'Nasiq Ziyan']))
     # get_staff_leave_dates(test_mode=False)
     # print(last_card_age('25-Mar-2024'))
