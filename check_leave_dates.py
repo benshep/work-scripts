@@ -75,7 +75,7 @@ def get_off_dates(web: WebDriver,
     return_value = set()
     while pages_done < page_count or page_count < 1:
         cells = web.find_elements(By.CLASS_NAME, 'x1w')
-        columns = 8 if me else 9  # staff under me get a 'delete' column too
+        columns = 7
         start_dates = cells[::columns]
         if start_dates[0].text == 'No results found.':
             break
