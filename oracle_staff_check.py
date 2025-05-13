@@ -169,10 +169,15 @@ def get_all_off_dates(web: WebDriver) -> set[date]:
     return get_off_dates(web, fetch_all=True, me=False, page_count=1)
 
 
-def get_staff_leave_dates(test_mode: bool = False,
-                          staff_names: list[str] | None = None) -> dict[str, set[date]]:
+def get_all_off_dates_table(web: WebDriver) -> list[list]:
+    return get_off_dates(web, fetch_all=True, me=False, page_count=2, table_format=True)
+
+
+def get_staff_leave_dates(test_mode: bool = False, table_format: bool = False,
+                          staff_names: list[str] | None = None) -> dict[str, Any]:
     """Get leave dates in Oracle for each staff member."""
-    return iterate_staff(get_all_off_dates, 'RCUK Self-Service Manager', 'Attendance Management',
+    get_dates_func = get_all_off_dates_table if table_format else get_all_off_dates
+    return iterate_staff(get_dates_func, 'RCUK Self-Service Manager', 'Attendance Management',
                          show_window=test_mode, staff_names=staff_names)
 
 
@@ -421,8 +426,9 @@ def get_boxes(web: WebDriver,
     return boxes, hours_boxes, empty_rows
 
 
-def check_al_page(web: WebDriver) -> str | None:
-    """On an individual annual leave balance page, check the remaining balance, and return toast text."""
+def check_al_page(web: WebDriver, get_all: bool = False) -> str | None | list[float]:
+    """On an individual annual leave balance page, check the remaining balance, and return toast text.
+    If get_all is True, it will fetch all data (initial, taken, booked, remaining)."""
     if web.find_elements(By.CLASS_NAME, 'x5y'):  # error - not available for honorary scientists
         web.back()
         return None
@@ -432,10 +438,28 @@ def check_al_page(web: WebDriver) -> str | None:
         web.find_element(By.LINK_TEXT, 'Show Accrual Balances').click()
     name = web.find_element(By.ID, 'EmpName').text
     surname, first = name.split(', ')
-    remaining_days = float(web.find_elements(By.CLASS_NAME, 'x2')[-1].text)  # can have half-days too
+    data_table = web.find_element(By.ID, 'AccrualBalanceTableLayout')
+    data_cells = data_table.find_elements(By.CLASS_NAME, 'x2')
+    label_cells = data_table.find_elements(By.CLASS_NAME, 'xc')
+    labels = [cell.text for cell in label_cells]
+    assert labels[0] in ('RCUK Annual Leave Days Scheme', 'UKRI Annual Leave Days Scheme')
+    assert labels[1:] == ['Annual leave initial balance', 'Annual leave taken', 'Annual leave booked', 'Annual leave remaining']
+    days_data = [float(cell.text) for cell in data_cells[1:]]  # skip first header row
     web.find_element(By.ID, 'Return').click()
-    # Only show if more than 10 days remaining (max carry over)
-    return f'{first} {surname}: {remaining_days:g} days' if remaining_days > 10 else None
+    if get_all:
+        return days_data
+    else:
+        # Only show if more than 10 days remaining (max carry over)
+        remaining_days = days_data[-1]
+        return f'{first} {surname}: {remaining_days:g} days' if remaining_days > 10 else None
+
+
+def get_all_al_data() -> dict[str, list[float]]:
+    """Return all AL data from an individual annual leave balance page (initial, taken, booked, remaining)."""
+    def check_al_page_all(web: WebDriver) -> list[float]:
+        return check_al_page(web, get_all=True)
+
+    return iterate_staff(check_al_page_all, 'RCUK Self-Service Manager', 'Attendance Management')
 
 
 def last_card_age(last_card_date: date) -> int:
@@ -448,7 +472,15 @@ def last_card_age(last_card_date: date) -> int:
 
 
 if __name__ == '__main__':
-    print(otl_submit(test_mode=True, weeks_in_advance=4,
-                     staff_names=['Alex Hinton', 'Matthew King', 'Amelia Pollard', 'me', 'Nasiq Ziyan']))
+    # Get and display leave balances
+    data = get_all_al_data()
+    for name, days in data.items():
+        print(name, *days, sep='\t')
+    # Get and display leave dates
+    data = get_staff_leave_dates(table_format=True)
+    for name, table in data.items():
+        print(name)
+        for row in table:
+            print(*row, sep='\t')
     # get_staff_leave_dates(test_mode=False)
     # print(last_card_age('25-Mar-2024'))

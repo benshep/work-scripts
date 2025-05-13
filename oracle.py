@@ -61,7 +61,7 @@ def go_to_oracle_page(*links: str,
 
     match browser:
         case Browser.firefox:
-            # in Ubuntu, Selenium can't locate Firefox - help it out (thanks Jools Wills)
+            # in Ubuntu, Selenium can't locate Firefox - help it out (thanks Jools Wills)\\\
             driver = '/snap/bin/geckodriver'
             service = webdriver.FirefoxService(
                 executable_path=(driver if os.path.isfile(driver) else None)
