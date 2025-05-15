@@ -33,9 +33,13 @@ def get_bookings(test_mode: bool = False) -> str:
     next(option for option in date_dropdown.find_elements(By.TAG_NAME, 'option') if option.text == 'Next Week').click()
     web.find_element(By.ID, 'MainPlaceHolder_cbAllRecords').click()  # 'all records' checkbox
     web.find_element(By.ID, 'MainPlaceHolder_Button1').click()  # Search
-    sleep(2)
-    table = web.find_element(By.ID, 'MainPlaceHolder_DiaryGridView')
-    rows = table.find_elements(By.TAG_NAME, 'tr')
+    for i in range(2):
+        sleep(2)
+        table = web.find_element(By.ID, 'MainPlaceHolder_DiaryGridView')
+        rows = table.find_elements(By.TAG_NAME, 'tr')
+        if i == 0:  # just do once, then refresh table and rows
+            headers = rows[0].find_elements(By.TAG_NAME, 'th')
+            headers[1].find_element(By.TAG_NAME, 'a').click()  # sort by start date
     now = datetime.now()
     for row in rows[1:]:  # skip header row
         cells = row.find_elements(By.TAG_NAME, 'td')
@@ -64,3 +68,4 @@ def get_bookings(test_mode: bool = False) -> str:
 
 if __name__ == '__main__':
     print(get_bookings(test_mode=True))
+    # a change!
