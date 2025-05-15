@@ -35,7 +35,8 @@ def join_vc_meeting(force_sync: bool = False):
         (subject, url), = joinable_meetings.items()
     elif meeting_count > 1:
         subjects = list(joinable_meetings.keys())
-        [print(i, subject) for i, subject in enumerate(subjects)]
+        for i, subject in enumerate(subjects):
+            print(f'{i:2d}. {subject}')
         try:
             i = min(int(input('Choose meeting to join [0]: ')), meeting_count - 1)
         except ValueError:

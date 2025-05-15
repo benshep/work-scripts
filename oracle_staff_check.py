@@ -442,8 +442,8 @@ def check_al_page(web: WebDriver, get_all: bool = False) -> str | None | list[fl
     data_cells = data_table.find_elements(By.CLASS_NAME, 'x2')
     label_cells = data_table.find_elements(By.CLASS_NAME, 'xc')
     labels = [cell.text for cell in label_cells]
-    assert labels[0] in ('RCUK Annual Leave Days Scheme', 'UKRI Annual Leave Days Scheme')
-    assert labels[1:] == ['Annual leave initial balance', 'Annual leave taken', 'Annual leave booked', 'Annual leave remaining']
+    assert labels[0].endswith(' Annual Leave Days Scheme')
+    assert labels[1:] == [f'Annual leave {label}' for label in ['initial balance', 'taken', 'booked', 'remaining']]
     days_data = [float(cell.text) for cell in data_cells[1:]]  # skip first header row
     web.find_element(By.ID, 'Return').click()
     if get_all:

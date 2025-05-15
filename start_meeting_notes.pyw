@@ -1,7 +1,7 @@
 import contextlib
 import os
 import re
-from typing import Iterator
+from typing import Iterator, Any
 from win32api import GetKeyState
 
 import requests
@@ -42,21 +42,7 @@ def create_note_file(force_sync: bool = False) -> None:
     meeting_date = start_time.strftime("%#d/%#m/%Y")  # no leading zeros
     subject = meeting.Subject.strip()  # remove leading and trailing spaces
     subtitle = f'*{meeting_date}' + (f'. {people_list}*' if people_list else '*')
-    description = meeting.Body
-    description = description.replace('o   ', '  * ')  # second-level lists
-    description = description.replace('\r\n\r\n', '\n')  # double-spaced paragraphs
-    # snip out Zoom joining instructions
-    start = description.find(' <http://zoom.us>')  # begins with this
-    if start >= 0:
-        # last bit is "Skype on a SurfaceHub" link, only one with @lync in it - or sometimes SIP: xxxx@zoomcrc.com
-        end = max(description.rfind('@lync.zoom.us'), description.rfind('@zoomcrc.com'))
-        end = description.find('\r\n', end)  # end of line
-        description = (description[:start] + description[end:]).strip()
-    # snip out Teams joining instructions
-    start = description.find('Microsoft Teams Need help?')
-    if start >= 0:
-        end = description.rfind('_' * 80)  # horizontal line
-        description = (description[:start] + description[end:]).strip()
+    description = clean_body(meeting.Body)
 
     if match := re.search(r'https://[\w\.]+/event/\d+', meeting.Body):  # Indico link: look for an agenda
         url = match[0]
@@ -69,6 +55,29 @@ def create_note_file(force_sync: bool = False) -> None:
     filename = f'{start_time.strftime("%Y-%m-%d")} {subject.translate(bad_chars)}.md'
     open(filename, 'a', encoding='utf-8').write(text)
     os.startfile(filename)
+
+
+def clean_body(description: str) -> str:
+    """Strip out Teams and Zoom joining instructions from meeting body, and generally improve formatting."""
+    description = description.replace('o   ', '  * ')  # second-level lists
+    description = description.replace('\r\n', '\n')  # CRLF -> LF
+    description = description.replace('\n\n', '\n')  # double-spaced paragraphs
+    # snip out Zoom joining instructions
+    start = description.find(' <http://zoom.us/>')  # begins with this
+    if start >= 0:
+        # last bit is "Skype on a SurfaceHub" link, only one with @lync in it - or sometimes SIP: xxxx@zoomcrc.com
+        end = max(description.rfind('@lync.zoom.us>'),
+                  description.rfind('@zoomcrc.com>'))
+        end = description.find('\n', end)  # end of line
+        description = (description[:start] + description[end:]).strip()
+    # snip out Teams joining instructions
+    horizontal_line = '_' * 80
+    start = description.find(f'{horizontal_line}\nMicrosoft Teams Need help?')
+    if start >= 0:
+        end = description.rfind(horizontal_line) + 80
+        description = (description[:start] + description[end:]).strip()
+    # print(description)
+    return description
 
 
 def target_meeting(force_sync: bool = False) -> outlook.AppointmentItem:
@@ -86,11 +95,13 @@ def target_meeting(force_sync: bool = False) -> outlook.AppointmentItem:
         current_events = filter(lambda event: event.Subject != 'ASTeC/CI Coffee', current_events)
 
         # put all the declined meetings at the end of the list
-        current_events = sorted(list(current_events), key=lambda event: event.Subject.startswith('declined: '))
+        current_events = sorted(list(current_events),
+                                key=lambda event: event.Subject.startswith('Declined: '))
         meeting_count = len(current_events)
-        [print(f'{i:2d}. {event.Start.strftime(time_format)} {event.Subject}') for i, event in enumerate(current_events)]
-        final_option = 'More...' if done_sync else 'Force sync...'
-        print(f'{meeting_count:2d}. {final_option}')
+        for i, event in enumerate(current_events):
+            print(f'{i:2d}. {event.Start.strftime(time_format)} {event.Subject}')
+        final_option = 'More' if done_sync else 'Force sync'
+        print(f'{meeting_count:2d}. {final_option}...')
         try:
             i = min(int(input('Choose meeting for note file [0]: ')), meeting_count)
         except ValueError:
@@ -147,7 +158,7 @@ def is_banned(name: str) -> bool:
     """Test banned state of folders. Folders are banned for the following reasons:
     - Name is Zoom, Other, or Old work - don't put notes in those
     - Name is lowercase only
-    - Name is 3 characters or less"""
+    - Name is 3 characters or fewer"""
     return name in ('Zoom', 'Other', 'Old work') or name.lower() == name or len(name) <= 3
 
 
