@@ -42,7 +42,7 @@ Esc::!F4
 #w::WinActivate
 #IfWinExist ahk_class PPTFrameClass
 #q::WinActivate
-#IfWinExist Python
+#IfWinExist ahk_exe WindowsTerminal.exe
 #c::WinActivate
 #IfWinExist ahk_class TeamsWebView
 #!c::WinActivate
