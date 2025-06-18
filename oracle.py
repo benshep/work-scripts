@@ -83,7 +83,7 @@ def go_to_oracle_page(*links: str,
 
     web.implicitly_wait(10)  # add an automatic wait to the browser handling
     web.get(url)  # go to the URL
-    sleep(2)
+    # sleep(2)
     for login_button in web.find_elements(By.CLASS_NAME, 'oj-button-text'):
         if login_button.text == 'UKRI':
             login_button.click()
@@ -103,5 +103,5 @@ def go_to_oracle_page(*links: str,
 
 
 if __name__ == '__main__':
-    go_to_oracle_page('STFC OTL Timecards', 'Time', 'Recent Timecards',
-                      browser=Browser.chrome, manual_login=True)
+    go_to_oracle_page('absences', show_window=True)
+    sleep(10)

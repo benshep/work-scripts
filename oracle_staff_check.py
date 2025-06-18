@@ -174,6 +174,7 @@ def get_staff_leave_dates(test_mode: bool = False, table_format: bool = False,
     return_dict = {}
     for member in mars_group.members:
         if staff_names is None or member.name in staff_names:
+            print(member.name)
             web.get(url + f'?pPersonId={member.person_id}')
             return_dict[member.name] = get_off_dates(web, fetch_all=True, page_count=1, table_format=table_format)
     return return_dict
