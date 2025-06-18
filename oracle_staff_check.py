@@ -16,10 +16,11 @@ from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 
-from folders import user_profile
-from oracle import go_to_oracle_page
-from check_leave_dates import get_off_dates
+import oracle
 import outlook
+import mars_group
+from folders import user_profile
+from check_leave_dates import get_off_dates
 
 # At Christmas, we get guidance for filling in OTLs. This gives hours to book to the leave code for each day
 end_of_year_time_off = {
@@ -152,7 +153,7 @@ def otl_submit(test_mode: bool = False,
 
     # now do mine
     if staff_names is None or 'me' in staff_names:
-        web = go_to_oracle_page('STFC OTL Timecards', 'Time', 'Recent Timecards', show_window=test_mode)
+        web = oracle.go_to_oracle_page('STFC OTL Timecards', 'Time', 'Recent Timecards', show_window=test_mode)
         try:
             toast = '\n'.join([toast, submit_staff_timecard(web, all_hours, change_dates,
                                                             weeks_in_advance=weeks_in_advance)]).strip()
@@ -165,20 +166,17 @@ def otl_submit(test_mode: bool = False,
     return toast
 
 
-def get_all_off_dates(web: WebDriver) -> set[date]:
-    return get_off_dates(web, fetch_all=True, me=False, page_count=1)
-
-
-def get_all_off_dates_table(web: WebDriver) -> list[list]:
-    return get_off_dates(web, fetch_all=True, me=False, page_count=2, table_format=True)
-
-
 def get_staff_leave_dates(test_mode: bool = False, table_format: bool = False,
                           staff_names: list[str] | None = None) -> dict[str, Any]:
     """Get leave dates in Oracle for each staff member."""
-    get_dates_func = get_all_off_dates_table if table_format else get_all_off_dates
-    return iterate_staff(get_dates_func, 'RCUK Self-Service Manager', 'Attendance Management',
-                         show_window=test_mode, staff_names=staff_names)
+    web = oracle.go_to_oracle_page('absences', show_window=test_mode)
+    url = oracle.apps[('absences',)]
+    return_dict = {}
+    for member in mars_group.members:
+        if staff_names is None or member.name in staff_names:
+            web.get(url + f'?pPersonId={member.person_id}')
+            return_dict[member.name] = get_off_dates(web, fetch_all=True, page_count=1, table_format=table_format)
+    return return_dict
 
 
 def iterate_staff(check_function: Callable[[WebDriver], Any],
@@ -189,7 +187,7 @@ def iterate_staff(check_function: Callable[[WebDriver], Any],
     If the function returns a string, concatenate them all together and return a toast.
     Otherwise, return a dict of {name: value}.
     Specify a list of staff names to only perform the function for a subset. Otherwise, it will go through them all."""
-    web = go_to_oracle_page(*page, show_window=show_window)
+    web = oracle.go_to_oracle_page(*page, show_window=show_window)
     print(page)
     try:
         row_count = get_staff_table(web)
@@ -459,7 +457,7 @@ def get_all_al_data() -> dict[str, list[float]]:
     def check_al_page_all(web: WebDriver) -> list[float]:
         return check_al_page(web, get_all=True)
 
-    return iterate_staff(check_al_page_all, 'RCUK Self-Service Manager', 'Attendance Management')
+    return iterate_staff(check_al_page_all, 'My Team', 'Manager Self Service')
 
 
 def last_card_age(last_card_date: date) -> int:
@@ -472,15 +470,15 @@ def last_card_age(last_card_date: date) -> int:
 
 
 if __name__ == '__main__':
-    # Get and display leave balances
-    data = get_all_al_data()
-    for name, days in data.items():
-        print(name, *days, sep='\t')
-    # Get and display leave dates
-    data = get_staff_leave_dates(table_format=True)
-    for name, table in data.items():
-        print(name)
-        for row in table:
-            print(*row, sep='\t')
-    # get_staff_leave_dates(test_mode=False)
+    # # Get and display leave balances
+    # data = get_all_al_data()
+    # for name, days in data.items():
+    #     print(name, *days, sep='\t')
+    # # Get and display leave dates
+    # data = get_staff_leave_dates(table_format=True)
+    # for name, table in data.items():
+    #     print(name)
+    #     for row in table:
+    #         print(*row, sep='\t')
+    print(get_staff_leave_dates(test_mode=True))
     # print(last_card_age('25-Mar-2024'))

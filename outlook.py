@@ -812,22 +812,25 @@ def perform_sync(sync_start_callback: Callable[[str], None] | None = None,
     Otherwise, this function blocks until sync is completed.
     Supply other callbacks to be notified of sync start, progress and errors."""
     namespace = get_outlook().GetNamespace('MAPI')
-    sync_objects = namespace.SyncObjects
+    namespace.GetDefaultFolder(DefaultFolders.calendar).InAppFolderSyncObject = True
+    namespace.GetDefaultFolder(DefaultFolders.inbox).InAppFolderSyncObject = False
+    sync_object = namespace.SyncObjects.AppFolders
     event_handlers: list[SyncObjectEventHandler] = []
-    for sync_object in sync_objects:
-        sync_object_events: SyncObjectEventHandler = win32com.client.WithEvents(sync_object, SyncObjectEventHandler)
-        event_handlers.append(sync_object_events)
-        sync_object_events.set_name(sync_object.Name)
-        sync_object_events.set_callbacks(
-            sync_end_callback=sync_end_callback,
-            sync_start_callback=sync_start_callback,
-            progress_callback=progress_callback,
-            error_callback=error_callback
-        )
-        sync_object.Start()
+    sync_object_events: SyncObjectEventHandler = win32com.client.WithEvents(sync_object, SyncObjectEventHandler)
+    event_handlers.append(sync_object_events)
+    sync_object_events.set_name(sync_object.Name)
+    sync_object_events.set_callbacks(
+        sync_end_callback=sync_end_callback,
+        sync_start_callback=sync_start_callback,
+        progress_callback=progress_callback,
+        error_callback=error_callback
+    )
+    sync_object.Start()
     if sync_end_callback:
         return
     while all(handler.syncing for handler in event_handlers):
+    # for _ in range(300):  # wait 30s
+    #     print([handler.syncing for handler in event_handlers])
         pythoncom.PumpWaitingMessages()
         sleep(0.1)
 

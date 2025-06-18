@@ -1,5 +1,6 @@
 import time
 import os
+from time import sleep
 from urllib.parse import quote
 from enum import Enum
 from selenium import webdriver
@@ -16,8 +17,17 @@ class Browser(Enum):
     safari = 4
 
 
+quoted_path = quote('/shared/STFC Shared/_portal/STFC Projects', safe='')
+fusion_url = 'https://fa-evzn-saasfaukgovprod1.fa.ocs.oraclecloud.com'
+apps: dict[tuple[str, ...], str] = {
+    ('obi',): f'https://obi.ssc.rcuk.ac.uk/analytics/saw.dll?dashboard&PortalPath={quoted_path}',  # TODO: update?
+    ('taleo',): "https://careersportal.taleo.net/enterprise/fluid?isNavigationCompleted=true",
+    ('absences',): fusion_url + '/fscmUI/redwood/absences/existing-absences/view-summary'
+}
+
+
 def go_to_oracle_page(*links: str,
-                      browser: Browser = Browser.firefox,
+                      browser: Browser = Browser.edge,  # changed from Firefox for SSO
                       manual_login: bool = False,
                       show_window: bool = False) -> RemoteWebDriver:
     """Open a selenium web driver and log in to Oracle e-Business Suite, opening the specified tuple of links.
@@ -27,13 +37,8 @@ def go_to_oracle_page(*links: str,
     :param show_window: make the browser window visible
     :return: web driver instance, so you can do more things with it"""
 
-    quoted_path = quote('/shared/STFC Shared/_portal/STFC Projects', safe='')
-    apps: dict[tuple[str, ...], str] = {
-        ('obi',): f'https://obi.ssc.rcuk.ac.uk/analytics/saw.dll?dashboard&PortalPath={quoted_path}',
-        ('taleo',): "https://careersportal.taleo.net/enterprise/fluid?isNavigationCompleted=true"
-    }
-    # which URL to go to? OBI, Taleo, or just default to Oracle
-    url = apps.get(links, 'https://ebs.ssc.rcuk.ac.uk/OA_HTML/AppsLogin')
+    # which URL to go to? OBI, Taleo, or just default to Oracle homepage
+    url = apps.get(links, fusion_url + '/fscmUI/faces/FuseWelcome')
     firefox_options = webdriver.FirefoxOptions()
     firefox_options.add_argument('--MOZ_LOG=')  # try to silence errors
     edge_options = webdriver.EdgeOptions()
@@ -78,7 +83,11 @@ def go_to_oracle_page(*links: str,
 
     web.implicitly_wait(10)  # add an automatic wait to the browser handling
     web.get(url)  # go to the URL
-    web.find_element(By.ID, 'ssoUKRIBtn').click()  # UKRI User Login
+    sleep(2)
+    for login_button in web.find_elements(By.CLASS_NAME, 'oj-button-text'):
+        if login_button.text == 'UKRI':
+            login_button.click()
+            break
     if manual_login:
         time.sleep(10)  # wait for error messages to appear
         print('\nBrowser started.')
