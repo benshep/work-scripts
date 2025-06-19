@@ -188,28 +188,29 @@ def iterate_staff(check_function: Callable[[WebDriver], Any],
     If the function returns a string, concatenate them all together and return a toast.
     Otherwise, return a dict of {name: value}.
     Specify a list of staff names to only perform the function for a subset. Otherwise, it will go through them all."""
-    web = oracle.go_to_oracle_page(*page, show_window=show_window)
+    web = oracle.go_to_oracle_page('home', show_window=show_window)
     print(page)
     try:
-        row_count = get_staff_table(web)
-        print(f'{row_count=}')
-
+        i = 0
+        for link in page:
+            web.find_element(By.LINK_TEXT, link).click()
+        cells = web.find_elements(By.CLASS_NAME, 'x2l0')
+        # first column: names; second column: email addresses
+        names = cells[::2]
+        emails = cells[1::2]
         toast = []
         return_dict = {}
-        tag_id = 'N26'
-        for i in range(1, row_count):  # first one is mine - ignore this
-            name = ' '.join(translate_name(web.find_element(By.ID, f'N3:{tag_id}:{i}').text))
+        for name_cell, email_cell in zip(names, emails):
+            email_address = email_cell.text
+            if email_address not in [member.email for member in mars_group.members]:
+                continue
+            name = name_cell.text
             if staff_names and name not in staff_names:
                 continue
             print(name)
-            web.find_element(By.ID, f'N3:Y:{i}').click()  # link from 'Action' column at far right
-            if page == (supervisor_page,):
-                tag_id = 'N25'  # id changes after you've clicked 'Action' link once!
-            with contextlib.suppress(selenium.common.exceptions.NoSuchElementException):
-                if web.find_element(By.CLASS_NAME, 'x5y').text == 'Error':  # got an error page, not the expected page
-                    web.find_element(By.CLASS_NAME, 'x7n').click()  # click 'OK'
-                    continue
+            name_cell.click()
             result = check_function(web)
+            web.back()
             if isinstance(result, str):
                 toast.append(result)
             elif result:  # make sure we're not returning a None
@@ -458,7 +459,7 @@ def get_all_al_data() -> dict[str, list[float]]:
     def check_al_page_all(web: WebDriver) -> list[float]:
         return check_al_page(web, get_all=True)
 
-    return iterate_staff(check_al_page_all, 'My Team', 'Manager Self Service')
+    return iterate_staff(check_al_page_all, 'My Team', 'Show More', 'Absence Balance')
 
 
 def last_card_age(last_card_date: date) -> int:

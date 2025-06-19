@@ -22,7 +22,8 @@ fusion_url = 'https://fa-evzn-saasfaukgovprod1.fa.ocs.oraclecloud.com'
 apps: dict[tuple[str, ...], str] = {
     ('obi',): f'https://obi.ssc.rcuk.ac.uk/analytics/saw.dll?dashboard&PortalPath={quoted_path}',  # TODO: update?
     ('taleo',): "https://careersportal.taleo.net/enterprise/fluid?isNavigationCompleted=true",
-    ('absences',): fusion_url + '/fscmUI/redwood/absences/existing-absences/view-summary'
+    ('absences',): fusion_url + '/fscmUI/redwood/absences/existing-absences/view-summary',
+    ('home',): fusion_url
 }
 
 

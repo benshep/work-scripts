@@ -919,7 +919,8 @@ def is_out_of_office(event: AppointmentItem) -> bool:
 
 def is_annual_leave(event: AppointmentItem) -> bool:
     """Check whether a given Outlook event is an annual leave booking."""
-    return is_out_of_office(event) and any([event.Subject.lower().endswith('annual leave'), event.Subject == 'Off',
+    return is_out_of_office(event) and any([event.Subject.strip().lower().endswith('annual leave'),
+                                            event.Subject == 'Off',
                                             re.search(r'\bAL$', event.Subject)])  # e.g. "ARB AL" but not "INTERNAL"
 
 
