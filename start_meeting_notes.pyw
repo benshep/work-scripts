@@ -17,12 +17,12 @@ def folder_match(name: str, test_against: str) -> bool:
     return re.search(fr'\b{re.escape(name)}s?\b', test_against, re.IGNORECASE) is not None
 
 
-def create_note_file(force_sync: bool = False) -> None:
+def create_note_file() -> None:
     """Start a file for notes relating to the given meeting. Find a relevant folder in the user's Documents folder,
      searching first the subject then the body of the meeting for a folder name. Use Other if none found.
      Don't use the Zoom folder (this is often found in the meeting body).
      The file is in Markdown format, with the meeting title, date and attendees filled in at the top."""
-    if not (meeting := target_meeting(force_sync)):
+    if not (meeting := target_meeting()):
         return  # no current meeting
     go_to_folder(meeting)
     # Hierarchy of responses: (we want to list attendees from the top)
@@ -80,43 +80,32 @@ def clean_body(description: str) -> str:
     return description
 
 
-def target_meeting(force_sync: bool = False) -> outlook.AppointmentItem:
+def target_meeting(min_count: int = 1, hours_ahead: float = 12) -> outlook.AppointmentItem:
     os.system('title 📓 Start meeting notes')
-    hours_ahead = 12
-    time_format = "%H:%M"
-    done_sync = False
-    while True:
-        if force_sync:
-            outlook.perform_sync()
-            done_sync = True
-            force_sync = False
-        current_events = outlook.get_current_events(hours_ahead=hours_ahead)
-        current_events = filter(lambda event: not outlook.is_wfh(event), current_events)
-        current_events = filter(lambda event: event.Subject != 'ASTeC/CI Coffee', current_events)
+    time_format = "%a %d/%m %H:%M" if hours_ahead > 12 else "%H:%M"
+    print(hours_ahead, min_count)
+    current_events = outlook.get_current_events(hours_ahead=hours_ahead, min_count=min_count)
+    unfiltered_count = len(current_events)
+    current_events = filter(lambda event: not outlook.is_wfh(event), current_events)
+    current_events = filter(lambda event: event.Subject != 'ASTeC/CI Coffee', current_events)
 
-        # put all the declined meetings at the end of the list
-        current_events = sorted(list(current_events),
-                                key=lambda event: event.Subject.startswith('Declined: '))
-        meeting_count = len(current_events)
-        for i, event in enumerate(current_events):
-            print(f'{i:2d}. {event.Start.strftime(time_format)} {event.Subject}')
-        final_option = 'More' if done_sync else 'Force sync'
-        print(f'{meeting_count:2d}. {final_option}...')
-        try:
-            i = min(int(input('Choose meeting for note file [0]: ')), meeting_count)
-        except ValueError:
-            i = 0
-        if i < meeting_count:  # valid meeting
-            break
-        # final option selected: more or force sync
-        if done_sync:
-            hours_ahead += 24 * 7  # look ahead to next week
-            time_format = "%a %d/%m %H:%M"
-        else:
-            force_sync = True
-        print()
+    # put all the declined meetings at the end of the list
+    current_events = sorted(list(current_events), key=lambda event: event.Subject.startswith('Declined: '))
+    meeting_count = len(current_events)
+    print('')
+    for i, event in enumerate(current_events):
+        print(f'{i:2d}. {event.Start.strftime(time_format)} {event.Subject}')
+    print(f'{meeting_count:2d}. Look for more now...')
+    print(f'{meeting_count + 1:2d}. Further ahead...')
+    i = min(int(input('Choose meeting for note file [0]: ') or 0), meeting_count + 1)
+    if i < meeting_count:  # valid meeting
+        return current_events[i]
+    # one of last two selected: get more now, or look further ahead
+    if i == meeting_count:
+        return target_meeting(unfiltered_count + 1, hours_ahead)
+    else:
+        return target_meeting(hours_ahead=hours_ahead + 24 * 7)  # look ahead to next week
 
-    return current_events[i]
 
 
 def walk(top: str, max_depth: int) -> Iterator[tuple[str, list[str]]]:
@@ -222,4 +211,4 @@ def ical_to_markdown(url: str) -> str:
 if __name__ == '__main__':
     # for meeting in outlook.get_appointments_in_range(-30, 30):
     #     print(meeting.Subject, go_to_folder(meeting), sep='; ')
-    create_note_file(GetKeyState(0x11) < 0)  # Ctrl
+    create_note_file()

@@ -20,9 +20,7 @@ def join_vc_meeting(force_sync: bool = False):
     # Following that, URL params with alphanumeric, =&.- (any more required?)
     zoom_url = re.compile(r'https://(?:[\w\-]+.)?(?:zoom\.us|zoomgov\.com|zoom-x\.de)/[\w/\?=&\-]+\b')  # simpler regex
     teams_url = re.compile(r'https://teams\.microsoft\.com/l/meetup-join/.*\b')
-    if force_sync:
-        outlook.perform_sync()
-    current_events = outlook.get_current_events()
+    current_events = outlook.get_current_events(min_count=-1 if force_sync else 1)
     print('Current events:', [event.Subject for event in current_events])
     joinable_meetings = {}
     for meeting in current_events:
@@ -37,12 +35,13 @@ def join_vc_meeting(force_sync: bool = False):
         subjects = list(joinable_meetings.keys())
         for i, subject in enumerate(subjects):
             print(f'{i:2d}. {subject}')
-        try:
-            i = min(int(input('Choose meeting to join [0]: ')), meeting_count - 1)
-        except ValueError:
-            i = 0
-        subject = subjects[i]
-        url = joinable_meetings[subject]
+        print(f'{meeting_count:2d}. Force sync...')
+        i = min(int(input('Choose meeting to join [0]: ') or 0), meeting_count)
+        if i < meeting_count:
+            subject = subjects[i]
+            url = joinable_meetings[subject]
+        else:  # 'Force sync' selected
+            join_vc_meeting(True)
     else:
         print('No joinable meetings found')
         if not force_sync:

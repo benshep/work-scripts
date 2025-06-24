@@ -806,7 +806,7 @@ def perform_sync(sync_start_callback: Callable[[str], None] | None = None,
                  sync_end_callback: Callable[[str], None] | None = None,
                  progress_callback: Callable[[str, SyncState, str, int, int], None] | None = None,
                  error_callback: Callable[[str, int, str], None] | None = None,
-                 ) -> None:
+                 ) -> list[SyncObjectEventHandler] | None:
     """Carries out a sync of all the SyncObjects in Outlook's MAPI namespace.
     If a sync_end_callback is provided, the function will return immediately and sync will continue in the background.
     Otherwise, this function blocks until sync is completed.
@@ -827,13 +827,13 @@ def perform_sync(sync_start_callback: Callable[[str], None] | None = None,
     )
     sync_object.Start()
     if sync_end_callback:
-        return
-    while all(handler.syncing for handler in event_handlers):
+        return event_handlers
+    while any(handler.syncing for handler in event_handlers):
     # for _ in range(300):  # wait 30s
     #     print([handler.syncing for handler in event_handlers])
         pythoncom.PumpWaitingMessages()
         sleep(0.1)
-
+    return None
 
 
 date_spec = datetime | date | float | int
@@ -895,10 +895,32 @@ def happening_now(event: AppointmentItem, hours_ahead: float = 0.5) -> bool:
         return False
 
 
-def get_current_events(user: str = 'me', hours_ahead: float = 0.5) -> list[AppointmentItem]:
-    """Return a list of current events from Outlook, sorted by subject."""
-    current_events = filter(lambda event: happening_now(event, hours_ahead),
-                            get_appointments_in_range(-7, 1 + hours_ahead / 24, user=user))
+def get_current_events(user: str = 'me', hours_ahead: float = 0.5, min_count: int = 0) -> list[AppointmentItem]:
+    """Return a list of current events from Outlook, sorted by subject.
+    :param user: email address of user to fetch events for, or 'me' for my own events
+    :param hours_ahead: how many hours ahead to look
+    :param min_count: look for at least this many events. If fewer are returned, run a sync and wait until there are
+    at least this many. If a negative value is supplied, wait for this many more than is returned by the first call.
+    :return: a sorted list of Outlook events.
+    """
+    i = 0
+    syncing = False
+    while i < 60 or syncing:  # try for a minute or so
+        current_events = list(filter(lambda event: happening_now(event, hours_ahead),
+                                get_appointments_in_range(-7, 1 + hours_ahead / 24, user=user)))
+        if min_count < 0:
+            min_count = len(current_events) - min_count
+        if min_count:
+            print(f'Looking for at least {min_count} events. Found {len(current_events)}')
+        if len(current_events) >= min_count:
+            break
+        if i == 0:
+            event_handlers = perform_sync(sync_end_callback=lambda x: None)
+        sleep(1)
+        syncing = any(handler.syncing for handler in event_handlers)
+        i += 1
+    else:
+        print(f'Failed to find at least {min_count} events')
     # Sort by start time then subject, so we have a predictable order for events to be returned
     return sorted(current_events, key=lambda event: f'{event.StartUTC} {event.Subject}')
 
@@ -1014,9 +1036,11 @@ def get_dl_ral_holidays() -> set[date]:
 
 
 if __name__ == '__main__':
-    print(*sorted(list(get_dl_ral_holidays())), sep='\n')
+    # print(*sorted(list(get_dl_ral_holidays())), sep='\n')
     # away_dates = sorted(
     #     list(get_away_dates(datetime.date(2024, 2, 12), 0, look_for=is_annual_leave)))
     # print(len(away_dates))
     # print(*away_dates, sep='\n')
-    # print(list_meetings())
+    events = get_current_events(min_count=-1)
+    print(len(events))
+    print(*[event.Subject for event in events], sep='\n')
