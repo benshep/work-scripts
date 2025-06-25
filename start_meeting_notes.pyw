@@ -63,19 +63,21 @@ def clean_body(description: str) -> str:
     description = description.replace('\r\n', '\n')  # CRLF -> LF
     description = description.replace('\n\n', '\n')  # double-spaced paragraphs
     # snip out Zoom joining instructions
-    start = description.find(' <http://zoom.us/>')  # begins with this
+    start = description.find(' <http://zoom.us')  # begins with this
     if start >= 0:
         # last bit is "Skype on a SurfaceHub" link, only one with @lync in it - or sometimes SIP: xxxx@zoomcrc.com
-        end = max(description.rfind('@lync.zoom.us>'),
-                  description.rfind('@zoomcrc.com>'))
-        end = description.find('\n', end)  # end of line
-        description = (description[:start] + description[end:]).strip()
+        end = max(description.rfind('@lync.zoom.us>') + 14,
+                  description.rfind('@zoomcrc.com') + 12)
+        # end = description.find('\n', end)  # end of line
+        if end >= 0:
+            description = (description[:start] + description[end:]).strip()
     # snip out Teams joining instructions
     horizontal_line = '_' * 80
     start = description.find(f'{horizontal_line}\nMicrosoft Teams Need help?')
     if start >= 0:
         end = description.rfind(horizontal_line) + 80
-        description = (description[:start] + description[end:]).strip()
+        if end >= 0:
+            description = (description[:start] + description[end:]).strip()
     # print(description)
     return description
 
@@ -83,7 +85,6 @@ def clean_body(description: str) -> str:
 def target_meeting(min_count: int = 1, hours_ahead: float = 12) -> outlook.AppointmentItem:
     os.system('title 📓 Start meeting notes')
     time_format = "%a %d/%m %H:%M" if hours_ahead > 12 else "%H:%M"
-    print(hours_ahead, min_count)
     current_events = outlook.get_current_events(hours_ahead=hours_ahead, min_count=min_count)
     unfiltered_count = len(current_events)
     current_events = filter(lambda event: not outlook.is_wfh(event), current_events)
@@ -105,7 +106,6 @@ def target_meeting(min_count: int = 1, hours_ahead: float = 12) -> outlook.Appoi
         return target_meeting(unfiltered_count + 1, hours_ahead)
     else:
         return target_meeting(hours_ahead=hours_ahead + 24 * 7)  # look ahead to next week
-
 
 
 def walk(top: str, max_depth: int) -> Iterator[tuple[str, list[str]]]:
