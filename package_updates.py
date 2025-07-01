@@ -47,6 +47,8 @@ def get_rss() -> dict[str, str]:
 
 def check_chocolatey_packages() -> str:
     """Use Chocolatey to check if any of its packages need updating."""
+    if sys.platform != 'win32':  # choco is a Windows thing
+        return ''
     outdated = run_command(['choco', 'outdated', '-r'])
     to_upgrade = ''
     for line in outdated:  # e.g. autohotkey|1.1.37.1|2.0.19|true
