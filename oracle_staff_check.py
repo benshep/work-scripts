@@ -4,6 +4,7 @@ import shutil
 import tempfile
 import time
 import pickle
+from time import sleep
 from typing import Any, Callable, TypedDict
 
 import selenium.common.exceptions
@@ -11,10 +12,12 @@ import pandas
 from datetime import datetime, timedelta, date
 
 from pandas.io.common import file_exists
+from pandas.io import clipboard
 from selenium.webdriver.firefox.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
+from selenium.webdriver import Keys, ActionChains
 
 import oracle
 import outlook
@@ -201,7 +204,7 @@ def iterate_staff(check_function: Callable[[WebDriver], Any],
         toast = []
         return_dict = {}
         for name_cell, email_cell in zip(names, emails):
-            email_address = email_cell.text
+            email_address = email_cell.text.lower()
             if email_address not in [member.email for member in mars_group.members]:
                 continue
             name = name_cell.text
@@ -300,7 +303,8 @@ def submit_staff_timecard(web: WebDriver,
                 next_option.click()
                 print('Creating timecard for', card_date_text)
                 if doing_my_cards:
-                    web.find_element(By.ID, 'A150N1display').send_keys('Angal-Kalinin, Doctor Deepa (Deepa)')  # approver
+                    web.find_element(By.ID, 'A150N1display').send_keys(
+                        'Angal-Kalinin, Doctor Deepa (Deepa)')  # approver
 
         def date_in_week(day: int) -> date:
             return wb_date + timedelta(days=day)
@@ -419,7 +423,7 @@ def get_boxes(web: WebDriver,
              for title in ('Project', 'Task', 'Type')}
     # find all the empty rows
     empty_rows = [i for i, project_box in enumerate(boxes['Project']) if
-                       project_box.get_attribute('value') == '']
+                  project_box.get_attribute('value') == '']
     if not empty_rows:
         return get_boxes(web, add_more_first=True)
     hours_boxes = web.find_elements(By.CLASS_NAME, 'x1v')  # 7x6 of these
@@ -456,6 +460,7 @@ def check_al_page(web: WebDriver, get_all: bool = False) -> str | None | list[fl
 
 def get_all_al_data() -> dict[str, list[float]]:
     """Return all AL data from an individual annual leave balance page (initial, taken, booked, remaining)."""
+
     def check_al_page_all(web: WebDriver) -> list[float]:
         return check_al_page(web, get_all=True)
 
@@ -471,6 +476,106 @@ def last_card_age(last_card_date: date) -> int:
     return round(delta.days / 7)
 
 
+def fusion_otls(staff_names: list[str] | None = None, test_mode: bool = False):
+    # How to do OTLs in Fusion
+    web = oracle.go_to_oracle_page('team_timecards', show_window=test_mode)
+    # Clear 'Direct Reports' filter
+    web.find_element(By.CLASS_NAME, 'oj-sp-filter-chip-close-anchor').click()
+    sleep(1)
+    # Loop through staff list and check against group members
+    # name_links = web.find_elements(By.CLASS_NAME, 'oj-link')[1:]  # first one is 'Skip to main content', rest are names
+    table_cells = web.find_elements(By.CLASS_NAME, 'oj-table-data-cell')
+    columns = 7
+    name_cells = table_cells[::columns]
+    email_cells = table_cells[6::columns]
+    projects = {
+        'neil.thompson@stfc.ac.uk': [('STKA00183', '03.05', 5.92),
+                                     ('STKA01103', '06.01', 1.48)],
+        'amelia.pollard@stfc.ac.uk': [('STKA00183', '03.05', 7.4)],
+        'matthew.king@stfc.ac.uk': [('STGA00260', '01', 0.74),
+                                    ('STGA09000', '520', 2.96),
+                                    ('STGA00265', '01', 0.74),
+                                    ('STKA00183', '03.07', 0.74)]
+    }
+    for name_cell, email_cell in zip(name_cells, email_cells):
+        email_address = email_cell.text.lower()
+        if email_address not in [member.email for member in mars_group.members]:
+            continue
+        name = name_cell.text
+        if staff_names and name not in staff_names:
+            continue
+        if email_address not in projects:
+            continue
+        input(name)
+        name_cell.click()
+        for date_text in ('02/06/2025', '09/06/2025', '16/06/2025', '23/06/2025'):
+            submit_timecard_fusion(web, name, date_text, projects[email_address])
+
+
+def submit_timecard_fusion(web: WebDriver, name: str, date_text: str, projects: list[tuple[str, str, float]]):
+    """Do one timecard in the Fusion system."""
+    # Choose date
+    date_box = web.find_element(By.CLASS_NAME, 'oj-inputdatetime-input')
+    date_box.clear()
+    date_box.send_keys(date_text)  # '%d-%m-%Y'
+    input('Ready to add')
+    # Click Add
+    web.find_element(By.XPATH, '//span[text()="Add"]').click()
+    sleep(1)
+    # Already entered?
+    badge = web.find_element(By.CLASS_NAME, 'oj-badge')
+    if badge.text == 'Approved':
+        print(f'Already done card for {name} on {date_text}')
+        web.find_element(By.XPATH, "//span[text()='Cancel']").click()
+
+    # Find the time boxes: three for each day (start, stop, quantity) x 12 rows
+    # Actually this seems to return 289 elements. All but the last one are in the grid.
+    # Got 200 on DDAST0025 24/6: 10 projects in view
+    # The others are not necessarily in order! Perhaps sort by y and then x
+    time_boxes = web.find_elements(By.CLASS_NAME, 'oj-datagrid-cell')
+    # Gotcha: there's one at (0, 0) too
+    x_values = sorted(list({box.rect['x'] for box in time_boxes} - {0}))
+    y_values = sorted(list({box.rect['y'] for box in time_boxes} - {0}))
+    for (project_code, task_code, hours), y in zip(projects, y_values):  # loop through projects
+        # Typing in manually seems flaky. How about copy-pasting?
+        # OK for the time cells where tab-separated values can be used
+        # For project/task/type boxes, you need to know the ID number for the dropdown value. So we'll type those ones
+        for x, text in zip(x_values[:3], (project_code, task_code, 'Lab')):
+            fill_in_box(web, get_element_at_point(web, x, y), text)
+        for x in x_values[5::3]:
+            fill_in_box(web, get_element_at_point(web, x, y), str(hours))
+
+        # clipboard.copy(f'\t\t{hours}\t' * 5)
+        # (ActionChains(web)
+        #  .click(get_element_at_point(web, x_values[3], y))
+        #  .pause(0.5)
+        #  .key_down(Keys.CONTROL)
+        #  .send_keys('v')
+        #  .perform())
+        input(f'Done {project_code} {task_code}')
+
+    input(f'Ready to submit for {name} on {date_text}')
+    web.find_element(By.XPATH, "//span[text()='Actions']").click()
+    web.find_element(By.XPATH, "//a[text()='Submit']").click()
+
+
+def get_element_at_point(web: WebDriver, x: float, y: float) -> WebElement:
+    return web.execute_script(f'return document.elementFromPoint({x + 10}, {y})')
+
+
+def fill_in_box(web: WebDriver, box: WebElement, text: str):
+    """Enter a value in a project/task/type dropdown box."""
+    (ActionChains(web)
+     .double_click(box)  # double-click
+     .pause(0.5)
+     .send_keys(text[:-1])  # all but the last character
+     .pause(0.5)
+     .send_keys(text[-1])  # last character
+     .pause(2)
+     .send_keys(Keys.TAB)  # value will be committed
+     .perform())
+
+
 if __name__ == '__main__':
     # # Get and display leave balances
     # data = get_all_al_data()
@@ -482,5 +587,6 @@ if __name__ == '__main__':
     #     print(name)
     #     for row in table:
     #         print(*row, sep='\t')
-    print(get_staff_leave_dates(test_mode=True))
+    # print(get_staff_leave_dates(test_mode=True))
     # print(last_card_age('25-Mar-2024'))
+    print(fusion_otls(test_mode=True))

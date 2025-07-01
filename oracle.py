@@ -1,7 +1,7 @@
 import time
 import os
 from time import sleep
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 from enum import Enum
 from selenium import webdriver
 from selenium.webdriver.firefox.webdriver import RemoteWebDriver
@@ -23,6 +23,11 @@ apps: dict[tuple[str, ...], str] = {
     ('obi',): f'https://obi.ssc.rcuk.ac.uk/analytics/saw.dll?dashboard&PortalPath={quoted_path}',  # TODO: update?
     ('taleo',): "https://careersportal.taleo.net/enterprise/fluid?isNavigationCompleted=true",
     ('absences',): fusion_url + '/fscmUI/redwood/absences/existing-absences/view-summary',
+    ('team_timecards',): fusion_url + '/fscmUI/redwood/human-resources/feature/launch?' + \
+                         urlencode({'vbFlowStringKey': 'addTimeCard', 'action': 'MyTeam_AddTimeCardTLM',
+                                    'context': 'MyTeam', 'useSessionStoredFilters': 'true', 'vbAppUi': 'time',
+                                    'vbcsFlow': 'timecards', 'vbPage': 'add-timecard',
+                                    'vbPageParams': 'pCurrent=false#userContext=LINE_MANAGER'}),
     ('home',): fusion_url
 }
 
@@ -85,9 +90,22 @@ def go_to_oracle_page(*links: str,
     web.implicitly_wait(10)  # add an automatic wait to the browser handling
     web.get(url)  # go to the URL
     # sleep(2)
-    for login_button in web.find_elements(By.CLASS_NAME, 'oj-button-text'):
-        if login_button.text == 'UKRI':
-            login_button.click()
+    for _ in range(10):  # try a few times
+        for login_button in web.find_elements(By.CLASS_NAME, 'oj-button-text'):
+            if login_button.text == 'UKRI':
+                login_button.click()
+                break
+        else:  # no login button found
+            continue
+        break
+    # 'Pick an account' screen
+    sleep(5)
+    # to get my name (needed if others using script!)
+    # name = subprocess.check_output('net user "%USERNAME%" /domain | FIND /I "Full Name"', shell=True)
+    # full_name = name.replace(b"Full Name", b"").strip().decode('utf-8')
+    for cell in web.find_elements(By.CLASS_NAME, 'table-cell'):
+        if cell.text.startswith('Shepherd, Ben'):  # full_name
+            cell.click()
             break
     if manual_login:
         time.sleep(10)  # wait for error messages to appear
@@ -97,6 +115,8 @@ def go_to_oracle_page(*links: str,
     if links not in apps:  # list of links rather than an app to open
         for link in links:
             web.find_element(By.LINK_TEXT, link).click()
+    # if browser == Browser.edge:
+    #     web.set_permissions('clipboard-read', 'denied')  # allow
     elif links == 'obi':  # open STFC Projects dashboard
         web.find_element(By.LINK_TEXT, 'STFC Projects - Transactions').click()
     time.sleep(2)
@@ -105,4 +125,4 @@ def go_to_oracle_page(*links: str,
 
 if __name__ == '__main__':
     go_to_oracle_page('absences', show_window=True)
-    sleep(10)
+    sleep(100)
