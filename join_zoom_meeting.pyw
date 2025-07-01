@@ -7,6 +7,7 @@ from win32api import GetKeyState
 
 import outlook
 from folders import user_profile
+from start_meeting_notes import start_notes
 
 
 def join_vc_meeting(force_sync: bool = False):
@@ -21,16 +22,16 @@ def join_vc_meeting(force_sync: bool = False):
     zoom_url = re.compile(r'https://(?:[\w\-]+.)?(?:zoom\.us|zoomgov\.com|zoom-x\.de)/[\w/\?=&\-]+\b')  # simpler regex
     teams_url = re.compile(r'https://teams\.microsoft\.com/l/meetup-join/.*\b')
     current_events = outlook.get_current_events(min_count=-1 if force_sync else 1)
-    print('Current events:', [event.Subject for event in current_events])
+    # print('Current events:', [event.Subject for event in current_events])
     joinable_meetings = {}
     for meeting in current_events:
         body_location = f'{meeting.Body}\r\n{meeting.Location}'
         if match := zoom_url.search(body_location) or teams_url.search(body_location):
             url = match.group()
-            joinable_meetings[meeting.Subject] = url
+            joinable_meetings[meeting.Subject] = (url, meeting)
     meeting_count = len(joinable_meetings)
     if meeting_count == 1:
-        (subject, url), = joinable_meetings.items()
+        (subject, (url, meeting)), = joinable_meetings.items()
     elif meeting_count > 1:
         subjects = list(joinable_meetings.keys())
         for i, subject in enumerate(subjects):
@@ -39,7 +40,7 @@ def join_vc_meeting(force_sync: bool = False):
         i = min(int(input('Choose meeting to join [0]: ') or 0), meeting_count)
         if i < meeting_count:
             subject = subjects[i]
-            url = joinable_meetings[subject]
+            url, meeting = joinable_meetings[subject]
         else:  # 'Force sync' selected
             join_vc_meeting(True)
     else:
@@ -57,6 +58,8 @@ def join_vc_meeting(force_sync: bool = False):
         subprocess.Popen([appdata_exe if os.path.exists(appdata_exe) else program_files_exe, f"--url={url}"])
     else:  # Teams
         subprocess.Popen(['ms-teams.exe', url])
+    print('Starting note file')
+    start_notes(meeting)
     sleep(5)
 
 

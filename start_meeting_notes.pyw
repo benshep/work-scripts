@@ -18,12 +18,17 @@ def folder_match(name: str, test_against: str) -> bool:
 
 
 def create_note_file() -> None:
+    """Prompt for a current meeting and start a note file."""
+    if not (meeting := target_meeting()):
+        return  # no current meeting
+    start_notes(meeting)
+
+
+def start_notes(meeting: outlook.AppointmentItem) -> None:
     """Start a file for notes relating to the given meeting. Find a relevant folder in the user's Documents folder,
      searching first the subject then the body of the meeting for a folder name. Use Other if none found.
      Don't use the Zoom folder (this is often found in the meeting body).
      The file is in Markdown format, with the meeting title, date and attendees filled in at the top."""
-    if not (meeting := target_meeting()):
-        return  # no current meeting
     go_to_folder(meeting)
     # Hierarchy of responses: (we want to list attendees from the top)
     priority = [
