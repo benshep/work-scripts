@@ -1,14 +1,17 @@
 import os
 from datetime import datetime
 from time import sleep
+from platform import node
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from hosp_credentials import username, password
 
 
-def get_bookings(test_mode: bool = False) -> str:
+def get_bookings(test_mode: bool = False) -> str | bool:
     """Open the STFC Hospitality bookings and find the DL ones booked for the next week."""
+    if node() != 'DDAST0025':  # only run on desktop
+        return False
     toast = ''
     if not test_mode:
         os.environ['MOZ_HEADLESS'] = '1'
