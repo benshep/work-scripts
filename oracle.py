@@ -28,6 +28,7 @@ apps: dict[tuple[str, ...], str] = {
                                     'context': 'MyTeam', 'useSessionStoredFilters': 'true', 'vbAppUi': 'time',
                                     'vbcsFlow': 'timecards', 'vbPage': 'add-timecard',
                                     'vbPageParams': 'pCurrent=false#userContext=LINE_MANAGER'}),
+    ('payslips',): fusion_url + '/fscmUI/redwood/payslips/payslips/launch',
     ('home',): fusion_url
 }
 
@@ -64,14 +65,14 @@ def go_to_oracle_page(*links: str,
         print(f'This script will now launch a browser window ({browser.name.title()}) to log in to Oracle.')
         print('Return to this screen when you have logged in.')
         input('Press ENTER to start browser, or Ctrl-C to exit: ')
-    else:
-        # use a specifically-created Selenium profile, where I've already logged in - no need to enter credentials again
-        profile_dir = os.path.join(user_profile, 'AppData', 'Roaming', 'Mozilla', 'Firefox', 'Profiles')
-        selenium_profile = next(folder for folder in os.listdir(profile_dir) if folder.endswith('.Selenium'))
-        firefox_options.profile = webdriver.FirefoxProfile(os.path.join(profile_dir, selenium_profile))
 
     match browser:
         case Browser.firefox:
+            if not manual_login:
+                # use a specifically-created Selenium profile, where I've already logged in - no need to enter credentials again
+                profile_dir = os.path.join(user_profile, 'AppData', 'Roaming', 'Mozilla', 'Firefox', 'Profiles')
+                selenium_profile = next(folder for folder in os.listdir(profile_dir) if folder.endswith('.Selenium'))
+                firefox_options.profile = webdriver.FirefoxProfile(os.path.join(profile_dir, selenium_profile))
             # in Ubuntu, Selenium can't locate Firefox - help it out (thanks Jools Wills)\\\
             driver = '/snap/bin/geckodriver'
             service = webdriver.FirefoxService(
