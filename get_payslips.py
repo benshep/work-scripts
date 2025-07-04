@@ -1,6 +1,7 @@
 import os
 import time
 import re
+from collections import Counter
 from datetime import datetime, timedelta, date
 from calendar import monthrange
 from shutil import move
@@ -47,9 +48,37 @@ def get_one_slip(web: WebDriver, index: int) -> str:
     return f'Net pay for {date_text}: £{net_pay:.2f}\n{payments}'
 
 
+def income_pre_tax(year: int) -> float:
+    os.chdir(os.path.join(misc_folder, 'Money', 'Payslips'))
+    total_payments = Counter()
+    for fiscal_month in range(12):
+        month = (fiscal_month + 3) % 12 + 1  # convert to calendar month
+        payslip_filename = f'{year - 2000}-{month:02d}.pdf'
+        payslip_content = PdfReader(payslip_filename).pages[0].extract_text()
+        payments = re.findall('Units Rate Amount\n(.*)\n Amount', payslip_content, re.MULTILINE + re.DOTALL)[0]
+        for payment in payments.split('\n'):
+            label, amount = payment.rsplit(' ', maxsplit=1)
+            total_payments[label] += float(amount)
+    print(*total_payments.items(), sep='\n')
+    return total_payments.total()
+
+
 def get_payslips(only_latest: bool = True, test_mode: bool = False) -> None | str | date:
     """Download all my payslips, or just the latest."""
-    web = go_to_oracle_page('RCUK Self-Service Employee', 'Payslip', show_window=test_mode)
+    web = go_to_oracle_page('payslips', show_window=test_mode)
+
+    # Amounts for latest
+    number_cells = web.find_elements(By.CLASS_NAME, 'oj-sp-scoreboard-metric-card-metric')
+    net_pay = number_cells[1].text.split(' ')  # text is e.g. GBP 1,999.99
+    cell_class = 'oj-typography-body-sm'
+    table_cells = [element for element in web.find_elements(By.CLASS_NAME, cell_class)
+                   if element.get_attribute('class') == cell_class]
+    output = f'Net pay: £{net_pay}\n'
+    for label, value in zip(table_cells[::2], table_cells[1::2]):
+        output += f'{label.text}: {value.text.split(" ")}\n'
+
+    # TODO: put this in get_one, also get date (from number_cells?)
+    web.find_element(By.XPATH, '//button[@aria-label="Export"]').click()
 
     try:
         payslip_count = len(get_options(web))
@@ -71,4 +100,5 @@ def get_payslips(only_latest: bool = True, test_mode: bool = False) -> None | st
 
 
 if __name__ == '__main__':
-    print(get_payslips(test_mode=True))
+    # print(get_payslips(test_mode=True))
+    print(income_pre_tax(2024))
