@@ -46,6 +46,8 @@ Esc::!F4
 #c::WinActivate
 #IfWinExist ahk_class TeamsWebView
 #!c::WinActivate
+#IfWinExist ahk_class ApplicationFrameWindow
+#+a::WinActivate
 
 ;shortcuts for timesheet entry page
 #IfWinActive,Time Entry:
@@ -66,6 +68,8 @@ F4:: ;toggle video for Teams and Zoom
     Return
 
 #IfWinActive
+
+#+a::
 
 #!c::Teams_Launcher()
 
