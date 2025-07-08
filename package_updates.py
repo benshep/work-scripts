@@ -112,19 +112,21 @@ def check_updated() -> None:
     toast = ''
     upgrade_output_file = f'choco-upgrade-{node()}.txt'
     upgrade_output = open(upgrade_output_file).read().splitlines()
-    try:
-        i = upgrade_output.index('Upgraded:')
-    except ValueError:
-        try:
-            i = upgrade_output.index('Failures')
-        except ValueError:
-            toast = f'No upgrades, no failures\nCheck {upgrade_output_file}'
+    icon = ''
+    for line in upgrade_output:
+        match line:
+            case 'Upgraded:':
+                icon = '⬆️'
+            case 'Failures':
+                icon = '❌'
+            case 'Warnings':
+                icon = '⚠️'
+            case s if s.startswith(' - '):
+                if icon and not any(('.install' in line, 'pinned' in line)):
+                    toast += f'{icon} {line[3:]}\n'
+
     if not toast:
-        if 'pinned' in upgrade_output[-1]:  # don't need to notify that packages are pinned
-            upgrade_output.pop(-1)
-        if upgrade_output[-1] == 'Warnings:':  # if that's the only warning, skip the headline
-            upgrade_output.pop(-1)
-        toast = '\n'.join(upgrade_output[i:])
+        toast = f'No upgrades, no failures\nCheck {upgrade_output_file}'
     Pushbullet(api_key).push_note('🍫 Chocolatey updates', toast)
 
 
