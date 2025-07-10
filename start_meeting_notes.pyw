@@ -4,6 +4,10 @@ import re
 from typing import Iterator, Any
 from win32api import GetKeyState
 
+try:
+    import pyvda  # virtual desktops
+except ImportError:  # not available everywhere
+    pyvda = None
 import requests
 from icalendar import Calendar
 from time import sleep
@@ -59,6 +63,11 @@ def start_notes(meeting: outlook.AppointmentItem) -> None:
     bad_chars = str.maketrans({char: ' ' for char in '*?/\\<>:|"'})  # can't use these in filenames
     filename = f'{start_time.strftime("%Y-%m-%d")} {subject.translate(bad_chars)}.md'
     open(filename, 'a', encoding='utf-8').write(text)
+    if pyvda:  # switch to meetings desktop if possible
+        for desktop in pyvda.get_virtual_desktops():
+            if desktop.name == '🤝 Meetings':
+                desktop.go()
+                break
     os.startfile(filename)
 
 
