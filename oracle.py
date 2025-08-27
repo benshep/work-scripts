@@ -89,8 +89,7 @@ def go_to_oracle_page(*links: str,
             raise ValueError(f'Invalid browser {browser}')
 
     web.implicitly_wait(10)  # add an automatic wait to the browser handling
-    web.maximize_window()  # make it big so all elements are displayed
-    # web.minimize_window()  # but also hide it out of reach
+    web.set_window_size(1920, 1080)  # make it big so all elements are displayed - maximize doesn't work for Edge
     web.get(url)  # go to the URL
     # sleep(2)
     for _ in range(10):  # try a few times
