@@ -4,7 +4,7 @@ from time import sleep
 from urllib.parse import quote, urlencode
 from enum import Enum
 from selenium import webdriver
-from selenium.webdriver.firefox.webdriver import RemoteWebDriver
+from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.common.by import By
 
 user_profile = os.path.expanduser('~')
@@ -36,7 +36,7 @@ apps: dict[tuple[str, ...], str] = {
 def go_to_oracle_page(*links: str,
                       browser: Browser = Browser.edge,  # changed from Firefox for SSO
                       manual_login: bool = False,
-                      show_window: bool = False) -> RemoteWebDriver:
+                      show_window: bool = False) -> WebDriver:
     """Open a selenium web driver and log in to Oracle e-Business Suite, opening the specified tuple of links.
     :param browser: Firefox, Edge, Chrome, Ie, or Safari
     :param links: text of links to follow, or 'obi' or 'taleo' to open those sites
@@ -89,6 +89,8 @@ def go_to_oracle_page(*links: str,
             raise ValueError(f'Invalid browser {browser}')
 
     web.implicitly_wait(10)  # add an automatic wait to the browser handling
+    web.maximize_window()  # make it big so all elements are displayed
+    # web.minimize_window()  # but also hide it out of reach
     web.get(url)  # go to the URL
     # sleep(2)
     for _ in range(10):  # try a few times
