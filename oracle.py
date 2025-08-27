@@ -80,6 +80,7 @@ def go_to_oracle_page(*links: str,
             )
             web = webdriver.Firefox(options=firefox_options, service=service)
         case Browser.edge:
+            os.environ["SE_DRIVER_MIRROR_URL"] = "https://msedgedriver.microsoft.com"  # temp fix for wrong URL
             web = webdriver.Edge(options=edge_options)
         case Browser.chrome:
             web = webdriver.Chrome(options=chrome_options)
@@ -126,5 +127,6 @@ def go_to_oracle_page(*links: str,
 
 
 if __name__ == '__main__':
-    go_to_oracle_page('absences', show_window=True)
+    web = go_to_oracle_page('absences', show_window=True)
     sleep(100)
+    web.quit()
