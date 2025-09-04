@@ -1,8 +1,6 @@
-import contextlib
 import os
 import re
-from typing import Iterator, Any
-from win32api import GetKeyState
+from typing import Iterator
 
 try:
     import pyvda  # virtual desktops
@@ -10,15 +8,15 @@ except ImportError:  # not available everywhere
     pyvda = None
 import requests
 from icalendar import Calendar
-from time import sleep
 import outlook
 from folders import docs_folder, sharepoint_folder
 
 
 def folder_match(name: str, test_against: str) -> bool:
-    """Case-insensitive string comparison."""
+    """String comparison, case-insensitive when the name argument is >3 characters long."""
     # Add optional 's' to end of keyword - sometimes the folder contains a plural of a name
-    return re.search(fr'\b{re.escape(name)}s?\b', test_against, re.IGNORECASE) is not None
+    search = re.search(fr'\b{re.escape(name)}s?\b', test_against, re.IGNORECASE if len(name) > 3 else 0)
+    return search is not None
 
 
 def create_note_file() -> None:
@@ -33,7 +31,13 @@ def start_notes(meeting: outlook.AppointmentItem) -> None:
      searching first the subject then the body of the meeting for a folder name. Use Other if none found.
      Don't use the Zoom folder (this is often found in the meeting body).
      The file is in Markdown format, with the meeting title, date and attendees filled in at the top."""
-    go_to_folder(meeting)
+    print(go_to_folder(meeting))
+
+    # special case for SCU weekly meeting
+    if meeting.Subject == "SCU VC Meeting":
+        os.startfile(os.path.join('Helical', 'Helical SCU Project Log.docx'))
+        return
+
     # Hierarchy of responses: (we want to list attendees from the top)
     priority = [
         outlook.ResponseStatus.organized,
@@ -161,8 +165,8 @@ def is_banned(name: str) -> bool:
     """Test banned state of folders. Folders are banned for the following reasons:
     - Name is Zoom, Other, or Old work - don't put notes in those
     - Name is lowercase only
-    - Name is 3 characters or fewer"""
-    return name in ('Zoom', 'Other', 'Old work') or name.lower() == name or len(name) <= 3
+    - Name is 2 characters or fewer"""
+    return name in ('Zoom', 'Other', 'Old work') or name.lower() == name or len(name) <= 2
 
 
 def go_to_folder(meeting: outlook.AppointmentItem) -> str:
@@ -223,6 +227,6 @@ def ical_to_markdown(url: str) -> str:
 
 
 if __name__ == '__main__':
-    # for meeting in outlook.get_appointments_in_range(-30, 30):
-    #     print(meeting.Subject, go_to_folder(meeting), sep='; ')
-    create_note_file()
+    for meeting in outlook.get_appointments_in_range(-30, 30):
+        print(meeting.Subject, go_to_folder(meeting), sep='; ')
+    # create_note_file()
