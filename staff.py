@@ -45,6 +45,10 @@ def excel_to_dataframe(excel_filename: str, **kwargs) -> pandas.DataFrame:
     return data
 
 
+def keep_in_bounds(daily_hours):
+    return max(0, min(daily_hours, otl.hours_per_day))
+
+
 class GroupMember:
     def __init__(self, name: str, person_number: int, person_id: int, assignment_id: int, email: str = '',
                  known_as: str = '', booking_plan: otl.BookingPlan = None):
@@ -105,8 +109,8 @@ class GroupMember:
         rest_of_year_day_count = self.working_days_in_period(when, entry.end_date)
         if rest_of_year_day_count == 0:  # no more days in period
             return 0.0
-        hours_per_day = min(hours_needed / rest_of_year_day_count, otl.hours_per_day)
-        print(f'{entry.code} {entry.annual_fte=}, {hours_logged=:.2f} {rest_of_year_day_count=} {hours_per_day=:.2f}')
+        hours_per_day = keep_in_bounds(hours_needed / rest_of_year_day_count)
+        # print(f'{entry.code} {entry.annual_fte=}, {hours_logged=:.2f} {rest_of_year_day_count=} {hours_per_day=:.2f}')
         return hours_per_day
 
     def daily_bookings(self, when: date) -> list[tuple[otl.Code, float]]:
@@ -132,7 +136,8 @@ class GroupMember:
                 hours_left -= daily_hours
             else:  # lower-priority project
                 # apportion balancing hours depending on share of expected booking
-                daily_hours = hours_left * entry.annual_fte / total_low_priority
+                daily_hours = keep_in_bounds(hours_left * entry.annual_fte / total_low_priority)
+            print(entry.code, daily_hours)
             hours.append(daily_hours)
         hours = fair_round(hours, 0.01)  # Oracle rounds to nearest 0.01 and will complain if sum != 7.4
         # Keep track of new bookings so that amounts don't change through the week
@@ -148,6 +153,8 @@ class GroupMember:
         for day in range(5):
             use_date = week_beginning + timedelta(days=day)
             for code, hours in self.daily_bookings(use_date):
+                if hours == 0:
+                    continue
                 yield ','.join([
                     str(self.person_number),
                     code.project, code.task, 'Labour',
