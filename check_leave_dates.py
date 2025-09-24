@@ -1,5 +1,5 @@
 from datetime import datetime, date
-
+from time import sleep
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.webdriver import WebDriver
 from selenium.webdriver.support.ui import WebDriverWait
@@ -55,10 +55,10 @@ def check_leave_dates(test_mode: bool = False) -> str:
     return toast
 
 
-def get_oracle_off_dates(page_count: int = 1, test_mode: bool = False) -> set | None:
+def get_oracle_off_dates(page_count: int = 1, test_mode: bool = False, table_format: bool = False) -> set | None:
     web = go_to_oracle_page('absences', show_window=test_mode)
     try:
-        off_dates = get_off_dates(web, page_count=page_count)
+        off_dates = get_off_dates(web, page_count=page_count, table_format=table_format)
     finally:
         web.quit()
     return off_dates
@@ -78,10 +78,10 @@ def get_off_dates(web: WebDriver,
     If fetch_all is True, looks for all absences, otherwise just ones with "Leave" in the "Absence Type".
     Fetches one page by default: specify page_count for more (or set to 0 for all).
     Returns a set of dates by default; if table_format is True, returns a list of lists as shown on the page."""
-    # sleep(10)
+    sleep(10)
     pages_done = 0
     return_value = [] if table_format else set()
-    while pages_done < page_count or page_count < 1:
+    while pages_done < page_count or page_count < 1:  # Prev and Next buttons TODO, but for now just one page!
         cells = web.find_elements(By.CLASS_NAME, 'oj-typography-body-md')
         while True:
             # returns empty array [] if no absences, but array of blank text if absences are present
@@ -95,18 +95,19 @@ def get_off_dates(web: WebDriver,
         date_ranges = cells_text[1::columns]
         if not absence_types:
             break
-        approval = cells_text[2::columns]
-        for absence_type, dates, approval_cell in zip(absence_types, date_ranges, approval):
-            if fetch_all or 'Leave' in absence_type:
-                start_text, end_text = dates.split(' - ', maxsplit=1)
-                start_date = from_dmy(start_text)
-                end_date = from_dmy(end_text)
-                date_list = outlook.get_date_list(start_date, end_date)
-                if table_format:
-                    return_value.append([start_date, end_date, absence_type, approval_cell])
-                else:
-                    return_value |= set(date_list)
-        # nav_links = web.find_elements(By.CLASS_NAME, 'x48')  # Prev and Next buttons TODO
+        approvals = cells_text[2::columns]
+        for absence_type, dates, approval in zip(absence_types, date_ranges, approvals):
+            if (not fetch_all and 'Leave' not in absence_type) or approval == 'Withdrawn':
+                continue
+            start_text, end_text = dates.split(' - ', maxsplit=1)
+            start_date = from_dmy(start_text)
+            end_date = from_dmy(end_text)
+            date_list = outlook.get_date_list(start_date, end_date)
+            if table_format:
+                return_value.append([start_date, end_date, absence_type, approval])
+            else:
+                return_value |= set(date_list)
+        # nav_links = web.find_elements(By.CLASS_NAME, 'x48')  # Prev and Next buttons TODO, but for now just one page!
         # for link in nav_links:
         #     if link.text.startswith('Next'):
         #         link.click()  # go to next page
@@ -128,7 +129,7 @@ def from_dmy(text: str) -> date:
 
 
 if __name__ == '__main__':
-    print(check_leave_dates(test_mode=True))
+    print(get_oracle_off_dates(table_format=True, test_mode=True))
     # web = go_to_oracle_page('absences', show_window=True)
     # for _ in range(300):
     #     cells = web.find_elements(By.CLASS_NAME, 'oj-typography-body-md')

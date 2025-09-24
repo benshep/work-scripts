@@ -23,7 +23,6 @@ import oracle
 import outlook
 import mars_group
 from folders import user_profile
-from check_leave_dates import get_off_dates
 
 # At Christmas, we get guidance for filling in OTLs. This gives hours to book to the leave code for each day
 end_of_year_time_off = {
@@ -169,20 +168,6 @@ def otl_submit(test_mode: bool = False,
     return toast
 
 
-def get_staff_leave_dates(test_mode: bool = False, table_format: bool = False,
-                          staff_names: list[str] | None = None) -> dict[str, Any]:
-    """Get leave dates in Oracle for each staff member."""
-    web = oracle.go_to_oracle_page('absences', show_window=test_mode)
-    url = oracle.apps[('absences',)]
-    return_dict = {}
-    for member in mars_group.members:
-        if staff_names is None or member.name in staff_names:
-            print(member.name)
-            web.get(url + f'?pPersonId={member.person_id}')
-            return_dict[member.name] = get_off_dates(web, fetch_all=True, page_count=1, table_format=table_format)
-    return return_dict
-
-
 def iterate_staff(check_function: Callable[[WebDriver], Any],
                   *page: str,
                   show_window: bool = False,
@@ -212,7 +197,7 @@ def iterate_staff(check_function: Callable[[WebDriver], Any],
                 continue
             print(name)
             name_cell.click()
-            result = check_function(web)
+            result = check_function(web, name=name)
             web.back()
             if isinstance(result, str):
                 toast.append(result)
@@ -430,39 +415,24 @@ def get_boxes(web: WebDriver,
     return boxes, hours_boxes, empty_rows
 
 
-def check_al_page(web: WebDriver, get_all: bool = False) -> str | None | list[float]:
-    """On an individual annual leave balance page, check the remaining balance, and return toast text.
-    If get_all is True, it will fetch all data (initial, taken, booked, remaining)."""
+def check_al_page(web: WebDriver, name: str) -> str | None | list[float]:
+    """On an individual annual leave balance page, check the remaining balance, and return toast text."""
     if web.find_elements(By.CLASS_NAME, 'x5y'):  # error - not available for honorary scientists
         web.back()
         return None
-    web.find_element(By.LINK_TEXT, 'Entitlement Balances').click()
-    # balances are expanded on the second look, so the 'Show' button won't be present
-    with contextlib.suppress(selenium.common.exceptions.NoSuchElementException):
-        web.find_element(By.LINK_TEXT, 'Show Accrual Balances').click()
-    name = web.find_element(By.ID, 'EmpName').text
-    surname, first = name.split(', ')
-    data_table = web.find_element(By.ID, 'AccrualBalanceTableLayout')
-    data_cells = data_table.find_elements(By.CLASS_NAME, 'x2')
-    label_cells = data_table.find_elements(By.CLASS_NAME, 'xc')
-    labels = [cell.text for cell in label_cells]
-    assert labels[0].endswith(' Annual Leave Days Scheme')
-    assert labels[1:] == [f'Annual leave {label}' for label in ['initial balance', 'taken', 'booked', 'remaining']]
-    days_data = [float(cell.text) for cell in data_cells[1:]]  # skip first header row
-    web.find_element(By.ID, 'Return').click()
-    if get_all:
-        return days_data
-    else:
-        # Only show if more than 10 days remaining (max carry over)
-        remaining_days = days_data[-1]
-        return f'{first} {surname}: {remaining_days:g} days' if remaining_days > 10 else None
+
+    hours = float(web.find_elements(By.CLASS_NAME, 'xng')[0].text)
+    days = hours / 7.4
+
+    # Only show if more than 10 days remaining (max carry over)
+    return f'{name}: {days:g} days' if days > 10 else None
 
 
 def get_all_al_data() -> dict[str, list[float]]:
     """Return all AL data from an individual annual leave balance page (initial, taken, booked, remaining)."""
 
     def check_al_page_all(web: WebDriver) -> list[float]:
-        return check_al_page(web, get_all=True)
+        return check_al_page(web)
 
     return iterate_staff(check_al_page_all, 'My Team', 'Show More', 'Absence Balance')
 
@@ -576,6 +546,16 @@ def fill_in_box(web: WebDriver, box: WebElement, text: str):
      .perform())
 
 
+def otl_bulk_upload():
+    """Prepare a bulk upload CSV file for me and my team."""
+    # Update leave dates
+    # Hours to submit can depend on leave taken. So need some mechanism to update the spreadsheet calculation.
+    # Maybe update each leave row, and trigger an Office Script to recalculate
+    # Check which timesheets have already been done (via OBI? or Fusion 'team timesheets' page?)
+    # Open OTL calculator spreadsheet
+    # Loop through sheets: A1 has name of staff member, check against mars_group
+    # Loop through projects:
+
 if __name__ == '__main__':
     # # Get and display leave balances
     # data = get_all_al_data()
@@ -587,6 +567,6 @@ if __name__ == '__main__':
     #     print(name)
     #     for row in table:
     #         print(*row, sep='\t')
-    # print(get_staff_leave_dates(test_mode=True))
+    print(get_staff_leave_dates(test_mode=True, staff_names=['Alex B']))
     # print(last_card_age('25-Mar-2024'))
-    print(fusion_otls(test_mode=True))
+    # print(fusion_otls(test_mode=True))
