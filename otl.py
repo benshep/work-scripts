@@ -60,11 +60,7 @@ class Entry:
         self.start_date = start_date or code.start
         self.end_date = end_date or code.end
         self.priority = priority or code.priority
-
-    def daily_hours(self, off_dates: set[date]):
-        """Return expected daily hours for this code,
-         given a set of off days to be applied to the period covered by this entry."""
-        return hours_per_day * self.annual_fte * days_per_fte / working_days_in_period(self.start_date, self.end_date, off_dates)
+        self.hours = 0
 
     def __repr__(self):
         return f'{self.code}: {self.annual_fte or 0:.2f}, from {self.start_date.strftime("%d/%m/%Y")}-{self.end_date.strftime("%d/%m/%Y")}, priority {self.priority.name}'

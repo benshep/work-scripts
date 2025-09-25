@@ -1006,9 +1006,9 @@ def list_meetings():
     print(len(event_list))
 
 
-def get_dl_ral_holidays() -> set[date]:
+def get_dl_ral_holidays(year: int = datetime.now().year) -> set[date]:
     """Return a list of holiday dates for DL/RAL. Fetches ICS file from STFC HR info folder (synced via OneDrive)."""
-    filename = os.path.join(hr_info_folder, f'DL_RAL_Site_Holidays_{datetime.now().year}.ics')
+    filename = os.path.join(hr_info_folder, f'DL_RAL_Site_Holidays_{year}.ics')
     calendar = Calendar.from_ical(open(filename, encoding='utf-8').read())
 
     # Mostly these are date values. HOWEVER, sometimes we get two events as two half-days. Let's deal with that.

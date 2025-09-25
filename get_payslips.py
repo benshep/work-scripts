@@ -133,7 +133,7 @@ def payslip_items(filename: str) -> dict[str, float]:
     return return_dict
 
 if __name__ == '__main__':
-    print(get_payslips(test_mode=False, only_latest=True))
+    print(get_payslips(test_mode=True, only_latest=False))
     # print(income_pre_tax(2024))
     # os.chdir(os.path.join(misc_folder, 'Money', 'Payslips'))
     # payments_this_month = payslip_items('25-07.pdf')

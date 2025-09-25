@@ -4,6 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.webdriver import WebDriver
 from selenium.webdriver.support.ui import WebDriverWait
 
+import otl
 from oracle import go_to_oracle_page
 import outlook
 
@@ -43,7 +44,7 @@ def list_missing(date_set : set[date]) -> str:
 
 def check_leave_dates(test_mode: bool = False) -> str:
     """Compare annual leave dates in an Outlook calendar and in the list submitted to Oracle."""
-    oracle_off_dates = get_oracle_off_dates(test_mode=test_mode)
+    oracle_off_dates = get_oracle_off_dates(test_mode=test_mode).keys()  # only want date!
     outlook_off_dates = outlook.get_away_dates(min(oracle_off_dates), 0, look_for=outlook.is_annual_leave)
 
     if not_in_outlook := oracle_off_dates - outlook_off_dates:
@@ -55,7 +56,8 @@ def check_leave_dates(test_mode: bool = False) -> str:
     return toast
 
 
-def get_oracle_off_dates(page_count: int = 1, test_mode: bool = False, table_format: bool = False) -> set | None:
+def get_oracle_off_dates(page_count: int = 1, test_mode: bool = False,
+                         table_format: bool = False) -> dict[date, float] | list[list]:
     web = go_to_oracle_page('absences', show_window=test_mode)
     try:
         off_dates = get_off_dates(web, page_count=page_count, table_format=table_format)
@@ -73,40 +75,49 @@ def wait_until_page_ready(web: WebDriver, timeout: float = 2.0) -> None:
 def get_off_dates(web: WebDriver,
                   fetch_all: bool = False,
                   page_count: int = 1,
-                  table_format: bool = False) -> set[date] | list[list]:
+                  table_format: bool = False) -> dict[date, float] | list[list]:
     """Get absence dates from an Oracle 'Attendance Management' page.
     If fetch_all is True, looks for all absences, otherwise just ones with "Leave" in the "Absence Type".
     Fetches one page by default: specify page_count for more (or set to 0 for all).
     Returns a set of dates by default; if table_format is True, returns a list of lists as shown on the page."""
     sleep(10)
     pages_done = 0
-    return_value = [] if table_format else set()
+    return_value = [] if table_format else {}
     while pages_done < page_count or page_count < 1:  # Prev and Next buttons TODO, but for now just one page!
-        cells = web.find_elements(By.CLASS_NAME, 'oj-typography-body-md')
+        cells = web.find_elements(By.XPATH, '//div[@data-oj-tabmod="0"]')
         while True:
             # returns empty array [] if no absences, but array of blank text if absences are present
             # need to wait for them to be filled in!
             cells_text = [cell.text for cell in cells]
+            # e.g. ['Annual Leave', '', '05/09/2025 - 05/09/2025', '7.4 Hours', 'Completed', ... ]
             print(cells_text)
-            if len(cells_text) == 0 or all(cells_text):
+            if len(cells_text) == 0 or cells_text.count('') / len(cells_text) <= 0.2:  # normal: 1 in 5 is blank
                 break
-        columns = 3
+        columns = 5
         absence_types = cells_text[::columns]
-        date_ranges = cells_text[1::columns]
         if not absence_types:
             break
-        approvals = cells_text[2::columns]
-        for absence_type, dates, approval in zip(absence_types, date_ranges, approvals):
+        date_ranges = cells_text[2::columns]
+        all_hours = cells_text[3::columns]
+        approvals = cells_text[4::columns]
+        for absence_type, dates, hours, approval in zip(absence_types, date_ranges, all_hours, approvals):
             if (not fetch_all and 'Leave' not in absence_type) or approval == 'Withdrawn':
                 continue
             start_text, end_text = dates.split(' - ', maxsplit=1)
             start_date = from_dmy(start_text)
             end_date = from_dmy(end_text)
             date_list = outlook.get_date_list(start_date, end_date)
+            hours = float(hours.split(' ')[0])  # e.g. 7.4 Hours
             if table_format:
-                return_value.append([start_date, end_date, absence_type, approval])
+                return_value.append([start_date, end_date, absence_type, hours, approval])
             else:
-                return_value |= set(date_list)
+                # Assumption: listed hours are spread equally over listed days
+                # with any 'left-over' hours going into the last day
+                # e.g. 8.4 hours over 2 days would be 7.4 hours on day 1, 1 hour on day 2
+                for day in date_list:
+                    hours_this_day = min(otl.hours_per_day, hours)
+                    return_value |= {day: hours_this_day}
+                    hours -= hours_this_day
         # nav_links = web.find_elements(By.CLASS_NAME, 'x48')  # Prev and Next buttons TODO, but for now just one page!
         # for link in nav_links:
         #     if link.text.startswith('Next'):
