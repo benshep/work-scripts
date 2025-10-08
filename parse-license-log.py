@@ -175,7 +175,7 @@ def read_licenses():
                 timezone = timestamp.tzinfo
 
             if timestamp is None or timestamp < start_date:
-                # before the log period we want, or we don't have date info yet
+                # before the log bin_period we want, or we don't have date info yet
                 continue
             time = dateutil.parser.parse(timestr)
             timestamp = timestamp.replace(hour=time.hour, minute=time.minute, second=time.second)  # combine with known date info
