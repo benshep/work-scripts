@@ -38,6 +38,26 @@ def start_notes(meeting: outlook.AppointmentItem) -> None:
         os.startfile(os.path.join('Helical', 'Helical SCU Project Log.docx'))
         return
 
+    start_time = outlook.get_meeting_time(meeting)
+    subject = meeting.Subject.strip()  # remove leading and trailing spaces
+    bad_chars = str.maketrans({char: ' ' for char in '*?/\\<>:|"'})  # can't use these in filenames
+    filename = f'{start_time.strftime("%Y-%m-%d")} {subject.translate(bad_chars)}.md'
+    if not os.path.exists(filename):
+        # Haven't created file yet: open it and put in title, date, attendees, agenda
+        open(filename, 'a', encoding='utf-8').write(notes_text(meeting))
+
+    if pyvda:  # switch to meetings desktop if possible
+        for desktop in pyvda.get_virtual_desktops():
+            if desktop.name == '🤝 Meetings':
+                desktop.go()
+                break
+    os.startfile(filename)
+    print('End of start_notes')
+
+
+def notes_text(meeting: outlook.AppointmentItem) -> str:
+    """Return text starting off the notes file for the given meeting.
+    Consists of: meeting title, date and attendees filled in at the top. Adds the meeting body text."""
     # Hierarchy of responses: (we want to list attendees from the top)
     priority = [
         outlook.ResponseStatus.organized,
@@ -51,28 +71,17 @@ def start_notes(meeting: outlook.AppointmentItem) -> None:
     attendees = filter(None, '; '.join([meeting.RequiredAttendees, meeting.OptionalAttendees]).split('; '))
     attendees = sorted(attendees, key=lambda r: priority.index(response[r]))
     people_list = ', '.join(format_name(person_name, response[person_name]) for person_name in attendees)
-    start_time = outlook.get_meeting_time(meeting)
-    meeting_date = start_time.strftime("%#d/%#m/%Y")  # no leading zeros
-    subject = meeting.Subject.strip()  # remove leading and trailing spaces
+    meeting_date = outlook.get_meeting_time(meeting).strftime("%#d/%#m/%Y")  # no leading zeros
     subtitle = f'*{meeting_date}' + (f'. {people_list}*' if people_list else '*')
     description = clean_body(meeting.Body)
-
+    subject = meeting.Subject.strip()
     if match := re.search(r'https://[\w\.]+/event/\d+', meeting.Body):  # Indico link: look for an agenda
         url = match[0]
         agenda = ical_to_markdown(url)
         text = f'# [{subject}]({url})\n\n{subtitle}\n\n{description}\n\n{agenda}\n\n'
     else:
         text = f'# {subject}\n\n{subtitle}\n\n{description}\n\n'
-
-    bad_chars = str.maketrans({char: ' ' for char in '*?/\\<>:|"'})  # can't use these in filenames
-    filename = f'{start_time.strftime("%Y-%m-%d")} {subject.translate(bad_chars)}.md'
-    open(filename, 'a', encoding='utf-8').write(text)
-    if pyvda:  # switch to meetings desktop if possible
-        for desktop in pyvda.get_virtual_desktops():
-            if desktop.name == '🤝 Meetings':
-                desktop.go()
-                break
-    os.startfile(filename)
+    return text
 
 
 def clean_body(description: str) -> str:
@@ -227,6 +236,6 @@ def ical_to_markdown(url: str) -> str:
 
 
 if __name__ == '__main__':
-    for meeting in outlook.get_appointments_in_range(-30, 30):
-        print(meeting.Subject, go_to_folder(meeting), sep='; ')
-    # create_note_file()
+    # for meeting in outlook.get_appointments_in_range(-30, 30):
+    #     print(meeting.Subject, go_to_folder(meeting), sep='; ')
+    create_note_file()
