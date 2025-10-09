@@ -1,11 +1,15 @@
-import time
 import os
+import time
+from enum import Enum
 from time import sleep
 from urllib.parse import quote, urlencode
-from enum import Enum
+import win32com.client as win32
+
 from selenium import webdriver
-from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webdriver import WebDriver
+
+from folders import docs_folder
 
 user_profile = os.path.expanduser('~')
 
@@ -57,7 +61,7 @@ def go_to_oracle_page(*links: str,
         edge_options.add_argument("--headless=new")
         chrome_options.add_argument("--headless=new")
     # avoid the following error: (https://github.com/MicrosoftEdge/EdgeWebDriver/issues/189#issuecomment-2689338112)
-    # selenium.common.exceptions.SessionNotCreatedException: Message: session not created:
+    # selenium.common.exceptions.SessionNotCreatedException: Message: client_session not created:
     # probably user data directory is already in use,
     # please specify a unique value for --user-data-dir argument, or don't use --user-data-dir
     edge_options.add_argument('--edge-skip-compat-layer-relaunch')
@@ -126,7 +130,26 @@ def go_to_oracle_page(*links: str,
     return web
 
 
+def convert_obi_files():
+    """Convert XLS files received from the automated OBI process to XLSX files."""
+    excel = win32.gencache.EnsureDispatch('Excel.Application')
+    done_any = True
+    for file in ('OBI Staff Bookings.xls', 'OBI Finance Report.xls'):
+        file = os.path.join(docs_folder, 'Budget', file)
+        new_file = file + 'x'  # i.e. .xlsx filename
+        if os.path.exists(new_file) and os.path.getmtime(new_file) > os.path.getmtime(file):
+            continue
+        wb = excel.Workbooks.Open(file)
+        wb.SaveAs(new_file, FileFormat=51)  # FileFormat = 51 is for .xlsx extension
+        wb.Close()
+        done_any = True
+    excel.Application.Quit()
+    if done_any:
+        # trigger a Power Automate flow to run an Office Script to tidy up the files
+        open(os.path.join(docs_folder, 'Budget', 'pa_trigger', 'pa_trigger'), 'w').close()
+
 if __name__ == '__main__':
-    web = go_to_oracle_page('absences', show_window=True)
-    sleep(100)
-    web.quit()
+    # web = go_to_oracle_page('absences', show_window=True)
+    # sleep(100)
+    # web.quit()
+    convert_obi_files()
