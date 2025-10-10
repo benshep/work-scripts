@@ -133,20 +133,25 @@ def go_to_oracle_page(*links: str,
 def convert_obi_files():
     """Convert XLS files received from the automated OBI process to XLSX files."""
     excel = win32.gencache.EnsureDispatch('Excel.Application')
-    done_any = True
+    done_any = False
+    budget_folder = os.path.join(docs_folder, 'Budget')
     for file in ('OBI Staff Bookings.xls', 'OBI Finance Report.xls'):
-        file = os.path.join(docs_folder, 'Budget', file)
+        file = os.path.join(budget_folder, file)
         new_file = file + 'x'  # i.e. .xlsx filename
-        if os.path.exists(new_file) and os.path.getmtime(new_file) > os.path.getmtime(file):
-            continue
+        if os.path.exists(new_file):
+            if os.path.getmtime(new_file) > os.path.getmtime(file):
+                continue
+            os.remove(new_file)  # otherwise Excel's SaveAs method will prompt about overwriting
         wb = excel.Workbooks.Open(file)
-        wb.SaveAs(new_file, FileFormat=51)  # FileFormat = 51 is for .xlsx extension
+        wb.SaveAs(new_file, FileFormat=51)  # .xlsx extension
         wb.Close()
         done_any = True
     excel.Application.Quit()
     if done_any:
         # trigger a Power Automate flow to run an Office Script to tidy up the files
-        open(os.path.join(docs_folder, 'Budget', 'pa_trigger', 'pa_trigger'), 'w').close()
+        open(os.path.join(budget_folder, 'pa_trigger', 'pa_trigger'), 'w').close()
+    return True
+
 
 if __name__ == '__main__':
     # web = go_to_oracle_page('absences', show_window=True)
