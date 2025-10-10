@@ -4,7 +4,6 @@ import tempfile
 from collections import Counter
 from datetime import date, timedelta, datetime
 from math import isclose, prod
-from operator import mul
 from typing import Generator
 from functools import cache
 
@@ -16,7 +15,6 @@ import outlook
 from array_round import fair_round
 from check_leave_dates import get_off_dates
 from folders import docs_folder
-from otl import unproductive_code
 
 site_holidays = outlook.get_dl_ral_holidays(otl.fy)
 try:
@@ -76,10 +74,27 @@ class GroupMember:
             web = oracle.go_to_oracle_page('absences', show_window=test_mode)
         web.get(oracle.apps[('absences',)] + f'?pPersonId={self.person_id}')
         off_dates = get_off_dates(web, fetch_all=True, page_count=1, table_format=table_format)
-        print(off_dates)
+        print('Oracle:', *[day.strftime('%d/%m/%Y') for day in sorted(off_dates)])
         return off_dates
 
-    def update_off_days(self, force_reload: bool = False):
+    def leave_cross_check(self):
+        """Perform a cross-check between leave days recorded in Outlook and Oracle."""
+        start = max(otl.fy_start, date(2025, 6, 2))  # don't go back before Fusion start date
+        end = date.today()  # don't look in the future
+        outlook_days = outlook.get_away_dates(start, end, user=self.email, look_for=outlook.is_annual_leave)
+        print('Outlook:', *[day.strftime('%d/%m/%Y') for day in sorted(outlook_days)])
+        oracle_days = {day for day in self.get_oracle_leave_dates().keys() if start <= day <= end}
+        not_in_outlook = oracle_days - outlook_days
+        not_in_oracle = outlook_days - oracle_days
+        if not_in_outlook:
+            print('Not in Outlook:', *sorted(not_in_outlook))
+        if not_in_oracle:
+            print('Not in Oracle:', *sorted(not_in_oracle))
+
+    def update_off_days(self, force_reload: bool = False) -> None:
+        """Load off days from cached file, or if that's more than a week old, reload from Outlook and Oracle.
+        :param force_reload: Ignore any cached information.
+        """
         cache_file = os.path.join(docs_folder, 'Group Leader', 'off_days_cache', f'{self.name}.txt')
         last_week = datetime.now() - timedelta(days=7)
         cache_exists = os.path.exists(cache_file)
@@ -117,7 +132,7 @@ class GroupMember:
             & (my_bookings['Task Number'] == entry.code.task)
             # fix when booking to same code over multiple periods (e.g. UKXFEL CDOA vs continuation)
             & (my_bookings['Item Date'] >= pandas.to_datetime(entry.code.start))
-        ]
+            ]
         # self.new_bookings stores bookings added this time
         hours_logged = self.new_bookings[entry.code] + sum(code_bookings['Quantity'])
         hours_needed = otl.hours_per_day * otl.days_per_fte * entry.annual_fte - hours_logged
@@ -139,7 +154,8 @@ class GroupMember:
         week_beginning -= timedelta(days=week_beginning.weekday())
         my_bookings = self.get_my_bookings()
         weekly_bookings = my_bookings[(my_bookings['Item Date'] >= pandas.to_datetime(week_beginning)) &
-                                      (my_bookings['Item Date'] < pandas.to_datetime(week_beginning + timedelta(days=7)))]
+                                      (my_bookings['Item Date'] < pandas.to_datetime(
+                                          week_beginning + timedelta(days=7)))]
         return sum(weekly_bookings['Quantity'])
 
     def daily_bookings(self, when: date) -> dict[otl.Code, float]:
@@ -212,12 +228,12 @@ class GroupMember:
             for code, hours in bookings.items():
                 yield '\t'.join([str(code), f'{hours:.02f}']) if manual_mode else \
                     ','.join([
-                    str(self.person_number),
-                    code.project, code.task, 'Labour',
-                    use_date.strftime('%d/%m/%Y'), f'{hours:.02f}',
-                    f'{self.known_as} timecard submitted through bulk upload {date.today().strftime("%d/%m/%Y")}',
-                    'CREATE', '', '', ''
-                ])
+                        str(self.person_number),
+                        code.project, code.task, 'Labour',
+                        use_date.strftime('%d/%m/%Y'), f'{hours:.02f}',
+                        f'{self.known_as} timecard submitted through bulk upload {date.today().strftime("%d/%m/%Y")}',
+                        'CREATE', '', '', ''
+                    ])
 
 
 def check_total_ftes(members: list[GroupMember]):

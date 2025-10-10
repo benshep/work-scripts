@@ -90,7 +90,7 @@ def get_off_dates(web: WebDriver,
             # need to wait for them to be filled in!
             cells_text = [cell.text for cell in cells]
             # e.g. ['Annual Leave', '', '05/09/2025 - 05/09/2025', '7.4 Hours', 'Completed', ... ]
-            print(cells_text)
+            # print(cells_text)
             if len(cells_text) == 0 or cells_text.count('') / len(cells_text) <= 0.2:  # normal: 1 in 5 is blank
                 break
         columns = 5
