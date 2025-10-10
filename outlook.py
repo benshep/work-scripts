@@ -941,9 +941,14 @@ def is_out_of_office(event: AppointmentItem) -> bool:
 
 def is_annual_leave(event: AppointmentItem) -> bool:
     """Check whether a given Outlook event is an annual leave booking."""
-    return is_out_of_office(event) and any([event.Subject.strip().lower().endswith('annual leave'),
-                                            event.Subject == 'Off',
-                                            re.search(r'\bAL$', event.Subject)])  # e.g. "ARB AL" but not "INTERNAL"
+    # must be a meeting organised by the user, or a simple appointment - leave isn't organised by someone else
+    if event.ResponseStatus not in (ResponseStatus.organized, ResponseStatus.none):
+        return False
+    if event.Subject.strip().lower().endswith('annual leave'):  # something called "Annual Leave" or "XXX Annual Leave"
+        return True
+    if not is_out_of_office(event):
+        return False
+    return event.Subject == 'Off' or re.search(r'\bAL$', event.Subject)  # e.g. "ARB AL" but not "INTERNAL"
 
 
 def is_wfh(event: AppointmentItem) -> bool:
