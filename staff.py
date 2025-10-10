@@ -16,6 +16,7 @@ import outlook
 from array_round import fair_round
 from check_leave_dates import get_off_dates
 from folders import docs_folder
+from otl import unproductive_code
 
 site_holidays = outlook.get_dl_ral_holidays(otl.fy)
 try:
@@ -141,13 +142,13 @@ class GroupMember:
                                       (my_bookings['Item Date'] < pandas.to_datetime(week_beginning + timedelta(days=7)))]
         return sum(weekly_bookings['Quantity'])
 
-    def daily_bookings(self, when: date) -> list[tuple[otl.Code, float]]:
+    def daily_bookings(self, when: date) -> dict[otl.Code, float]:
         """Return a list of codes and hours to book on a given date."""
         off_hours = self.off_days.get(when, 0)
-        bookings = [(otl.unproductive_code, off_hours)] if off_hours else []
+        unproductive_bookings = {otl.unproductive_code: off_hours} if off_hours else {}
         working_hours = otl.hours_per_day - off_hours  # in case of a half-day off etc
         if not working_hours:
-            return bookings
+            return unproductive_bookings
 
         current_projects = sorted(
             [entry for entry in self.booking_plan.entries if entry.start_date <= when <= entry.end_date],
@@ -185,7 +186,12 @@ class GroupMember:
         for entry, hour in zip(current_projects, hours):
             self.new_bookings[entry.code] += hour
         assert isclose(sum(hours), working_hours)
-        return bookings + [(entry.code, hrs) for entry, hrs in zip(current_projects, hours)]
+        # Add up any codes that are identical
+        projects_counter = Counter()
+        for project, hrs in zip(current_projects, hours):
+            if hrs > 0:  # leave out zero bookings
+                projects_counter[project.code] += hrs
+        return {**unproductive_bookings, **projects_counter}
 
     def bulk_upload_lines(self, week_beginning: date, manual_mode: bool = False) -> Generator[str]:
         """Generate a series of entries for the bulk upload CSV file, with OTL hours for the given week.
@@ -203,9 +209,7 @@ class GroupMember:
                 else:
                     yield use_date.strftime('%A')
             prev_bookings = bookings
-            for code, hours in bookings:
-                if hours == 0:
-                    continue
+            for code, hours in bookings.items():
                 yield '\t'.join([str(code), f'{hours:.02f}']) if manual_mode else \
                     ','.join([
                     str(self.person_number),
