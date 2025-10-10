@@ -62,7 +62,7 @@ class GroupMember:
         self.assignment_id = assignment_id
         self.email = email or name.replace(' ', '.').lower() + '@stfc.ac.uk'
         self.known_as = known_as or name.split(' ')[0]
-        print(self.known_as)
+        # print(self.known_as)
         self.booking_plan = booking_plan or otl.BookingPlan([])
         self.off_days = site_holidays.copy()  # need an independent copy of it, since we'll be making changes!
         self.new_bookings = Counter()
@@ -79,10 +79,10 @@ class GroupMember:
         return off_dates
 
     def update_off_days(self, force_reload: bool = False):
-        cache_file = os.path.join(docs_folder, 'Group Leader', 'off_days_cache', f'{self.known_as}.txt')
+        cache_file = os.path.join(docs_folder, 'Group Leader', 'off_days_cache', f'{self.name}.txt')
         last_week = datetime.now() - timedelta(days=7)
-        cache_updated = datetime.fromtimestamp(os.path.getmtime(cache_file))
-        if force_reload or not os.path.exists(cache_file) or cache_updated < last_week:
+        cache_exists = os.path.exists(cache_file)
+        if force_reload or not cache_exists or datetime.fromtimestamp(os.path.getmtime(cache_file)) < last_week:
             outlook_days = outlook.get_away_dates(otl.fy_start, otl.fy_end,
                                                   user=self.email, look_for=outlook.is_annual_leave)
             self.off_days |= {day: otl.hours_per_day for day in outlook_days}
@@ -98,7 +98,7 @@ class GroupMember:
                 self.off_days[datetime.strptime(day, '%d/%m/%Y').date()] = float(hrs)
 
     def working_days_in_period(self, start: date, end: date) -> int:
-        """Return the number of working days in a period between start and end, given a set of off days."""
+        """Return the number of working days in a bin_period between start and end, given a set of off days."""
         dates = [start + timedelta(day) for day in range((end - start).days + 1)]
         dates = [day for day in dates
                  if day.weekday() < 5  # Mon-Fri
@@ -112,16 +112,19 @@ class GroupMember:
             return 0.0
         my_bookings = self.get_my_bookings()
         code_bookings = my_bookings[
-            (my_bookings['Project Number'] == entry.code.project) &
-            (my_bookings['Task Number'] == entry.code.task)]
+            (my_bookings['Project Number'] == entry.code.project)
+            & (my_bookings['Task Number'] == entry.code.task)
+            # fix when booking to same code over multiple periods (e.g. UKXFEL CDOA vs continuation)
+            & (my_bookings['Item Date'] >= pandas.to_datetime(entry.code.start))
+        ]
         # self.new_bookings stores bookings added this time
         hours_logged = self.new_bookings[entry.code] + sum(code_bookings['Quantity'])
         hours_needed = otl.hours_per_day * otl.days_per_fte * entry.annual_fte - hours_logged
         rest_of_year_day_count = self.working_days_in_period(when, entry.end_date)
-        if rest_of_year_day_count == 0:  # no more days in period
+        if rest_of_year_day_count == 0:  # no more days in bin_period
             return 0.0
         hours_per_day = max(0.0, hours_needed / rest_of_year_day_count)
-        print(f'{entry.code} {entry.annual_fte=}, {hours_logged=:.2f} {rest_of_year_day_count=} {hours_per_day=:.2f}')
+        # print(f'{entry.code} {entry.annual_fte=}, {hours_logged=:.2f} {rest_of_year_day_count=} {hours_per_day=:.2f}')
         return hours_per_day
 
     def get_my_bookings(self) -> pandas.DataFrame:
@@ -184,16 +187,27 @@ class GroupMember:
         assert isclose(sum(hours), working_hours)
         return bookings + [(entry.code, hrs) for entry, hrs in zip(current_projects, hours)]
 
-    def bulk_upload_lines(self, week_beginning: date) -> Generator[str]:
-        """Generate a series of entries for the bulk upload CSV file, with OTL hours for the given week."""
+    def bulk_upload_lines(self, week_beginning: date, manual_mode: bool = False) -> Generator[str]:
+        """Generate a series of entries for the bulk upload CSV file, with OTL hours for the given week.
+        If manual_mode is True, outputs more user-readable entries."""
         # Coerce back to the beginning of the week (Monday)
         week_beginning -= timedelta(days=week_beginning.weekday())
+        prev_bookings = None
         for day in range(5):
             use_date = week_beginning + timedelta(days=day)
-            for code, hours in self.daily_bookings(use_date):
+            bookings = self.daily_bookings(use_date)
+            if manual_mode:
+                if bookings == prev_bookings:
+                    yield use_date.strftime('%A') + ' - as above'  # Monday
+                    continue
+                else:
+                    yield use_date.strftime('%A')
+            prev_bookings = bookings
+            for code, hours in bookings:
                 if hours == 0:
                     continue
-                yield ','.join([
+                yield '\t'.join([str(code), f'{hours:.02f}']) if manual_mode else \
+                    ','.join([
                     str(self.person_number),
                     code.project, code.task, 'Labour',
                     use_date.strftime('%d/%m/%Y'), f'{hours:.02f}',
