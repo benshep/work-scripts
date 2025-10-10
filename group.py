@@ -26,7 +26,7 @@ def run_otl_calculator():
 
 def get_leave_balances():
     """Iterate through staff, and show the leave balance for each one."""
-    web = oracle.go_to_oracle_page(show_window=True)
+    web = oracle.go_to_oracle_page()
     for member in members:
         print('\n' + member.known_as)
         url = (f'https://fa-evzn-saasfaukgovprod1.fa.ocs.oraclecloud.com/fscmUI/redwood/absences/plan-balances?'
@@ -51,4 +51,4 @@ def leave_cross_check():
 
 
 if __name__ == '__main__':
-    leave_cross_check()
+    get_leave_balances()
