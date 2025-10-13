@@ -4,6 +4,7 @@ from enum import Enum
 from time import sleep
 from urllib.parse import quote, urlencode
 import win32com.client as win32
+import pythoncom
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -12,7 +13,6 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from folders import docs_folder
 
 user_profile = os.path.expanduser('~')
-
 
 class Browser(Enum):
     firefox = 0
@@ -132,6 +132,7 @@ def go_to_oracle_page(*links: str,
 
 def convert_obi_files():
     """Convert XLS files received from the automated OBI process to XLSX files."""
+    pythoncom.CoInitialize()  # otherwise we get the "CoInitialize has not been called" error
     excel = win32.gencache.EnsureDispatch('Excel.Application')
     done_any = False
     budget_folder = os.path.join(docs_folder, 'Budget')
