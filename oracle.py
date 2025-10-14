@@ -141,8 +141,8 @@ def convert_obi_files():
         file = os.path.join(budget_folder, file)
         new_file = file + 'x'  # i.e. .xlsx filename
         if os.path.exists(new_file):
-            # if os.path.getmtime(new_file) > os.path.getmtime(file):
-            #     continue
+            if os.path.getmtime(new_file) > os.path.getmtime(file):
+                continue
             os.remove(new_file)  # otherwise Excel's SaveAs method will prompt about overwriting
         wb = excel.Workbooks.Open(file)
         wb.SaveAs(new_file, FileFormat=51)  # .xlsx extension
