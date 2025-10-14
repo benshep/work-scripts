@@ -6,6 +6,7 @@ import pandas
 import outlook
 from pushbullet import Pushbullet  # to show notifications
 from pushbullet_api_key import api_key  # local file, keep secret!
+from tools import read_excel
 
 folder = os.path.join(os.environ['UserProfile'], 'Science and Technology Facilities Council',
                       'DL Activity Coordination Working Group - Occupancy Reports')
@@ -33,15 +34,15 @@ def read_old_access_data():
             print(prev_year, prev_week,
                   [(surname, days) for (year, week, surname), days in days_on_site.items()
                    if year == prev_year and week == prev_week])
-        for person in list(pandas.read_excel(filename, sheet_name='Sheet1', dtype='string').itertuples()):
+        for person in list(read_excel(filename, sheet_name='Sheet1', dtype='string').itertuples()):
             with contextlib.suppress(TypeError):
                 name = person._1
                 if name == 'King, Matthew MP' or person._4 == group_name:
                     surname = name.split(', ')[0]
                     days_on_site[(year, week, surname)] += 1
-    all_names = sorted(list({surname for _, _, surname in days_on_site.keys()}))
+    all_names = sorted({surname for _, _, surname in days_on_site.keys()})
     print('\t', *all_names, sep='\t')
-    all_weeks = sorted(list({(year, week) for year, week, _ in days_on_site.keys()}))
+    all_weeks = sorted({(year, week) for year, week, _ in days_on_site.keys()})
     for year, week in all_weeks:
         print(year, week, *(days_on_site[(year, week, surname)] for surname in all_names), sep='\t')
 
@@ -59,7 +60,7 @@ def check_prev_day(date):
     # for each group member: here yesterday? if not - check calendar
     if not os.path.exists(filename):
         return False
-    access_list = pandas.read_excel(filename, sheet_name='Sheet1', dtype='string').iloc[:, 0]  # first column
+    access_list = read_excel(filename, sheet_name='Sheet1', dtype='string').iloc[:, 0]  # first column
     not_on_site = group_members[~group_members.isin(access_list)]
     no_away_events = []
     for name in not_on_site:

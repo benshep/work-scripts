@@ -10,7 +10,9 @@ from datetime import datetime
 from time import sleep
 
 from oracle import go_to_oracle_page
-from folders import user_profile, docs_folder, downloads_folder
+from folders import docs_folder, downloads_folder
+from tools import read_excel
+
 
 class InformationFetchFailure(Exception):
     pass
@@ -96,7 +98,7 @@ def get_budget_data(project_names='all', test_mode=False):
     # The Index sheet here must have columns Name, Project and Task at least.
     # Budget data will be placed into sheets named after the Name column, overwriting anything already in there.
     csv_filename = os.path.join(downloads_folder, 'Detailed Cost by project.csv')
-    for line in list(pandas.read_excel(excel_filename, sheet_name='Index', dtype='string').itertuples()):
+    for line in list(read_excel(excel_filename, sheet_name='Index', dtype='string').itertuples()):
         if project_names != 'all' and line.Name not in project_names:
             continue
         web = go_to_oracle_page('obi', show_window=test_mode)

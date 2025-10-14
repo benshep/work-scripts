@@ -3,14 +3,15 @@ import pandas
 from datetime import datetime
 import outlook
 from folders import user_profile
+from tools import read_excel
+
 
 def check_on_site_support():
     sheet = get_spreadsheet_data()
     me = 'BS'
     # get row labels
     row_labels = [row[0] for row in sheet.values]
-    months = [label for label in row_labels if isinstance(label, datetime)]
-    months = sorted(list(set(months)))  # remove duplicates
+    months = sorted({label for label in row_labels if isinstance(label, datetime)})  # remove duplicates
     spreadsheet_support_days = {me: set(), 'AB': set(), 'AH': set()}
     for month in months:
         # which row do we need to look at to find the date numbers?
@@ -37,7 +38,7 @@ def check_on_site_support():
     print('From Outlook', format_date_list(outlook_support_days))
 
     # any days marked for me missing from my calendar?
-    not_in_outlook = sorted(list(spreadsheet_support_days[me] - outlook_support_days))
+    not_in_outlook = sorted(spreadsheet_support_days[me] - outlook_support_days)
     create_support_events(not_in_outlook, support_subject)
     toast = ['📅 Added to Outlook: ' + format_date_list(not_in_outlook)] if not_in_outlook else []
 
@@ -81,12 +82,12 @@ def get_spreadsheet_data():
     """Read in data from CLARA support calendar."""
     spreadsheet_filename = os.path.join(user_profile, r"Science and Technology Facilities Council",
                                         'ASTeC-RTF Safety - General', "CLARA NWH Support Calendar.xlsx")
-    return pandas.read_excel(spreadsheet_filename, sheet_name='Magnets')
+    return read_excel(spreadsheet_filename, sheet_name='Magnets')
 
 
 def format_date_list(date_list):
     """Return a comma-separated formatted string list of the dates in date_list."""
-    return ', '.join(day.strftime('%#d %b') for day in sorted(list(date_list)))
+    return ', '.join(day.strftime('%#d %b') for day in sorted(date_list))
 
 
 if __name__ == '__main__':

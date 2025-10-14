@@ -15,6 +15,7 @@ import outlook
 from array_round import fair_round
 from check_leave_dates import get_off_dates
 from folders import docs_folder
+from tools import read_excel
 
 site_holidays = outlook.get_dl_ral_holidays(otl.fy)
 try:
@@ -43,7 +44,7 @@ def excel_to_dataframe(excel_filename: str, **kwargs) -> pandas.DataFrame:
     handle, temp_filename = tempfile.mkstemp(suffix='.xlsx')
     os.close(handle)
     shutil.copy2(excel_filename, temp_filename)
-    data = pandas.read_excel(temp_filename, dtype={'Task Number': str}, **kwargs)
+    data = read_excel(temp_filename, dtype={'Task Number': str}, **kwargs)
     os.remove(temp_filename)
     return data
 
@@ -65,6 +66,7 @@ class GroupMember:
         self.booking_plan = booking_plan or otl.BookingPlan([])
         self.off_days = site_holidays.copy()  # need an independent copy of it, since we'll be making changes!
         self.new_bookings = Counter()
+        self.prev_bookings = None
 
     def get_oracle_leave_dates(self, test_mode: bool = False,
                                table_format: bool = False) -> dict[date, float] | list[list]:
@@ -105,7 +107,7 @@ class GroupMember:
             self.off_days |= self.get_oracle_leave_dates()
             with open(cache_file, 'w') as f:
                 f.write('\n'.join(
-                    [f"{d.strftime('%d/%m/%Y')}\t{hrs:.2f}" for d, hrs in sorted(list(self.off_days.items()))]))
+                    [f"{d.strftime('%d/%m/%Y')}\t{hrs:.2f}" for d, hrs in sorted(self.off_days.items())]))
         else:
             print(f'Loading off days from cache for {self.known_as}')
             self.off_days = {}
@@ -183,6 +185,7 @@ class GroupMember:
                 # apportion balancing hours depending on share of expected booking
                 entry.hours = keep_in_bounds(hours_left * entry.annual_fte / total_low_priority)
             # print(entry.code, entry.hours)
+
         # At this point, we might only have priority projects on this list
         # The total is not necessarily exactly 7.4 hours - it might be more or less
         # How to fix this? Let's try weighting by time left on each project
@@ -193,20 +196,21 @@ class GroupMember:
             # and also by priority: 0 gets weight 1, 1 gets 1/2, 2 gets 1/3
             hours = [hrs / prod([self.working_days_in_period(when, entry.end_date),
                                  entry.priority.value + 1])
-                     for hrs, days in zip(hours, current_projects)]
+                     for hrs, entry in zip(hours, current_projects)]
         # Finally scale up or down to match correct number of hours
         scale_factor = sum(hours) / working_hours
         hours = [hrs / scale_factor for hrs in hours]
         hours = fair_round(hours, 0.01)  # Oracle rounds to nearest 0.01 and will complain if sum != 7.4
-        # Keep track of new bookings so that amounts don't change through the week
-        for entry, hour in zip(current_projects, hours):
-            self.new_bookings[entry.code] += hour
         assert isclose(sum(hours), working_hours)
+
         # Add up any codes that are identical
         projects_counter = Counter()
         for project, hrs in zip(current_projects, hours):
             if hrs > 0:  # leave out zero bookings
                 projects_counter[project.code] += hrs
+                # Keep track of new bookings so that amounts don't change through the week
+                self.new_bookings[project.code] += hrs
+
         return {**unproductive_bookings, **projects_counter}
 
     def bulk_upload_lines(self, week_beginning: date, manual_mode: bool = False) -> Generator[str]:
@@ -214,17 +218,14 @@ class GroupMember:
         If manual_mode is True, outputs more user-readable entries."""
         # Coerce back to the beginning of the week (Monday)
         week_beginning -= timedelta(days=week_beginning.weekday())
-        prev_bookings = None
         for day in range(5):
             use_date = week_beginning + timedelta(days=day)
             bookings = self.daily_bookings(use_date)
             if manual_mode:
-                if bookings == prev_bookings:
-                    yield use_date.strftime('%A') + ' - as above'  # Monday
+                yield use_date.strftime('%a')  # Mon
+                if bookings == self.prev_bookings:
                     continue
-                else:
-                    yield use_date.strftime('%A')
-            prev_bookings = bookings
+            self.prev_bookings = bookings
             for code, hours in bookings.items():
                 yield '\t'.join([str(code), f'{hours:.02f}']) if manual_mode else \
                     ','.join([

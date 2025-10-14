@@ -1,7 +1,4 @@
-import contextlib
 import os
-import shutil
-import tempfile
 import time
 import pickle
 from time import sleep
@@ -12,7 +9,6 @@ import pandas
 from datetime import datetime, timedelta, date
 
 from pandas.io.common import file_exists
-from pandas.io import clipboard
 from selenium.webdriver.firefox.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.ui import WebDriverWait
@@ -23,6 +19,7 @@ import oracle
 import outlook
 import mars_group
 from folders import user_profile
+from tools import read_excel
 
 # At Christmas, we get guidance for filling in OTLs. This gives hours to book to the leave code for each day
 end_of_year_time_off = {
@@ -40,12 +37,7 @@ supervisor_page = 'STFC OTL Supervisor'
 def get_project_hours() -> tuple[dict[str, pandas.Series], set[pandas.Timestamp]]:
     """Fetch the standard hours worked on each project from a spreadsheet."""
     excel_filename = os.path.join(user_profile, 'STFC', 'Documents', 'Group Leader', 'MaRS staff and projects.xlsx')
-    # copy to a temporary file to get around permission errors due to workbook being open
-    handle, temp_filename = tempfile.mkstemp(suffix='.xlsx')
-    os.close(handle)
-    shutil.copy2(excel_filename, temp_filename)
-    booking_plan = pandas.read_excel(temp_filename, sheet_name='Book', header=0, index_col=2, skiprows=1)
-    os.remove(temp_filename)
+    booking_plan = read_excel(excel_filename, sheet_name='Book', header=0, index_col=2, skiprows=1)
     booking_plan = booking_plan[booking_plan.index.notnull()]  # remove any rows without a project code
     print(booking_plan)
     hours = {}
@@ -504,8 +496,8 @@ def submit_timecard_fusion(web: WebDriver, name: str, date_text: str, projects: 
     # The others are not necessarily in order! Perhaps sort by y and then x
     time_boxes = web.find_elements(By.CLASS_NAME, 'oj-datagrid-cell')
     # Gotcha: there's one at (0, 0) too
-    x_values = sorted(list({box.rect['x'] for box in time_boxes} - {0}))
-    y_values = sorted(list({box.rect['y'] for box in time_boxes} - {0}))
+    x_values = sorted({box.rect['x'] for box in time_boxes} - {0})
+    y_values = sorted({box.rect['y'] for box in time_boxes} - {0})
     for (project_code, task_code, hours), y in zip(projects, y_values):  # loop through projects
         # Typing in manually seems flaky. How about copy-pasting?
         # OK for the time cells where tab-separated values can be used

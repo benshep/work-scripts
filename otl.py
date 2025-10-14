@@ -5,6 +5,7 @@ from datetime import date, timedelta, datetime
 from enum import IntEnum
 
 from folders import docs_folder
+from tools import read_excel
 
 hours_per_day = 7.4
 days_per_fte = 215
@@ -14,7 +15,7 @@ fy = today.year - (today.month < 4)  # last calendar year if before April
 fy_start = date(fy, 4, 1)
 fy_end = date(fy + 1, 3, 31)
 
-obi_data = pandas.read_excel(os.path.join(docs_folder, 'Budget', 'OBI Finance Report.xlsx'), dtype={'Task Number': str})
+obi_data = read_excel(os.path.join(docs_folder, 'Budget', 'OBI Finance Report.xlsx'), dtype={'Task Number': str})
 
 # Classes used for OTL bookings
 
@@ -71,7 +72,7 @@ class BookingPlan:
         self.entries = entries
         # Any low-priority (balancing) entries? If not, make the last one low-priority
         if not [entry for entry in self.entries if entry.priority == Priority.BALANCING]:
-            print(f'No low-priority projects found. Setting {entries[-1].code} to low priority')
+            # print(f'No low-priority projects found. Setting {entries[-1].code} to low priority')
             entries[-1].priority = Priority.BALANCING
         # If any entries don't have an annual FTE amount, assign them one to make the total up to 1
         blank_entries = [entry for entry in self.entries if entry.annual_fte is None]
@@ -83,7 +84,7 @@ class BookingPlan:
         if fte_share < -1e-4:  # ignore rounding errors
             raise BadDataError(f'Total FTE for plan ({self.total_fte():.2f}) > 1.0')
         for entry in blank_entries:
-            print(f'Setting {entry.code} FTE share to {fte_share:.2f}')
+            # print(f'Setting {entry.code} FTE share to {fte_share:.2f}')
             entry.annual_fte = fte_share
 
     def total_fte(self):

@@ -1,6 +1,7 @@
 import os
 import pandas
 from outlook import get_appointments_in_range
+from tools import read_excel
 
 
 def fill_availability():
@@ -17,8 +18,8 @@ def fill_availability():
     mod_time = pandas.to_datetime(os.path.getmtime(spreadsheet_xlsx), unit='s')
     old_end_date = mod_time + pandas.to_timedelta(weeks, 'W') - pandas.to_timedelta(1, 'd')
     column_name = 'available'
-    old_free_dates = pandas.read_excel(spreadsheet_xlsx)[column_name]  # returns a Series
-    new_data = pandas.DataFrame(sorted(list(available_dates)), columns=[column_name])
+    old_free_dates = read_excel(spreadsheet_xlsx)[column_name]  # returns a Series
+    new_data = pandas.DataFrame(sorted(available_dates), columns=[column_name])
     today = pandas.to_datetime('today').floor('d')
     with pandas.ExcelWriter(spreadsheet_xlsx, mode='a', if_sheet_exists='replace') as writer:
         new_data.to_excel(writer, sheet_name='Ben')
@@ -33,8 +34,8 @@ def fill_availability():
     print(f'Ignoring dates in new list after {format_date(old_end_date)} - reduced to {len(new_free_dates)} entries')
     old_free_dates = set(old_free_dates)
     new_free_dates = set(new_free_dates)
-    changed_to_yes = sorted(list(new_free_dates - old_free_dates))
-    changed_to_no = sorted(list(old_free_dates - new_free_dates))
+    changed_to_yes = sorted(new_free_dates - old_free_dates)
+    changed_to_no = sorted(old_free_dates - new_free_dates)
     toast = ''
     if changed_to_yes:
         toast += '👍 ' + ', '.join(format_date(date) for date in changed_to_yes) + '\n'
