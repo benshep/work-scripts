@@ -11,7 +11,7 @@ EnvGet, UserProfile, UserProfile
 DocsDir = %UserProfile%\STFC\Documents
 MusicDir = %UserProfile%\Music
 
-PythonEnv = %UserProfile%\Miniconda3\envs\py313
+PythonEnv = %UserProfile%\Miniconda3\envs\py314
 AnacondaCommand = %UserProfile%\Miniconda3\python.exe %UserProfile%\Miniconda3\cwp.py %PythonEnv% %PythonEnv%\python.exe
 
 ;Esc to quit Calc, Snipping Tool, and Notepad
