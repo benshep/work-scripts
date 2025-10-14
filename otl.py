@@ -5,7 +5,7 @@ from datetime import date, timedelta, datetime
 from enum import IntEnum
 
 from folders import docs_folder
-from tools import read_excel
+from work_tools import read_excel
 
 hours_per_day = 7.4
 days_per_fte = 215

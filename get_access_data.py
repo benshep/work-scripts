@@ -6,7 +6,7 @@ import pandas
 import outlook
 from pushbullet import Pushbullet  # to show notifications
 from pushbullet_api_key import api_key  # local file, keep secret!
-from tools import read_excel
+from work_tools import read_excel
 
 folder = os.path.join(os.environ['UserProfile'], 'Science and Technology Facilities Council',
                       'DL Activity Coordination Working Group - Occupancy Reports')

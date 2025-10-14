@@ -1,7 +1,7 @@
 import os
 import pandas
 from outlook import get_appointments_in_range
-from tools import read_excel
+from work_tools import read_excel
 
 
 def fill_availability():
