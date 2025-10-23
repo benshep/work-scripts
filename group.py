@@ -5,23 +5,28 @@ from urllib.parse import urlencode
 from selenium.webdriver.common.by import By
 
 import oracle
+import staff
 
 from mars_group import members
 
 
 def run_otl_calculator():
     """Iterate through staff, listing the hours to upload for new OTL cards required."""
+    # staff.verbose = True
     for member in members:
-        # if member.known_as in ('Matt', 'Nasiq'):
-        print('\n' + member.known_as)
-        member.update_off_days(force_reload=False)
-        start = date(2025, 9, 22)
-        while start + timedelta(days=4) <= date.today():  # wait until Fri to do current week
-            hours_booked = member.hours_for_week(start)
-            print(f'{start.strftime("%d/%m/%Y")}: {hours_booked=:.2f}')
-            if hours_booked < 37:
-                print(*member.bulk_upload_lines(start, manual_mode=True), sep='\n')
-            start += timedelta(days=7)
+        if True:  # member.known_as in ('Neil',):
+            print('\n' + member.known_as)
+            member.update_off_days(force_reload=True)
+            start = date.today()
+            start -= timedelta(days=start.weekday())  # Monday of current week
+            start += timedelta(days=14)
+            # while start + timedelta(days=4) <= date.today():  # wait until Fri to do current week
+            for _ in range(1):
+                hours_booked = member.hours_for_week(start)
+                print(f'{start.strftime("%d/%m/%Y")}: {hours_booked=:.2f}')
+                if hours_booked < 37:
+                    print(*member.bulk_upload_lines(start, manual_mode=True), sep='\n')
+                start += timedelta(days=7)
 
 
 def get_leave_balances():
@@ -35,7 +40,7 @@ def get_leave_balances():
                      'pAssignmentId': member.assignment_id,
                      'pfsUserMode': "'MGR'"
                      }))
-        print(url)
+        # print(url)
         web.get(url)
         sleep(10)
         spans = web.find_elements(By.XPATH, '//span[@class="oj-text-color-primary"]')
@@ -50,5 +55,13 @@ def leave_cross_check():
         member.leave_cross_check()
 
 
+def show_leave_dates():
+    """Iterate through staff, and show the leave dates for each one, not including bank holidays."""
+    for member in members:
+        print('\n' + member.known_as)
+        member.update_off_days()
+        print(*sorted(day for day in member.off_days - staff.site_holidays.keys() if day > date.today()))
+
+
 if __name__ == '__main__':
-    get_leave_balances()
+    run_otl_calculator()

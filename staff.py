@@ -25,6 +25,12 @@ except FileNotFoundError:  # not published yet!
 site_holidays = {day: otl.hours_per_day for day in site_holidays}
 
 web = None
+verbose = False
+
+
+def report(*args, **kwargs):
+    if verbose:
+        print(*args, **kwargs)
 
 
 @cache  # so we don't have to keep reading the spreadsheet
@@ -36,6 +42,12 @@ def get_obi_data() -> pandas.DataFrame:
         old_data = excel_to_dataframe(old_data_file, sheet_name='Sheet2')
         data = pandas.concat([data, old_data])
     return data
+
+
+@cache
+def get_absence_data() -> pandas.DataFrame:
+    """Read absence info from spreadsheet."""
+    return excel_to_dataframe(os.path.join(docs_folder, 'Budget', 'OBI Absence Report.xlsx'))
 
 
 def excel_to_dataframe(excel_filename: str, **kwargs) -> pandas.DataFrame:
@@ -66,9 +78,9 @@ class GroupMember:
         self.booking_plan = booking_plan or otl.BookingPlan([])
         self.off_days = site_holidays.copy()  # need an independent copy of it, since we'll be making changes!
         self.new_bookings = Counter()
-        self.prev_bookings = None
+        self.prev_bookings = {}
 
-    def get_oracle_leave_dates(self, test_mode: bool = False,
+    def get_oracle_leave_dates_old(self, test_mode: bool = False,
                                table_format: bool = False) -> dict[date, float] | list[list]:
         """Get leave dates in Oracle for a staff member."""
         global web
@@ -76,6 +88,27 @@ class GroupMember:
             web = oracle.go_to_oracle_page('absences', show_window=test_mode)
         web.get(oracle.apps[('absences',)] + f'?pPersonId={self.person_id}')
         off_dates = get_off_dates(web, fetch_all=True, page_count=1, table_format=table_format)
+        print('Oracle:', *[day.strftime('%d/%m/%Y') for day in sorted(off_dates)])
+        return off_dates
+
+    def get_oracle_leave_dates(self) -> dict[date, float]:
+        """Get leave dates using Oracle data for a staff member."""
+        all_absences = get_absence_data()
+        my_absences = all_absences[all_absences['Name'] == self.name]
+        off_dates = {}
+        for i, row in my_absences.iterrows():
+            start_date = row['Date Start'].date()
+            end_date = row['Date End'].date()
+            hours = row['Duration'] * 1 if row['UOM'] == 'H' else otl.hours_per_day
+            date_list = outlook.get_date_list(start_date, end_date)
+            # Assumption: listed hours are spread equally over listed days
+            # with any 'left-over' hours going into the last day
+            # e.g. 8.4 hours over 2 days would be 7.4 hours on day 1, 1 hour on day 2
+            for day in date_list:
+                hours_this_day = min(otl.hours_per_day, hours)
+                off_dates[day] = hours_this_day
+                hours -= hours_this_day
+
         print('Oracle:', *[day.strftime('%d/%m/%Y') for day in sorted(off_dates)])
         return off_dates
 
@@ -101,9 +134,11 @@ class GroupMember:
         last_week = datetime.now() - timedelta(days=7)
         cache_exists = os.path.exists(cache_file)
         if force_reload or not cache_exists or datetime.fromtimestamp(os.path.getmtime(cache_file)) < last_week:
+            print(f'Fetching Outlook off days for {self.known_as}')
             outlook_days = outlook.get_away_dates(otl.fy_start, otl.fy_end,
                                                   user=self.email, look_for=outlook.is_annual_leave)
             self.off_days |= {day: otl.hours_per_day for day in outlook_days}
+            print(f'Fetching Oracle off days for {self.known_as}')
             self.off_days |= self.get_oracle_leave_dates()
             with open(cache_file, 'w') as f:
                 f.write('\n'.join(
@@ -138,6 +173,7 @@ class GroupMember:
         # self.new_bookings stores bookings added this time
         hours_logged = self.new_bookings[entry.code] + sum(code_bookings['Quantity'])
         hours_needed = otl.hours_per_day * otl.days_per_fte * entry.annual_fte - hours_logged
+        report(entry.code, hours_logged, hours_needed)
         rest_of_year_day_count = self.working_days_in_period(when, entry.end_date)
         if rest_of_year_day_count == 0:  # no more days in bin_period
             return 0.0
@@ -184,7 +220,7 @@ class GroupMember:
             else:  # lower-priority project
                 # apportion balancing hours depending on share of expected booking
                 entry.hours = keep_in_bounds(hours_left * entry.annual_fte / total_low_priority)
-            # print(entry.code, entry.hours)
+            report(entry.code, entry.hours)
 
         # At this point, we might only have priority projects on this list
         # The total is not necessarily exactly 7.4 hours - it might be more or less
@@ -197,10 +233,12 @@ class GroupMember:
             hours = [hrs / prod([self.working_days_in_period(when, entry.end_date),
                                  entry.priority.value + 1])
                      for hrs, entry in zip(hours, current_projects)]
+            report(*hours, sep='\n')
         # Finally scale up or down to match correct number of hours
         scale_factor = sum(hours) / working_hours
         hours = [hrs / scale_factor for hrs in hours]
         hours = fair_round(hours, 0.01)  # Oracle rounds to nearest 0.01 and will complain if sum != 7.4
+        report(*hours, sep='\n')
         assert isclose(sum(hours), working_hours)
 
         # Add up any codes that are identical
@@ -223,7 +261,7 @@ class GroupMember:
             bookings = self.daily_bookings(use_date)
             if manual_mode:
                 yield use_date.strftime('%a')  # Mon
-                if bookings == self.prev_bookings:
+                if dicts_close(bookings, self.prev_bookings):
                     continue
             self.prev_bookings = bookings
             for code, hours in bookings.items():
@@ -235,6 +273,11 @@ class GroupMember:
                         f'{self.known_as} timecard submitted through bulk upload {date.today().strftime("%d/%m/%Y")}',
                         'CREATE', '', '', ''
                     ])
+
+
+def dicts_close(dict1: dict, dict2: dict) -> bool:
+    """Return True if dict1 and dict2 have the same keys and all their values are close."""
+    return dict1.keys() == dict2.keys() and all([isclose(dict1[key], dict2[key]) for key in dict1.keys()])
 
 
 def check_total_ftes(members: list[GroupMember]):
