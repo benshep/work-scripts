@@ -12,6 +12,13 @@ from icalendar import Calendar
 from folders import hr_info_folder
 from enum import IntEnum
 
+verbose = False
+
+
+def report(*args, **kwargs):
+    if verbose:
+        print(*args, **kwargs)
+
 
 class DefaultFolders(IntEnum):
     """Specifies the folder type for a specified folder in Outlook."""
@@ -764,14 +771,14 @@ class SyncObjectEventHandler:
 
     def OnSyncStart(self) -> None:
         """Event handler for the start of the sync process."""
-        print(f"{self.name}: sync started")
+        report(f"{self.name}: sync started")
         self.syncing = True
         if self.sync_start_callback:
             self.sync_start_callback(self.name)
 
     def OnSyncEnd(self) -> None:
         """Event handler for the end of the sync process."""
-        print(f"{self.name}: sync completed")
+        report(f"{self.name}: sync completed")
         self.syncing = False
         if self.sync_end_callback:
             self.sync_end_callback(self.name)
@@ -783,7 +790,7 @@ class SyncObjectEventHandler:
         :param value: Specifies the current value of the synchronization process (such as the number of items synchronized).
         :param max_value: The maximum that `value` can reach. The ratio of `value` to `max_value` represents the percent complete of the synchronization process.
         """
-        print(f"{self.name}: synced {value} of {max_value}, {SyncState(state).name}, {description}")
+        report(f"{self.name}: synced {value} of {max_value}, {SyncState(state).name}, {description}")
         self.syncing = state == SyncState.sync_started
         self.description = description
         self.value = value
@@ -842,12 +849,18 @@ date_spec = datetime | date | float | int
 
 def get_appointments_in_range(start: date_spec = 0.0,
                               end: date_spec = 30.0,
-                              user: str = 'me') -> list[AppointmentItem]:
-    """Get a list of appointments in the given range. start and end are relative days from today, or datetimes."""
+                              user: str = 'me',
+                              extra_restriction: str = '') -> list[AppointmentItem]:
+    """Get a list of appointments in the given range. start and end are relative days from today, or datetimes.
+    user is 'me' or an email address. extra_restriction is another restriction to limit the number of results.
+    See https://learn.microsoft.com/en-us/office/vba/api/outlook.items.restrict."""
     today = date.today()
     from_date = today + timedelta(days=start) if isinstance(start, (int, float)) else start - timedelta(days=1)
     to_date = today + timedelta(days=end) if isinstance(end, (int, float)) else end
     date_filter = f"[Start] >= '{datetime_text(from_date)}' AND [Start] <= '{datetime_text(to_date)}'"
+    if extra_restriction:
+        date_filter += f' AND ({extra_restriction})'
+    report(date_filter)
     return get_appointments(date_filter, user=user)
 
 
@@ -886,7 +899,7 @@ def get_meeting_time(event: AppointmentItem, get_end: bool = False) -> datetime:
 def happening_now(event: AppointmentItem, hours_ahead: float = 0.5) -> bool:
     """Return True if an event is currently happening or is due to start in the next half-hour."""
     try:
-        # print(appointmentItem.Start)
+        report(event.Start)
         start_time = get_meeting_time(event)
         end_time = get_meeting_time(event, get_end=True)
         buffer = timedelta(hours=hours_ahead)
@@ -935,20 +948,26 @@ def is_my_all_day_event(event: AppointmentItem) -> bool:
 
 
 def is_out_of_office(event: AppointmentItem) -> bool:
-    """Check whether a given Outlook event is an out of office booking."""
+    """Check whether a given Outlook event is an out-of-office booking."""
     return is_my_all_day_event(event) and event.BusyStatus == OlBusyStatus.out_of_office
 
 
 def is_annual_leave(event: AppointmentItem) -> bool:
     """Check whether a given Outlook event is an annual leave booking."""
+    report(event.Start, event.Subject, end='')
     # must be a meeting organised by the user, or a simple appointment - leave isn't organised by someone else
     if event.ResponseStatus not in (ResponseStatus.organized, ResponseStatus.none):
+        report(' ❌ not organised')
         return False
     if event.Subject.strip().lower().endswith('annual leave'):  # something called "Annual Leave" or "XXX Annual Leave"
+        report(' ✔️ Annual Leave')
         return True
     if not is_out_of_office(event):
+        report(' ❌ not OoO')
         return False
-    return event.Subject == 'Off' or re.search(r'\bAL$', event.Subject)  # e.g. "ARB AL" but not "INTERNAL"
+    is_al = event.Subject == 'Off' or re.search(r'\bAL$', event.Subject)  # e.g. "ARB AL" but not "INTERNAL"
+    report(' ✔️' if is_al else ' ❌')
+    return is_al
 
 
 def is_wfh(event: AppointmentItem) -> bool:
@@ -959,7 +978,7 @@ def is_wfh(event: AppointmentItem) -> bool:
 
 
 def get_away_dates(start: date_spec = -30, end: date_spec = 90,
-                   user: str = 'me', look_for: callable = is_out_of_office) -> set[date]:
+                   user: str = 'me', look_for: Callable = is_out_of_office) -> set[date]:
     """Return a set of the days in the given range that the user is away from the office.
     The look_for parameter can be:
      - is_my_all_day_event: look for any all day event with only the user as an attendee
@@ -967,16 +986,27 @@ def get_away_dates(start: date_spec = -30, end: date_spec = 90,
      - is_annual_leave: as above, but subject is "Annual Leave" or "AL"
      - is_wfh: set to out of office, and subject is "Work(ing) from home" or "WFH"
      """
-    events = filter(look_for, get_appointments_in_range(start, end, user=user))
-    # Need to subtract a day here since the end time of an all-day event is 00:00 on the next day
+    # If we leave in recurring appointments, it takes a lot longer. Off dates aren't usually recurring
+    appointments_in_range = get_appointments_in_range(start, end, user=user, extra_restriction='[IsRecurring] = False')
+    count = 0
     try:
-        away_list = [get_date_list(event.Start.date(),
-                                   event.End.date() - timedelta(days=1))
-                     for event in events]
-        return to_set(away_list)
+        for _ in appointments_in_range:  # hack to count them since we can't enumerate a Restrict object
+            count += 1
     except pywintypes.com_error:
         print(f"Warning: couldn't fetch away dates for {user}")
         return set()
+    report(count)
+    away_list = []
+    i = 0
+    for event in appointments_in_range:
+        if i % (max(count, 40) // 40) == 0:  # track progress in 40 intervals
+            print('█', end='')
+        if look_for(event):
+            # Need to subtract a day here since the end time of an all-day event is 00:00 on the next day
+            away_list.append(get_date_list(event.Start.date(), event.End.date() - timedelta(days=1)))
+        i += 1
+    print('')  # next line
+    return to_set(away_list)
 
 
 def get_date_list(start: date,
@@ -1023,7 +1053,7 @@ def get_dl_ral_holidays(year: int = datetime.now().year) -> set[date]:
         start = event.decoded('dtstart')
         end = event.decoded('dtend')
         if isinstance(start, datetime):  # more specific than date, test first
-            # print('part day', start, end)
+            report('part day', start, end)
             hour = start.replace(minute=0, second=0)
             while hour < end:
                 hours.setdefault(start.date(), set()).add(hour)
@@ -1033,7 +1063,7 @@ def get_dl_ral_holidays(year: int = datetime.now().year) -> set[date]:
 
     for day, hour_set in hours.items():
         # print(sorted(list(h.hour for h in hour_set)), sep='\n')
-        if sorted(list(h.hour for h in hour_set)) == list(range(24)):
+        if sorted(h.hour for h in hour_set) == list(range(24)):
             # print('added', day)
             whole_days.add(day)
 
@@ -1042,10 +1072,11 @@ def get_dl_ral_holidays(year: int = datetime.now().year) -> set[date]:
 
 if __name__ == '__main__':
     # print(*sorted(list(get_dl_ral_holidays())), sep='\n')
-    # away_dates = sorted(
-    #     list(get_away_dates(datetime.date(2024, 2, 12), 0, look_for=is_annual_leave)))
-    # print(len(away_dates))
-    # print(*away_dates, sep='\n')
-    events = get_current_events(min_count=-1)
-    print(len(events))
-    print(*[event.Subject for event in events], sep='\n')
+    away_dates = sorted(
+        list(get_away_dates(datetime(2025, 4, 1), datetime(2026, 3, 31),
+                            user='alan.mak@stfc.ac.uk', look_for=is_annual_leave)))
+    print(len(away_dates))
+    print(*away_dates, sep='\n')
+    # events = get_current_events(min_count=-1)
+    # print(len(events))
+    # print(*[event.Subject for event in events], sep='\n')
