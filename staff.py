@@ -3,17 +3,15 @@ import shutil
 import tempfile
 from collections import Counter
 from datetime import date, timedelta, datetime
+from functools import cache
 from math import isclose, prod
 from typing import Generator
-from functools import cache
 
 import pandas
 
-import oracle
 import otl
 import outlook
 from array_round import fair_round
-from check_leave_dates import get_off_dates
 from folders import docs_folder
 from work_tools import read_excel
 
@@ -79,17 +77,6 @@ class GroupMember:
         self.off_days = site_holidays.copy()  # need an independent copy of it, since we'll be making changes!
         self.new_bookings = Counter()
         self.prev_bookings = {}
-
-    def get_oracle_leave_dates_old(self, test_mode: bool = False,
-                               table_format: bool = False) -> dict[date, float] | list[list]:
-        """Get leave dates in Oracle for a staff member."""
-        global web
-        if web is None:
-            web = oracle.go_to_oracle_page('absences', show_window=test_mode)
-        web.get(oracle.apps[('absences',)] + f'?pPersonId={self.person_id}')
-        off_dates = get_off_dates(web, fetch_all=True, page_count=1, table_format=table_format)
-        print('Oracle:', *[day.strftime('%d/%m/%Y') for day in sorted(off_dates)])
-        return off_dates
 
     def get_oracle_leave_dates(self) -> dict[date, float]:
         """Get leave dates using Oracle data for a staff member."""
