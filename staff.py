@@ -34,10 +34,10 @@ def report(*args, **kwargs):
 @cache  # so we don't have to keep reading the spreadsheet
 def get_obi_data() -> pandas.DataFrame:
     """Read budget info from spreadsheet."""
-    data = excel_to_dataframe(os.path.join(docs_folder, 'Budget', 'OBI Staff Bookings.xlsx'))
+    data = read_excel(os.path.join(docs_folder, 'Budget', 'OBI Staff Bookings.xlsx'))
     if otl.fy == 2025:  # import data from old system, used at beginning of FY25/26
         old_data_file = os.path.join(docs_folder, 'Budget', 'MaRS bookings FY25 pre-Fusion.xlsx')
-        old_data = excel_to_dataframe(old_data_file, sheet_name='Sheet2')
+        old_data = read_excel(old_data_file, sheet_name='Sheet2')
         data = pandas.concat([data, old_data])
     return data
 
@@ -45,18 +45,7 @@ def get_obi_data() -> pandas.DataFrame:
 @cache
 def get_absence_data() -> pandas.DataFrame:
     """Read absence info from spreadsheet."""
-    return excel_to_dataframe(os.path.join(docs_folder, 'Budget', 'OBI Absence Report.xlsx'))
-
-
-def excel_to_dataframe(excel_filename: str, **kwargs) -> pandas.DataFrame:
-    """Read Excel data into a pandas dataframe, using a temporary file to circumvent permission issues."""
-    # copy to a temporary file to get around permission errors due to workbook being open
-    handle, temp_filename = tempfile.mkstemp(suffix='.xlsx')
-    os.close(handle)
-    shutil.copy2(excel_filename, temp_filename)
-    data = read_excel(temp_filename, dtype={'Task Number': str}, **kwargs)
-    os.remove(temp_filename)
-    return data
+    return read_excel(os.path.join(docs_folder, 'Budget', 'OBI Absence Report.xlsx'))
 
 
 def keep_in_bounds(daily_hours):
