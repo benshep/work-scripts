@@ -109,7 +109,7 @@ class GroupMember:
                 off_dates[day] = hours_this_day
                 hours -= hours_this_day
 
-        print('Oracle:', *[day.strftime('%d/%m/%Y') for day in sorted(off_dates)])
+        report('Oracle:', *[day.strftime('%d/%m/%Y') for day in sorted(off_dates)])
         return off_dates
 
     def leave_cross_check(self):

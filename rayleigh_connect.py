@@ -1,7 +1,6 @@
 # Copyright 2021 UXEON SP. Z O.O.
 # Version: v1.0.0
-
-import requests
+import aiohttp
 
 from datetime import datetime
 
@@ -20,29 +19,35 @@ class EasyAPI:
     __base_url: str = 'https://api.rayleighconnect.net/easy/v1/'
 
     def __init__(self, token: str):
+        self.token = token
         self.__headers: dict[str, str] = {
             'authorization': 'Bearer ' + token,
             'accept': 'application/json'
         }
 
-    def __request(self, url: str, params: dict[str, str] | None = None):
+    async def __request(self, url: str, params: dict[str, str] | None = None):
         request_url = self.__base_url + url
-        r = requests.get(request_url, params=params, headers=self.__headers)
-        if r.status_code == 404: return []
-        if r.status_code != 200: raise APIException(r.status_code)
-        return r.json()
 
-    def fetch_gateways(self) -> list:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(request_url, params=params, headers=self.__headers) as response:
+                if response.status == 404: return []
+                if response.status != 200: raise APIException(response.status, response.reason)
+                response_json = await response.json()
+
+        return response_json
+
+    async def fetch_gateways(self):
         """A gateway is a device that is collecting and transmitting the data to the system."""
-        return self.__request('gateways')
+        return await self.__request('gateways')
 
-    def fetch_sensors(self, gateway_id: str) -> list:
+    async def fetch_sensors(self, gateway_id: str):
         """A sensor is single measuring point. One physical device can provide multiple measuring points."""
-        return self.__request(f'gateways/{gateway_id}')
+        return await self.__request(f'gateways/{gateway_id}')
 
-    def fetch_data(self, gateway_id: str, sensor_id: str, start: datetime, end: datetime | None = None) -> list:
+    async def fetch_data(self, gateway_id: str, sensor_id: str, start: datetime, end: datetime | None = None):
         """Fetch raw archival data."""
         payload = {'from': dt_to_rfc3339(start)}
         if end is not None:
             payload['to'] = dt_to_rfc3339(end)
-        return self.__request(f'gateways/{gateway_id}/{sensor_id}/data', payload)
+        return await self.__request(f'gateways/{gateway_id}/{sensor_id}/data', payload)
+
