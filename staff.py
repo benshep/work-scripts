@@ -10,7 +10,7 @@ import pandas
 import otl
 import outlook
 from array_round import fair_round
-from folders import docs_folder
+from folders import docs_folder, budget_folder
 from work_tools import read_excel
 
 site_holidays = outlook.get_dl_ral_holidays(otl.fy)
@@ -32,9 +32,10 @@ def report(*args, **kwargs):
 @cache  # so we don't have to keep reading the spreadsheet
 def get_obi_data() -> pandas.DataFrame:
     """Read budget info from spreadsheet."""
-    data = read_excel(os.path.join(docs_folder, 'Budget', 'OBI Staff Bookings.xlsx'))
-    if otl.fy == 2025:  # import data from old system, used at beginning of FY25/26
-        old_data_file = os.path.join(docs_folder, 'Budget', 'MaRS bookings FY25 pre-Fusion.xlsx')
+    data = read_excel(os.path.join(budget_folder, 'OBI Staff Bookings.xlsx'))
+    if otl.fy == 2025:
+        # import data from old system, used at beginning of FY25/26
+        old_data_file = os.path.join(budget_folder, 'MaRS bookings FY25 pre-Fusion.xlsx')
         old_data = read_excel(old_data_file, sheet_name='Sheet2')
         data = pandas.concat([data, old_data])
     return data
@@ -43,20 +44,47 @@ def get_obi_data() -> pandas.DataFrame:
 @cache
 def get_absence_data() -> pandas.DataFrame:
     """Read absence info from spreadsheet."""
-    return read_excel(os.path.join(docs_folder, 'Budget', 'OBI Absence Report.xlsx'))
+    return read_excel(os.path.join(budget_folder, 'OBI Absence Report.xlsx'))
 
 
 def keep_in_bounds(daily_hours):
+    """Coerce the given number to be within 0 and the correct number of hours per day (7.4)."""
     return max(0, min(daily_hours, otl.hours_per_day))
 
 
 class GroupMember:
-    def __init__(self, name: str, person_number: int, person_id: int, assignment_id: int, email: str = '',
+    """A member of staff."""
+
+    name: str
+    """Full name of staff member as listed in Oracle Fusion."""
+    person_number: int
+    """Oracle Fusion person number. Required for OTL bulk upload. View the person number for all your staff at
+    https://fa-evzn-saasfaukgovprod1.fa.ocs.oraclecloud.com/fscmUI/redwood/human-resources/feature/launch?action=ManageDirectReportsforPerson"""
+    email: str
+    """Email address of staff member. Defaults to firstname.surname@stfc.ac.uk if not supplied."""
+    known_as: str
+    """'Nickname' of staff member. Used as a short name. Defaults to first name.
+    Often useful to set this when two group members have the same first name."""
+    booking_plan: otl.BookingPlan
+    """OTL booking plan for staff member."""
+
+    def __init__(self, name: str, person_number: int, email: str = '',
+                 # person_id: int = 0, assignment_id: int = 0,
                  known_as: str = '', booking_plan: otl.BookingPlan = None):
+        """A member of staff.
+        :param name: Full name as listed in Oracle Fusion.
+        :param person_number: Oracle Fusion person number. Required for OTL bulk upload. View the person number for all your staff at
+    https://fa-evzn-saasfaukgovprod1.fa.ocs.oraclecloud.com/fscmUI/redwood/human-resources/feature/launch?action=ManageDirectReportsforPerson
+        :param email: Email address. Defaults to firstname.surname@stfc.ac.uk if not supplied.
+        Required for looking up events (e.g. absences) in a user's calendar.
+        :param known_as: 'Nickname' used as a short name when printing output. Defaults to first name.
+        Often useful to set this when two group members have the same first name.
+        :param booking_plan: OTL booking plan.
+        """
         self.name = name
         self.person_number = person_number
-        self.person_id = person_id
-        self.assignment_id = assignment_id
+        # self.person_id = person_id
+        # self.assignment_id = assignment_id
         self.email = email or name.replace(' ', '.').lower() + '@stfc.ac.uk'
         self.known_as = known_as or name.split(' ')[0]
         # print(self.known_as)
@@ -102,8 +130,7 @@ class GroupMember:
 
     def update_off_days(self, force_reload: bool = False) -> None:
         """Load off days from cached file, or if that's more than a week old, reload from Outlook and Oracle.
-        :param force_reload: Ignore any cached information.
-        """
+        :param force_reload: Ignore any cached information."""
         cache_file = os.path.join(docs_folder, 'Group Leader', 'off_days_cache', f'{self.name}.txt')
         last_week = datetime.now() - timedelta(days=7)
         cache_exists = os.path.exists(cache_file)

@@ -1,10 +1,9 @@
-from math import isclose
 import os
-import pandas
-from datetime import date, timedelta, datetime
+from datetime import date, datetime
 from enum import IntEnum
+from math import isclose
 
-from folders import docs_folder
+from folders import budget_folder
 from work_tools import read_excel
 
 hours_per_day = 7.4
@@ -15,11 +14,14 @@ fy = today.year - (today.month < 4)  # last calendar year if before April
 fy_start = date(fy, 4, 1)
 fy_end = date(fy + 1, 3, 31)
 
-obi_data = read_excel(os.path.join(docs_folder, 'Budget', 'OBI Finance Report.xlsx'), dtype={'Task Number': str})
+obi_data = read_excel(os.path.join(budget_folder, 'OBI Finance Report.xlsx'), dtype={'Task Number': str})
+
 
 # Classes used for OTL bookings
 
+
 class Priority(IntEnum):
+    """Priority level of a given project. Externally-funded projects take top priority."""
     EXTERNAL = 0
     """Externally-funded project. Top priority - aim to book exactly as expected."""
     AGREED = 1
@@ -29,10 +31,19 @@ class Priority(IntEnum):
 
 
 class Code:
-    """Class to represent a project-task pair."""
+    """A project-task pair."""
+
     def __init__(self, project: str, task: str = '01',
                  start: date = fy_start, end: date = fy_end,
                  priority: Priority = Priority.EXTERNAL):
+        """
+        A booking code.
+        :param project: The project code, e.g. STGA00001.
+        :param task: The task number. Defaults to 01 if not supplied.
+        :param start: The project's start date. Defaults to the start of the current FY.
+        :param end: The project's end date. Defaults to the end of the current FY.
+        :param priority: The project's priority level.
+        """
         self.project = project
         self.task = task
         self.start = start
@@ -51,8 +62,9 @@ class BadDataError(Exception):
 
 
 class Entry:
-    """Class to represent a booking plan entry for a staff member.
+    """A booking plan entry for a staff member.
     Override the default start and end by providing those parameters."""
+
     def __init__(self, code: Code, annual_fte: float | None = None,
                  start_date: date | None = None, end_date: date | None = None,
                  priority: Priority | None = None):
@@ -66,8 +78,10 @@ class Entry:
     def __repr__(self):
         return f'{self.code}: {self.annual_fte or 0:.2f}, from {self.start_date.strftime("%d/%m/%Y")}-{self.end_date.strftime("%d/%m/%Y")}, priority {self.priority.name}'
 
+
 class BookingPlan:
-    """Class to represent a booking plan for a staff member."""
+    """Booking plan for a staff member."""
+
     def __init__(self, entries: list[Entry]):
         self.entries = entries
         # Any low-priority (balancing) entries? If not, make the last one low-priority

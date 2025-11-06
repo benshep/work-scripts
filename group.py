@@ -2,9 +2,9 @@ from datetime import date, timedelta
 from time import sleep
 from urllib.parse import urlencode
 
-from selenium.webdriver.common.by import By
+# from selenium.webdriver.common.by import By
 
-import oracle
+# import oracle
 import staff
 
 from mars_group import members
@@ -19,7 +19,7 @@ def run_otl_calculator():
             member.update_off_days(force_reload=True)
             start = date.today()
             start -= timedelta(days=start.weekday())  # Monday of current week
-            start += timedelta(days=14)
+            # start += timedelta(days=14)
             # while start + timedelta(days=4) <= date.today():  # wait until Fri to do current week
             for _ in range(1):
                 hours_booked = member.hours_for_week(start)
@@ -29,23 +29,23 @@ def run_otl_calculator():
                 start += timedelta(days=7)
 
 
-def get_leave_balances():
-    """Iterate through staff, and show the leave balance for each one."""
-    web = oracle.go_to_oracle_page()
-    for member in members:
-        print('\n' + member.known_as)
-        url = (f'https://fa-evzn-saasfaukgovprod1.fa.ocs.oraclecloud.com/fscmUI/redwood/absences/plan-balances?'
-               + urlencode(
-                    {'pPersonId': member.person_id,
-                     'pAssignmentId': member.assignment_id,
-                     'pfsUserMode': "'MGR'"
-                     }))
-        # print(url)
-        web.get(url)
-        sleep(10)
-        spans = web.find_elements(By.XPATH, '//span[@class="oj-text-color-primary"]')
-        print(*[span.text for span in spans])
-    web.quit()
+# def get_leave_balances():
+#     """Iterate through staff, and show the leave balance for each one."""
+#     web = oracle.go_to_oracle_page()
+#     for member in members:
+#         print('\n' + member.known_as)
+#         url = (f'https://fa-evzn-saasfaukgovprod1.fa.ocs.oraclecloud.com/fscmUI/redwood/absences/plan-balances?'
+#                + urlencode(
+#                     {'pPersonId': member.person_id,
+#                      'pAssignmentId': member.assignment_id,
+#                      'pfsUserMode': "'MGR'"
+#                      }))
+#         # print(url)
+#         web.get(url)
+#         sleep(10)
+#         spans = web.find_elements(By.XPATH, '//span[@class="oj-text-color-primary"]')
+#         print(*[span.text for span in spans])
+#     web.quit()
 
 
 def leave_cross_check():

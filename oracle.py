@@ -1,17 +1,16 @@
 import os
 import time
 from enum import Enum
-from tempfile import mkstemp
 from time import sleep
 from urllib.parse import quote, urlencode
-import win32com.client as win32
-import pythoncom
 
+import pythoncom
+import win32com.client as win32
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from folders import docs_folder
+from folders import budget_folder
 
 user_profile = os.path.expanduser('~')
 
@@ -78,7 +77,7 @@ def go_to_oracle_page(*links: str,
                 profile_dir = os.path.join(user_profile, 'AppData', 'Roaming', 'Mozilla', 'Firefox', 'Profiles')
                 selenium_profile = next(folder for folder in os.listdir(profile_dir) if folder.endswith('.Selenium'))
                 firefox_options.profile = webdriver.FirefoxProfile(os.path.join(profile_dir, selenium_profile))
-            # in Ubuntu, Selenium can't locate Firefox - help it out (thanks Jools Wills)\\\
+            # in Ubuntu, Selenium can't locate Firefox - help it out (thanks Jools Wills)
             driver = '/snap/bin/geckodriver'
             service = webdriver.FirefoxService(
                 executable_path=(driver if os.path.isfile(driver) else None)
@@ -131,27 +130,37 @@ def go_to_oracle_page(*links: str,
     return web
 
 
+def file_list(files: list):
+    def wrapped(f):
+        f.file_list = files
+        return f
+    return wrapped
+
+
+@file_list([os.path.join(budget_folder, xls_file)
+            for xls_file in ('OBI Staff Bookings.xls', 'OBI Finance Report.xls')])
 def convert_obi_files():
     """Convert XLS files received from the automated OBI process to XLSX files."""
     pythoncom.CoInitialize()  # otherwise we get the "CoInitialize has not been called" error
-    excel = win32.gencache.EnsureDispatch('Excel.Application')
-    done_any = False
-    budget_folder = os.path.join(docs_folder, 'Budget')
-    for file in ('OBI Staff Bookings.xls', 'OBI Finance Report.xls'):
-        file = os.path.join(budget_folder, file)
-        new_file = file + 'x'  # i.e. .xlsx filename
+    excel = win32.Dispatch('Excel.Application')
+    excel.Visible = 0
+    # done_any = False
+    for file in convert_obi_files.file_list:
+        path, filename = os.path.split(file)
+        new_file = os.path.join(path, 'OBI processed', filename + 'x')  # i.e. .xlsx filename
+        print(new_file)
         if os.path.exists(new_file):
-            if os.path.getmtime(new_file) > os.path.getmtime(file):
-                continue
+            # if os.path.getmtime(new_file) > os.path.getmtime(file):
+            #     continue
             os.remove(new_file)  # otherwise Excel's SaveAs method will prompt about overwriting
         wb = excel.Workbooks.Open(file)
         wb.SaveAs(new_file, FileFormat=51)  # .xlsx extension
         wb.Close()
-        done_any = True
-    excel.Application.Quit()
-    if done_any:
+        # done_any = True
+    # excel.Application.Quit()
+    # if done_any:
         # trigger a Power Automate flow to run an Office Script to tidy up the files
-        mkstemp(dir=os.path.join(budget_folder, 'pa_trigger'))
+        # mkstemp(dir=os.path.join(budget_folder, 'pa_trigger'))
     return True
 
 

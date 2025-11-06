@@ -1,16 +1,18 @@
 from __future__ import annotations  # forward definitions for type-hinting classes we haven't defined yet
+
 import os
+import re
+from datetime import date, datetime, timedelta
+from enum import IntEnum
 from time import sleep
 from typing import Protocol, Callable
 
-import win32com.client
-import pywintypes
-import re
-from datetime import date, datetime, timedelta, time
 import pythoncom
+import pywintypes
+import win32com.client
 from icalendar import Calendar
+
 from folders import hr_info_folder
-from enum import IntEnum
 
 verbose = False
 
@@ -965,7 +967,8 @@ def is_annual_leave(event: AppointmentItem) -> bool:
     if not is_out_of_office(event):
         report(' ❌ not OoO')
         return False
-    is_al = event.Subject == 'Off' or re.search(r'\bAL$', event.Subject)  # e.g. "ARB AL" but not "INTERNAL"
+    # e.g. "ARB AL" or "A/L" but not "INTERNAL"
+    is_al = event.Subject == 'Off' or re.search(r'\bA/?L$', event.Subject)
     report(' ✔️' if is_al else ' ❌')
     return is_al
 
@@ -1042,7 +1045,9 @@ def list_meetings():
 
 
 def get_dl_ral_holidays(year: int = datetime.now().year) -> set[date]:
-    """Return a list of holiday dates for DL/RAL. Fetches ICS file from STFC HR info folder (synced via OneDrive)."""
+    """Return a list of holiday dates for DL/RAL. Fetches ICS file from STFC HR info folder (synced via OneDrive).
+    To set up, go to https://ukri.sharepoint.com/sites/thesource-stfc/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2Fthesource%2Dstfc%2FShared%20Documents%2FHR
+    and click Sync."""
     filename = os.path.join(hr_info_folder, f'DL_RAL_Site_Holidays_{year}.ics')
     calendar = Calendar.from_ical(open(filename, encoding='utf-8').read())
 
@@ -1074,7 +1079,7 @@ if __name__ == '__main__':
     # print(*sorted(list(get_dl_ral_holidays())), sep='\n')
     away_dates = sorted(
         list(get_away_dates(datetime(2025, 4, 1), datetime(2026, 3, 31),
-                            user='alan.mak@stfc.ac.uk', look_for=is_annual_leave)))
+                            user='alan.wheelhouse@stfc.ac.uk', look_for=is_annual_leave)))
     print(len(away_dates))
     print(*away_dates, sep='\n')
     # events = get_current_events(min_count=-1)
