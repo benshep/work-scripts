@@ -21,7 +21,10 @@ thin_films = otl.Code('STGA00501', priority=otl.Priority.BALANCING)
 novel_neg = otl.Code('STGA00502', priority=otl.Priority.BALANCING)
 dae = otl.Code('STGA02000', '03', end=date(2026, 3, 31))  # now runs to end FY25/26
 ruedi_epsrc_bridging = otl.Code('STGA02006', '02', end=date(2025, 6, 30))
-ruedi_post_bridging = otl.Code('STGA02008', start=date(2025, 7, 1), priority=otl.Priority.AGREED)
+ruedi_post_bridging = otl.Code('STGA02008', start=date(2025, 7, 1),
+                               end=date(2025, 10, 31), priority=otl.Priority.AGREED)
+# code changed in November (email from Julian McKenzie 29/10/25)
+ruedi_new_code = otl.Code('STGA02011', '02', start=date(2025, 11, 1), priority=otl.Priority.AGREED)
 zepto_clara_gott = otl.Code('STGA02005', end=date(2026, 2, 28))
 
 
@@ -38,7 +41,7 @@ members: list[GroupMember] = [
     booking_plan=otl.BookingPlan([
         otl.Entry(epac, 0.05),
         otl.Entry(dae, 0.08),
-        otl.Entry(ruedi_post_bridging, 0.06),
+        otl.Entry(ruedi_new_code, 0.0434),
         otl.Entry(clara_user_facility, 0.25),
         otl.Entry(sustainable_accelerators, 0.46),
         otl.Entry(magnet_lab),
@@ -49,7 +52,7 @@ members: list[GroupMember] = [
                 booking_plan=otl.BookingPlan([
                     otl.Entry(epac, 0.1),
                     otl.Entry(ruedi_epsrc_bridging, 0.05),
-                    otl.Entry(ruedi_post_bridging, 0.32),
+                    otl.Entry(ruedi_new_code, 0.1851),
                     otl.Entry(clara_scientific, 0.05),
                     otl.Entry(clara_user_facility, 0.2),
                     otl.Entry(magnet_lab),
