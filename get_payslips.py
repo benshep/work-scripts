@@ -13,7 +13,7 @@ from govuk_bank_holidays.bank_holidays import BankHolidays
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from oracle import go_to_oracle_page
-from folders import misc_folder, downloads_folder
+from work_folders import misc_folder, downloads_folder
 
 
 def income_pre_tax(year: int) -> float:

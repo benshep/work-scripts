@@ -1,7 +1,7 @@
 import os
 import pandas
 
-from folders import docs_folder
+from work_folders import docs_folder
 from work_tools import read_excel
 
 hh_excel = os.path.join(docs_folder, 'Sustainability', 'Energy', 'HH data_Daresbury_240415_FY2324.xlsx')

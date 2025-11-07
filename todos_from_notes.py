@@ -3,7 +3,7 @@ import re
 from datetime import datetime
 from trello import TrelloClient
 import trello_auth
-from folders import docs_folder
+from work_folders import docs_folder
 
 def todos_from_notes():
     """Go through Markdown files in Documents; find any action points that should be added to my to-do list."""

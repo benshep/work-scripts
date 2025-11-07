@@ -1,18 +1,19 @@
-import os
-import re
-from enum import Enum
-from typing import Any, Protocol
-
-import dateutil.parser
-from collections import defaultdict
 import datetime
 import operator
-import win32com.client
+import os
+import re
 import sys
-from folders import docs_folder
+from collections import defaultdict
+from enum import IntEnum
+from typing import Protocol
+
+import dateutil.parser
+import win32com.client
+
+from work_folders import docs_folder
 
 
-class ADSNameType(Enum):
+class ADSNameType(IntEnum):
     """Specifies the format of the name used to identify an object."""
     type_1779 = 1
     """Distinguished Name (e.g., CN=Jeff Smith,OU=Sales,DC=Fabrikam,DC=COM)."""
@@ -21,7 +22,7 @@ class ADSNameType(Enum):
     """Canonical Name (e.g., fabrikam.com/Users/Jeff Smith)."""
 
     nt4 = 3
-    """NT 4.0 Account Name (e.g., FABRIKAM\JeffSmith)."""
+    r"""NT 4.0 Account Name (e.g., FABRIKAM\JeffSmith)."""
 
     display = 4
     """Display Name (e.g., Jeff Smith)."""
@@ -66,7 +67,7 @@ class NameTranslate(Protocol):
 name_resolver = win32com.client.Dispatch(dispatch='NameTranslate')
 
 
-class User():
+class User:
     def __init__(self):
         self.checkout_time = None
         self.checkouts = []
@@ -85,7 +86,7 @@ class User():
         self.denied += 1
 
 
-class Module():
+class Module:
     def __init__(self):
         self.checkouts = 0
         self.denied_count = 0
@@ -126,7 +127,7 @@ class Module():
 
 def email_to_id(email: str) -> str:
     """Given an email address, resolve to a user id."""
-    name_resolver.Set(ADSNameType.unknown, email)
+    name_resolver.Set(ADSNameType.user_principal_name, email)
     ldap_query = f'LDAP://{name_resolver.Get(ADSNameType.type_1779)}'
     ldap = win32com.client.GetObject(ldap_query)
     return ldap.get('CN')

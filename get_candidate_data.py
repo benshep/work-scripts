@@ -1,7 +1,8 @@
 import os
 from time import sleep
+
+from work_folders import user_profile, downloads_folder
 from oracle import go_to_oracle_page
-from folders import user_profile, downloads_folder
 
 
 def get_candidate_data(test_mode=False):
@@ -90,7 +91,8 @@ def list_candidates():
     for filename in files:
         parts = filename.replace(',', '').replace('.', ' ').split(' ')
         names.add(tuple(parts[:2]))
-    [print(*name, sep='\t') for name in sorted(list(names))]
+    for name in sorted(names):
+        print(*name, sep='\t')
 
 
 if __name__ == '__main__':

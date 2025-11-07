@@ -12,7 +12,7 @@ import pywintypes
 import win32com.client
 from icalendar import Calendar
 
-from folders import hr_info_folder
+from work_folders import hr_info_folder
 
 verbose = False
 

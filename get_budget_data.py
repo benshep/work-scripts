@@ -10,7 +10,7 @@ from datetime import datetime
 from time import sleep
 
 from oracle import go_to_oracle_page
-from folders import docs_folder, downloads_folder
+from work_folders import docs_folder, downloads_folder, budget_folder
 from work_tools import read_excel
 
 
@@ -94,7 +94,7 @@ def get_budget_data(project_names='all', test_mode=False):
 
     today = datetime.now()
     fy = today.year - (today.month < 4)  # last calendar year if before April
-    excel_filename = os.path.join(docs_folder, 'Budget', f'Budget summaries {fy}.xlsx')
+    excel_filename = os.path.join(budget_folder, f'Budget summaries {fy}.xlsx')
     # The Index sheet here must have columns Name, Project and Task at least.
     # Budget data will be placed into sheets named after the Name column, overwriting anything already in there.
     csv_filename = os.path.join(downloads_folder, 'Detailed Cost by project.csv')

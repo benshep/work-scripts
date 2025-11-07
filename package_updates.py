@@ -1,12 +1,14 @@
 import os
-import sys
-import subprocess
+import platform
 import re
-import feedparser
-from natsort import natsorted
+import subprocess
+import sys
 from platform import node
 
-import folders
+import feedparser
+from natsort import natsorted
+
+import work_folders
 
 sys.path.append(os.path.join(folders.misc_folder, 'Scripts'))
 from pushbullet import Pushbullet  # to show notifications
@@ -33,14 +35,17 @@ def list_packages() -> dict[str, tuple[str, str]]:
 
 
 def get_rss() -> dict[str, str]:
+    is_64bits = sys.maxsize > 2**32
+    my_arch = platform.architecture()[0]
     url = 'https://repo.anaconda.com/pkgs/rss.xml'
     feed = feedparser.parse(url)
     if feed.status != 200:
         return {}
     packages = {}
     for entry in feed.entries:
-        if match := re.findall(r'([\w\-_]+)-(\d[\w\.,\-]+)', entry.title):
-            name, version = match[0]
+        if match := re.findall(r'([\w\-_]+) (\d[\w\.,\-]+) \[(.*)\]', entry.title):
+            name, version, architectures = match[0]
+            architectures = architectures.split(', ')
             packages[name] = version
     return packages
 
@@ -77,7 +82,7 @@ def check_chocolatey_packages() -> str:
 
 def trigger_update() -> None:
     powershell_command = 'powershell -command "Write-EventLog -LogName Application -Source ' + \
-                         "'BenShepherdCustomEvent' -EntryType Information -EventId 8072 -Message 'Admin session started.'\""
+                         "'BenShepherdCustomEvent' -EntryType Information -EventId 8072 -Message 'Admin client_session started.'\""
     run_command(powershell_command)
 
 
@@ -131,7 +136,9 @@ def check_updated() -> None:
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1 and sys.argv[1] == 'check_updated':  # this runs from choco-update.bat - don't change
-        check_updated()
-    else:
-        print(trigger_update())
+    print(find_new_python_packages())
+
+    # if len(sys.argv) > 1 and sys.argv[1] == 'check_updated':  # this runs from choco-update.bat - don't change
+    #     check_updated()
+    # else:
+    #     print(trigger_update())

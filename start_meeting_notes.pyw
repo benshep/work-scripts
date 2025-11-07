@@ -9,7 +9,7 @@ except ImportError:  # not available everywhere
 import requests
 from icalendar import Calendar
 import outlook
-from folders import docs_folder, sharepoint_folder
+from work_folders import docs_folder, sharepoint_folder
 
 
 def folder_match(name: str, test_against: str) -> bool:
@@ -114,11 +114,11 @@ def target_meeting(min_count: int = 1, hours_ahead: float = 12) -> outlook.Appoi
     time_format = "%a %d/%m %H:%M" if hours_ahead > 12 else "%H:%M"
     current_events = outlook.get_current_events(hours_ahead=hours_ahead, min_count=min_count)
     unfiltered_count = len(current_events)
-    current_events = filter(lambda event: not outlook.is_wfh(event), current_events)
-    current_events = filter(lambda event: event.Subject != 'ASTeC/CI Coffee', current_events)
+    current_events = filter(lambda ev: not outlook.is_wfh(ev), current_events)
+    current_events = filter(lambda ev: ev.Subject != 'ASTeC/CI Coffee', current_events)
 
     # put all the declined meetings at the end of the list
-    current_events = sorted(list(current_events), key=lambda event: event.Subject.startswith('Declined: '))
+    current_events = sorted(current_events, key=lambda ev: ev.Subject.startswith('Declined: '))
     meeting_count = len(current_events)
     print('')
     for i, event in enumerate(current_events):

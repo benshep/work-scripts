@@ -10,7 +10,7 @@ import pandas
 import otl
 import outlook
 from array_round import fair_round
-from folders import docs_folder, budget_folder
+from work_folders import docs_folder, budget_folder
 from work_tools import read_excel
 
 site_holidays = outlook.get_dl_ral_holidays(otl.fy)

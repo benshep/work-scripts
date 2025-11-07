@@ -7,7 +7,7 @@ from openpyxl.styles import Font, Alignment
 
 from rayleigh_connect import EasyAPI
 from rayleigh_api_key import api_key
-from folders import docs_folder, misc_folder
+from work_folders import docs_folder, misc_folder
 from work_tools import read_excel
 
 sys.path.append(os.path.join(misc_folder, 'Scripts'))

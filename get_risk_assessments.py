@@ -2,7 +2,7 @@ import os
 import webbot
 from time import sleep
 from stfc_credentials import username, password
-from folders import downloads_folder, docs_folder
+from work_folders import downloads_folder, docs_folder
 
 class InformationFetchFailure(Exception):
     pass

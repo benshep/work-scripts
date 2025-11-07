@@ -2,7 +2,7 @@ import os
 import pandas
 from datetime import datetime
 import outlook
-from folders import user_profile
+from work_folders import user_profile
 from work_tools import read_excel
 
 

@@ -6,7 +6,7 @@ from time import sleep
 from win32api import GetKeyState
 
 import outlook
-from folders import user_profile
+from work_folders import user_profile
 from start_meeting_notes import start_notes
 
 

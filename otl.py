@@ -3,7 +3,7 @@ from datetime import date, datetime
 from enum import IntEnum
 from math import isclose
 
-from folders import budget_folder
+from work_folders import budget_folder
 from work_tools import read_excel
 
 hours_per_day = 7.4

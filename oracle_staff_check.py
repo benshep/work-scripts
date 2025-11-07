@@ -18,7 +18,7 @@ from selenium.webdriver import Keys, ActionChains
 import oracle
 import outlook
 import mars_group
-from folders import user_profile
+from work_folders import user_profile
 from work_tools import read_excel
 
 # At Christmas, we get guidance for filling in OTLs. This gives hours to book to the leave code for each day

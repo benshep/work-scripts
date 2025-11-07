@@ -6,7 +6,9 @@ from urllib.parse import urlencode
 
 import aiohttp
 
-from folders import docs_folder
+from work_folders import docs_folder
+
+archiver_url = 'http://claraserv2.dl.ac.uk:17668/retrieval/data/getData.json?'
 
 
 def read_logs():
@@ -33,35 +35,34 @@ async def pv_avg_server(client_session: aiohttp.ClientSession,
                         bin_period: timedelta = timedelta(hours=0.5)) -> dict[datetime, float]:
     """Return the average (mean) value of a PV over a bin_period of time.
     Let the server handle the averaging."""
-
-    query = urlencode({
+    url = archiver_url + urlencode({
         'pv': f'mean_{int(bin_period.total_seconds())}({pv})',
-        'from': start.strftime('%Y-%m-%dT%H:%M:%SZ'),  # '2025-01-01T00:00:00.000Z',
+        'from': (start - bin_period).strftime('%Y-%m-%dT%H:%M:%SZ'),  # '2025-01-01T00:00:00.000Z',
         'to': end.strftime('%Y-%m-%dT%H:%M:%SZ'),  # '2025-01-01T00:30:00.000Z',
         'fetchLatestMetadata': False
     })
-    url = f'http://claraserv2.dl.ac.uk:17668/retrieval/data/getData.json?{query}'
-    # print(url)
+    print(url)
     async with client_session.get(url, timeout=None) as response:
         json = await response.json()
     data = json[0]['data']
-    average = {datetime.fromtimestamp(data_point['secs']) - bin_period / 2:
-                   data_point['val'] for data_point in data}
-    # print(len(average))
+    # Return a dict with datetime: average_value, to make it easier to line up multiple datasets
+    average = {}
+    for data_point in data:
+        if (val := data_point['val']) < 1e100:  # don't record silly values!
+            average[datetime.fromtimestamp(data_point['secs']) - bin_period / 2] = val
+    print(pv, len(data))
     return average
 
 
 async def pv_avg(client_session: aiohttp.ClientSession, pv: str, start: datetime,
                  period: timedelta = timedelta(hours=0.5)) -> float | None:
     """Return the average (mean) value of a PV over a bin_period of time."""
-
-    query = urlencode({
+    url = archiver_url + urlencode({
         'pv': pv,
         'from': start.strftime('%Y-%m-%dT%H:%M:%SZ'),  # '2025-01-01T00:00:00.000Z',
         'to': (start + period).strftime('%Y-%m-%dT%H:%M:%SZ'),  # '2025-01-01T00:30:00.000Z',
         'fetchLatestMetadata': False
     })
-    url = f'http://claraserv2.dl.ac.uk:17668/retrieval/data/getData.json?{query}'
     # try:
     async with client_session.get(url, timeout=None) as response:
         json = await response.json()
@@ -95,33 +96,33 @@ async def pvs_avg_time_series(client_session: aiohttp.ClientSession,
     return await asyncio.gather(*[pvs_avg(client_session, pvs, start + i * period, period) for i in range(periods)])
 
 
-async def get_data():
+async def cav_power_to_csv():
     session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=10))
-    periods = 48 * 1
-    session.__setattr__('pv_total', periods * 5)
-    session.__setattr__('pv_counter', 0)
-
-    start = datetime(2024, 4, 1, 0, 0, 0)
-    end = start.replace(year=start.year + 1) - timedelta(days=1)
-    # end = start + timedelta(days=30)
     pv_list = (['CLA-GUNS-LRF-CTRL-01:PID:ad1:ch6:Power:Wnd:Hi']
                + [f'CLA-L0{i + 1}-LRF-CTRL-01:PID:ad1:ch3:Power:Wnd:Avg' for i in range(4)])
+
+    # Do 2 weeks at a time: the server response is reasonably quick for this amount of data
+    start = datetime(2024, 4, 1, 0, 0, 0)
     period = timedelta(minutes=30)
-    series = await asyncio.gather(*[pv_avg_server(session, pv, start, end, bin_period=period)
-                                    for pv in pv_list])
-    await session.close()
-    print('')
     with open(f'pv_data_{start.strftime("%Y-%m-%d")}.csv', 'w') as f:
-        f.write(','.join(['Date/time'] + pv_list))
-        while start < end:
-            f.write(
-                start.strftime('%d/%m/%Y %H:%M') + ','
-                ','.join([f'{x[start]:.4g}' if start in x else '' for x in series])
-                + '\n')
-            start += period
-            # print(*p, sep='\t')
+        # f.write(','.join(['Date/time'] + pv_list) + '\n')
+        for _ in range(27):
+            print(start)
+            end = start + timedelta(days=14)
+            series = await asyncio.gather(*[pv_avg_server(session, pv, start, end, bin_period=period)
+                                            for pv in pv_list])
+            print('')
+            while start < end:
+                f.write(
+                    ','.join([start.strftime('%d/%m/%Y %H:%M')]
+                             + [f'{x[start]:.4g}' if start in x else '' for x in series])
+                    + '\n'
+                )
+                start += period
+                # print(*p, sep='\t')
+    await session.close()
 
 
 if __name__ == '__main__':
     # read_logs()
-    asyncio.run(get_data())
+    asyncio.run(cav_power_to_csv())

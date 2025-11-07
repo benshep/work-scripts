@@ -9,7 +9,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.webdriver import WebDriver
 
-from folders import user_profile
+from work_folders import user_profile
 
 
 def check_page_changes(show_window: bool = False) -> str:

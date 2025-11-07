@@ -10,7 +10,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from folders import budget_folder
+from work_folders import budget_folder
 
 user_profile = os.path.expanduser('~')
 
