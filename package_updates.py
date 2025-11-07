@@ -10,7 +10,7 @@ from natsort import natsorted
 
 import work_folders
 
-sys.path.append(os.path.join(folders.misc_folder, 'Scripts'))
+sys.path.append(os.path.join(work_folders.misc_folder, 'Scripts'))
 from pushbullet import Pushbullet  # to show notifications
 from pushbullet_api_key import api_key  # local file, keep secret!
 
@@ -20,7 +20,7 @@ def list_packages() -> dict[str, tuple[str, str]]:
     # guess name if env not defined: convention is e.g. py313
     env_name = os.environ.get('CONDA_DEFAULT_ENV', f'py{version.major}{version.minor}')
     # list command will fail and raise an exception here if env_name is invalid
-    conda_path = os.path.join(folders.user_profile, "Miniconda3", "Scripts", "conda.exe")
+    conda_path = os.path.join(work_folders.user_profile, "Miniconda3", "Scripts", "conda.exe")
     output = run_command([conda_path, 'list', '-n', env_name])
     conda_packages = {}
     for line in output:
