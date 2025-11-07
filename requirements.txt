@@ -1,5 +1,5 @@
 requests
-pandas
+pandas >= 3.0.0
 python-dateutil
 pillow
 selenium
@@ -11,7 +11,7 @@ icalendar
 feedparser
 natsort
 openpyxl
-pywin32
+pywin32 ; sys_platform == 'win32'
 py-trello
 govuk-bank-holidays
 polling2
