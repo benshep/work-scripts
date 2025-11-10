@@ -136,9 +136,9 @@ def check_updated() -> None:
 
 
 if __name__ == '__main__':
-    print(find_new_python_packages())
-
-    # if len(sys.argv) > 1 and sys.argv[1] == 'check_updated':  # this runs from choco-update.bat - don't change
-    #     check_updated()
-    # else:
-    #     print(trigger_update())
+    # this runs from choco-update.bat - DON'T CHANGE
+    if len(sys.argv) > 1 and sys.argv[1] == 'check_updated':
+        check_updated()
+    else:
+        # change THIS BIT for testing!
+        print(trigger_update())
