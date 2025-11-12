@@ -448,34 +448,50 @@ class DisplayTypeEnum(IntEnum):
     """User address."""
 
 
-class AddressEntryType(Protocol):
+class OutlookBaseObject(Protocol):
+    """The basic class for all Outlook objects."""
+    Application: OutlookApplication
+    """An Application object that represents the parent Outlook application for the object."""
+    Class: ObjectClass
+    """The object's class."""
+    Parent: object
+    """The parent object of the specified object."""
+    Session: NameSpace
+    """Returns the NameSpace object for the current session."""
+
+
+class NamedObject(OutlookBaseObject):
+    """An Outlook object with a name."""
+    Name: str
+    """The display name for the object."""
+
+
+class Collection(OutlookBaseObject):
+    """An Outlook collection object."""
+    Count: int
+    """The count of objects in the specified collection."""
+
+    def Item(self, index):
+        """Returns an object from the collection."""
+
+
+class AddressEntryType(NamedObject):
     """Represents a person, group, or public folder to which the messaging system can deliver messages."""
     Address: str
     """The email address."""
     AddressEntryUserType: AddressEntryUserTypeEnum
     """The user type."""
-    Application: OutlookApplication
-    """An Application object that represents the parent Outlook application for the object."""
-    Class: ObjectClass
-    """The object's class."""
     DisplayType: DisplayTypeEnum
     """Describes the nature of the AddressEntry."""
     ID: str
     """The unique identifier for the object."""
-    Name: str
-    """The display name for the object."""
-    Parent: object
-    """The parent object of the specified object."""
     PropertyAccessor: object
-    Session: object
     Type: object
 
-class Recipient(Protocol):
+class Recipient(NamedObject):
     """Represents a user or resource in Outlook, generally a mail or mobile message addressee."""
     # https://learn.microsoft.com/en-us/office/vba/api/outlook.recipient
 
-    Name: str
-    """The display name for the Recipient."""
     Address: str
     """The email address of the Recipient."""
     MeetingResponseStatus: ResponseStatus
@@ -483,24 +499,18 @@ class Recipient(Protocol):
     AddressEntry: AddressEntryType
     """Returns the AddressEntry object corresponding to the resolved recipient.
     Accessing the AddressEntry property forces resolution of an unresolved recipient name. If the name cannot be resolved, an error is returned. If the recipient is resolved, the Resolved property is True."""
-    Application: object
-    """An Application object that represents the parent Outlook application for the object."""
     AutoResponse: str
     """The text of an automatic response for a Recipient."""
-    Class: object
-    """The object's class."""
     DisplayType: object
     EntryID: str
     """The unique Entry ID of the object."""
     Index: int
     """The position of the object within the collection."""
-    Parent: object
     PropertyAccessor: object
     Resolved: bool
     """Indicates True if the recipient has been validated against the Address Book."""
     Sendable: bool
     """Indicates whether a meeting request can be sent to the Recipient."""
-    Session: object
     TrackingStatus: object
     TrackingStatusTime: object
     Type: int
@@ -524,14 +534,10 @@ class Recipient(Protocol):
         Returns true if the object was resolved; otherwise, false."""
 
 
-class Folder(Protocol):
+class Folder(NamedObject):
     """Represents an Outlook folder."""
     AddressBookName: str
     """The Address Book name for the Folder object representing a Contacts folder."""
-    Application: OutlookApplication
-    """An Application object that represents the parent Outlook application for the object."""
-    Class: ObjectClass
-    """The object's class."""
     CurrentView: object
     CustomViewsOnly: object
     DefaultItemType: object
@@ -542,11 +548,9 @@ class Folder(Protocol):
     Folders: object
     InAppFolderSyncObject: object
     IsSharePointFolder: object
-    Items: object
-    Name: object
-    Parent: object
+    Items: Items
+    """Returns an Items collection object as a collection of Outlook items in the specified folder."""
     PropertyAccessor: object
-    Session: object
     ShowAsOutlookAB: object
     ShowItemCount: object
     Store: object
@@ -557,11 +561,10 @@ class Folder(Protocol):
     WebViewOn: object
     WebViewURL: object
 
-class SyncObject(Protocol):
+
+class SyncObject(NamedObject):
     """Represents a Send/Receive group for a user.
     A Send/Receive group lets users configure different synchronization scenarios, selecting which folders and which filters apply."""
-    Name: str
-    """The display name for the object."""
 
     def Start(self):
         """Begins synchronizing a user's folders using the specified Send/Receive group."""
@@ -570,9 +573,17 @@ class SyncObject(Protocol):
         """Immediately ends synchronizing a user's folders using the specified Send/Receive group."""
 
 
+class SyncObjects(Collection):
+    """Contains a set of SyncObject objects representing the Send/Receive groups for a user."""
+    # https://learn.microsoft.com/en-us/office/vba/api/outlook.syncobjects
+    AppFolders: SyncObject
+    """The SyncObject object for application folders."""
+
+
+
 class NameSpace(Protocol):
     """Represents an abstract root object for any data source."""
-    SyncObjects: list[SyncObject]
+    SyncObjects: SyncObjects
     """Contains a set of SyncObject objects representing the Send/Receive groups for a user."""
 
     def GetDefaultFolder(self, folder_type: DefaultFolders) -> Folder:
@@ -732,6 +743,20 @@ class AppointmentItem(Protocol):
         """Forwards the AppointmentItem as a vCal; virtual calendar item."""
 
 
+class Items(Collection, list[AppointmentItem]):
+    """Contains a collection of Outlook item objects in a folder."""
+    IncludeRecurrences: bool
+    """True if the Items collection should include recurrence patterns."""
+
+    def Sort(self, property_string: str, descending: bool = False):
+        """Sorts the collection of items by the specified property.
+        The index for the collection is reset to 1 upon completion of this method."""
+
+    def Restrict(self, filter: str) -> Items:
+        """Applies a filter to the Items collection, returning a new collection containing
+        all of the items from the original that match the filter."""
+
+
 class SyncState(IntEnum):
     sync_started = 1
     """Synchronization started."""
@@ -852,7 +877,7 @@ date_spec = datetime | date | float | int
 def get_appointments_in_range(start: date_spec = 0.0,
                               end: date_spec = 30.0,
                               user: str = 'me',
-                              extra_restriction: str = '') -> list[AppointmentItem]:
+                              extra_restriction: str = '') -> Items:
     """Get a list of appointments in the given range. start and end are relative days from today, or datetimes.
     user is 'me' or an email address. extra_restriction is another restriction to limit the number of results.
     See https://learn.microsoft.com/en-us/office/vba/api/outlook.items.restrict."""
@@ -866,7 +891,7 @@ def get_appointments_in_range(start: date_spec = 0.0,
     return get_appointments(date_filter, user=user)
 
 
-def get_appointments(restriction: str, sort_order: str = 'Start', user: str = 'me') -> list[AppointmentItem]:
+def get_appointments(restriction: str, sort_order: str = 'Start', user: str = 'me') -> Items:
     """Get a list of calendar appointments with the given Outlook filter."""
     calendar = get_calendar(user)
     appointments = calendar.Items
