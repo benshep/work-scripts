@@ -27,6 +27,7 @@ class EasyAPI:
 
     async def __request(self, url: str, params: dict[str, str] | None = None):
         request_url = self.__base_url + url
+        print(request_url)
 
         async with aiohttp.ClientSession() as session:
             async with session.get(request_url, params=params, headers=self.__headers) as response:

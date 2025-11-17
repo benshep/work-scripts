@@ -121,8 +121,21 @@ def resample(data: list[list], key: tuple[str, str, str]):
     return df
 
 
+async def test_fetch():
+    start = pandas.to_datetime('2025-11-01').to_pydatetime()
+    print(start)
+    return await rayleigh.fetch_data(
+        'Q3025301880080025',
+        'e3.kwh',  # want the energy data
+        start,
+    )
+
 if __name__ == '__main__':
     # print(find_sensors(['PD2 - SW4E - PD934 CLARA Rack Room 2 - Magnet Rack 1',
     #                     'PD2 - SW4D - PD935 CLARA Rack Room 2 - Magnet Rack 2']))
     # list_sensors()
-    update_energy_data()
+
+    data = asyncio.run(test_fetch())
+    print(data)
+
+    # update_energy_data()
