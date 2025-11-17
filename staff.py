@@ -121,7 +121,6 @@ class GroupMember:
         start = max(otl.fy_start, date(2025, 6, 2))  # don't go back before Fusion start date
         end = date.today()  # don't look in the future
         outlook_days = outlook.get_away_dates(start, end, user=self.email, look_for=outlook.is_annual_leave)
-        # print('Outlook:', *[day.strftime('%d/%m/%Y') for day in sorted(outlook_days)])
         oracle_days = {day for day, (absence_type, hrs) in self.get_oracle_leave_dates().items()
                        if start <= day <= end and absence_type == 'Annual Leave'}
         print('\t\t\tOutlook\tOracle')
@@ -130,12 +129,8 @@ class GroupMember:
             print(day.strftime('%d/%m/%Y'),
                   '✔️  ' if day in outlook_days else '❌  ',
                   '✔️  ' if day in oracle_days else '❌  ', sep='\t')
-        # not_in_outlook = oracle_days - outlook_days
-        # not_in_oracle = outlook_days - oracle_days
-        # if not_in_outlook:
-        #     print('Not in Outlook:', *sorted(not_in_outlook))
-        # if not_in_oracle:
-        #     print('Not in Oracle:', *sorted(not_in_oracle))
+        # count of symmetric difference - i.e. days that are only in one set but not both
+        return len(outlook_days ^ oracle_days)
 
     def update_off_days(self, force_reload: bool = False) -> None:
         """Load off days from cached file, or if that's more than a week old, reload from Outlook and Oracle.

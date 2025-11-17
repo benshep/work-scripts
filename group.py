@@ -51,9 +51,12 @@ def get_leave_balances():
 
 def leave_cross_check():
     """Iterate through staff, and check Oracle vs Outlook leave bookings."""
+    toast = ''
     for member in members:
         print('\n' + member.known_as)
-        member.leave_cross_check()
+        if mismatches := member.leave_cross_check():
+            toast += f'{member.known_as}: {mismatches=}\n'
+    return toast
 
 
 def show_leave_dates():
