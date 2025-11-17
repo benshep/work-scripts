@@ -16,7 +16,7 @@ def dt_to_rfc3339(dt: datetime) -> str:
 class EasyAPI:
     """Application Programming Interface for applications displaying and processing data.
     https://docs.rayleighconnect.net/api/easy/"""
-    __base_url: str = 'https://api.rayleighconnect.net/easy/v1/'
+    base_url: str = 'https://api.rayleighconnect.net/easy/v1/'
 
     def __init__(self, token: str):
         self.token = token
@@ -25,9 +25,9 @@ class EasyAPI:
             'accept': 'application/json'
         }
 
-    async def __request(self, url: str, params: dict[str, str] | None = None):
-        request_url = self.__base_url + url
-        print(request_url)
+    async def request(self, url: str, params: dict[str, str] | None = None):
+        request_url = self.base_url + url
+        # print(request_url)
 
         async with aiohttp.ClientSession() as session:
             async with session.get(request_url, params=params, headers=self.__headers) as response:
@@ -39,16 +39,16 @@ class EasyAPI:
 
     async def fetch_gateways(self):
         """A gateway is a device that is collecting and transmitting the data to the system."""
-        return await self.__request('gateways')
+        return await self.request('gateways')
 
     async def fetch_sensors(self, gateway_id: str):
         """A sensor is single measuring point. One physical device can provide multiple measuring points."""
-        return await self.__request(f'gateways/{gateway_id}')
+        return await self.request(f'gateways/{gateway_id}')
 
     async def fetch_data(self, gateway_id: str, sensor_id: str, start: datetime, end: datetime | None = None):
         """Fetch raw archival data."""
         payload = {'from': dt_to_rfc3339(start)}
         if end is not None:
             payload['to'] = dt_to_rfc3339(end)
-        return await self.__request(f'gateways/{gateway_id}/{sensor_id}/data', payload)
+        return await self.request(f'gateways/{gateway_id}/{sensor_id}/data', payload)
 

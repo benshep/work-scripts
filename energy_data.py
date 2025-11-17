@@ -79,6 +79,7 @@ async def archive_data():
     first_new_int_time = max(intensity_data.index) + pandas.to_timedelta(30, 'min')
     new_intensity_data = get_co2_data(first_new_int_time, 'WA4', do_pivot=False, end=last_new_time)
     if not new_intensity_data.empty:
+        print('New intensity data from', min(new_intensity_data.index), 'to', max(new_intensity_data.index))
         new_intensity_data.index = new_intensity_data.index.tz_localize(None)  # make timezone-unaware for Excel
         # print(new_intensity_data)
         new_intensity_data.columns = intensity_data.columns
@@ -88,6 +89,7 @@ async def archive_data():
     with pandas.ExcelWriter(excel_filename, mode='a', if_sheet_exists='replace', engine='openpyxl') as writer:
         meter_data.to_excel(writer, sheet_name=meters_sheet, merge_cells=False)
         intensity_data.to_excel(writer, sheet_name=intensity_sheet, merge_cells=True)
+    print('Data written to', excel_filename)
 
     # Carry out some formatting
     workbook = load_workbook(excel_filename)
@@ -133,9 +135,9 @@ async def test_fetch():
 if __name__ == '__main__':
     # print(find_sensors(['PD2 - SW4E - PD934 CLARA Rack Room 2 - Magnet Rack 1',
     #                     'PD2 - SW4D - PD935 CLARA Rack Room 2 - Magnet Rack 2']))
-    # list_sensors()
+    asyncio.run(list_sensors())
 
-    data = asyncio.run(test_fetch())
-    print(data)
+    # data = asyncio.run(test_fetch())
+    # print(data)
 
     # update_energy_data()
