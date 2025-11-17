@@ -14,14 +14,15 @@ def run_otl_calculator():
     """Iterate through staff, listing the hours to upload for new OTL cards required."""
     # staff.verbose = True
     for member in members:
-        if True:  # member.known_as in ('Neil',):
+        # if member.known_as in ('Alex B',):
+        if True:
             print('\n' + member.known_as)
-            member.update_off_days(force_reload=True)
+            member.update_off_days(force_reload=False)
             start = date.today()
             start -= timedelta(days=start.weekday())  # Monday of current week
-            # start += timedelta(days=14)
-            # while start + timedelta(days=4) <= date.today():  # wait until Fri to do current week
-            for _ in range(1):
+            start -= timedelta(days=28)  # check last four weeks
+            while start + timedelta(days=4) <= date.today():  # wait until Fri to do current week
+            # for _ in range(1):
                 hours_booked = member.hours_for_week(start)
                 print(f'{start.strftime("%d/%m/%Y")}: {hours_booked=:.2f}')
                 if hours_booked < 37:
@@ -64,4 +65,4 @@ def show_leave_dates():
 
 
 if __name__ == '__main__':
-    run_otl_calculator()
+    leave_cross_check()

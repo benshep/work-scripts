@@ -12,6 +12,7 @@ import pywintypes
 import win32com.client
 from icalendar import Calendar
 
+import otl
 from work_folders import hr_info_folder
 
 verbose = False
@@ -488,6 +489,7 @@ class AddressEntryType(NamedObject):
     PropertyAccessor: object
     Type: object
 
+
 class Recipient(NamedObject):
     """Represents a user or resource in Outlook, generally a mail or mobile message addressee."""
     # https://learn.microsoft.com/en-us/office/vba/api/outlook.recipient
@@ -580,7 +582,6 @@ class SyncObjects(Collection):
     """The SyncObject object for application folders."""
 
 
-
 class NameSpace(Protocol):
     """Represents an abstract root object for any data source."""
     SyncObjects: SyncObjects
@@ -599,6 +600,7 @@ class NameSpace(Protocol):
 
 class OutlookApplication(Protocol):
     """Represents the entire Microsoft Outlook application."""
+
     def GetNamespace(self, namespace_type: str) -> NameSpace:
         """Returns a NameSpace object of the specified type."""
 
@@ -863,8 +865,8 @@ def perform_sync(sync_start_callback: Callable[[str], None] | None = None,
     if sync_end_callback:
         return event_handlers
     while any(handler.syncing for handler in event_handlers):
-    # for _ in range(300):  # wait 30s
-    #     print([handler.syncing for handler in event_handlers])
+        # for _ in range(300):  # wait 30s
+        #     print([handler.syncing for handler in event_handlers])
         pythoncom.PumpWaitingMessages()
         sleep(0.1)
     return None
@@ -947,7 +949,7 @@ def get_current_events(user: str = 'me', hours_ahead: float = 0.5, min_count: in
     syncing = False
     while i < 60 or syncing:  # try for a minute or so
         current_events = list(filter(lambda event: happening_now(event, hours_ahead),
-                                get_appointments_in_range(-7, 1 + hours_ahead / 24, user=user)))
+                                     get_appointments_in_range(-7, 1 + hours_ahead / 24, user=user)))
         if min_count < 0:
             min_count = len(current_events) - min_count
         if min_count:
@@ -989,11 +991,12 @@ def is_annual_leave(event: AppointmentItem) -> bool:
     if event.Subject.strip().lower().endswith('annual leave'):  # something called "Annual Leave" or "XXX Annual Leave"
         report(' ✔️ Annual Leave')
         return True
-    if not is_out_of_office(event):
-        report(' ❌ not OoO')
-        return False
-    # e.g. "ARB AL" or "A/L" but not "INTERNAL"
-    is_al = event.Subject == 'Off' or re.search(r'\bA/?L$', event.Subject)
+    # Doesn't seem to be a reliable indicator! e.g. Matt doesn't mark as OoO
+    # if not is_out_of_office(event):
+    #     report(' ❌ not OoO')
+    #     return False
+    # e.g. "ARB AL" or "A/L" or "AL - out of office" but not "INTERNAL"
+    is_al = event.Subject == 'Off' or re.search(r'\bA/?L\b', event.Subject)
     report(' ✔️' if is_al else ' ❌')
     return is_al
 
@@ -1026,9 +1029,13 @@ def get_away_dates(start: date_spec = -30, end: date_spec = 90,
     report(count)
     away_list = []
     i = 0
+    text = f'Fetching away dates in {count} appointments for {user} ...'
+    print(text)
+    next_tick = 0
     for event in appointments_in_range:
-        if i % (max(count, 40) // 40) == 0:  # track progress in 40 intervals
-            print('█', end='')
+        if i >= round(next_tick):
+            print('█', end='')  # track progress - can take a while
+            next_tick += count / len(text)  # progress bar will be same length as line above
         if look_for(event):
             # Need to subtract a day here since the end time of an all-day event is 00:00 on the next day
             away_list.append(get_date_list(event.Start.date(), event.End.date() - timedelta(days=1)))
@@ -1069,42 +1076,60 @@ def list_meetings():
     print(len(event_list))
 
 
-def get_dl_ral_holidays(year: int = datetime.now().year) -> set[date]:
-    """Return a list of holiday dates for DL/RAL. Fetches ICS file from STFC HR info folder (synced via OneDrive).
+def get_dl_ral_holidays(year: int = datetime.now().year, clean_titles: bool = True) -> dict[date, tuple[str, float]]:
+    """Fetch a list of holiday dates for DL/RAL. Fetches ICS file from STFC HR info folder (synced via OneDrive).
     To set up, go to https://ukri.sharepoint.com/sites/thesource-stfc/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2Fthesource%2Dstfc%2FShared%20Documents%2FHR
-    and click Sync."""
+    and click Sync.
+    Returns a dict where the keys are dates and each value is a tuple with the leave type
+    (Public Holiday, Privilege Day) and the hours taken (which will always be 7.4).
+    If clean_titles is True, converts Privilege Day and Compensating Leave to Privilege Day,
+    and everything else to Bank Holiday."""
     filename = os.path.join(hr_info_folder, f'DL_RAL_Site_Holidays_{year}.ics')
     calendar = Calendar.from_ical(open(filename, encoding='utf-8').read())
 
     # Mostly these are date values. HOWEVER, sometimes we get two events as two half-days. Let's deal with that.
-    whole_days = set()
+    whole_days = {}
     hours = {}
+    part_day_name = {}
     for event in calendar.walk('VEVENT'):
         start = event.decoded('dtstart')
         end = event.decoded('dtend')
+        title = event.get('summary')
         if isinstance(start, datetime):  # more specific than date, test first
             report('part day', start, end)
             hour = start.replace(minute=0, second=0)
+            # Create set of hours covered by this event, and add it to the hours dict
+            # which will contain e.g. {2025-11-14: {0, 1, 2, ... 10, 11, 12}}
             while hour < end:
                 hours.setdefault(start.date(), set()).add(hour)
                 hour += timedelta(hours=1)
+            # Keep track of event titles for each half-day
+            part_day_name.setdefault(start.date(), set()).add(title)
         elif isinstance(start, date):
-            whole_days.add(start)
+            whole_days[start] = (title, otl.hours_per_day)
 
     for day, hour_set in hours.items():
         # print(sorted(list(h.hour for h in hour_set)), sep='\n')
         if sorted(h.hour for h in hour_set) == list(range(24)):
             # print('added', day)
-            whole_days.add(day)
+            title = ', '.join(part_day_name[day])
+            whole_days[day] = (title, otl.hours_per_day)
+
+    if clean_titles:
+        for day, (title, hrs) in whole_days.items():
+            title = 'Privilege Day' if 'Privilege Day' in title or 'Compensating Leave' in title else 'Bank Holiday'
+            whole_days[day] = (title, hrs)
 
     return whole_days
 
 
 if __name__ == '__main__':
     # print(*sorted(list(get_dl_ral_holidays())), sep='\n')
+    verbose = True
     away_dates = sorted(
-        list(get_away_dates(datetime(2025, 4, 1), datetime(2026, 3, 31),
-                            user='alan.wheelhouse@stfc.ac.uk', look_for=is_annual_leave)))
+        list(get_away_dates(
+            # datetime(2025, 4, 1), datetime(2026, 3, 31),
+            user='matthew.king@stfc.ac.uk', look_for=is_annual_leave)))
     print(len(away_dates))
     print(*away_dates, sep='\n')
     # events = get_current_events(min_count=-1)

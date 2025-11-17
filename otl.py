@@ -54,7 +54,32 @@ class Code:
         return f'{self.project} {self.task}'
 
 
-unproductive_code = Code('STRA00009', '01.01')  # for ASTeC
+# What to book various types of leave to? These are specific ASTeC codes
+annual_leave = Code('STRA00009', '01.01')
+special_paid_leave = Code('STRA00009', '01.02')
+parental_leave = Code('STRA00009', '01.03')
+sick_leave = Code('STRA00009', '01.04')
+unpaid = Code('(no booking)', 'N/A')  # TODO: need to deal with when we move to automated bookings
+unproductive_code = {  # list of possible Absence Types in Fusion
+    'Annual Leave': annual_leave,
+    'Bank Holiday': annual_leave,
+    'Privilege Day': annual_leave,
+    'Privilege Days': annual_leave,
+    'Career Break': special_paid_leave,
+    'Phased Return - Leave': special_paid_leave,
+    'Sabbatical Leave': special_paid_leave,
+    'Special Leave - Paid': special_paid_leave,
+    'Special Leave - Unpaid': unpaid,
+    'Unpaid Leave': unpaid,
+    'Unpaid Parental Leave': unpaid,
+    'Maternity Leave': parental_leave,
+    'Adoption Leave': parental_leave,
+    'Paternity/Maternity Support - Adoption': parental_leave,
+    'Paternity/Maternity Support - Birth': parental_leave,
+    'Sickness Absence': sick_leave,
+    'Half Day Sickness Absence': sick_leave,
+    'Industrial Action': unpaid,
+}
 
 
 class BadDataError(Exception):

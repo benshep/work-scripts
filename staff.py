@@ -18,7 +18,6 @@ try:
     site_holidays |= outlook.get_dl_ral_holidays(otl.fy + 1)
 except FileNotFoundError:  # not published yet!
     pass
-site_holidays = {day: otl.hours_per_day for day in site_holidays}
 
 web = None
 verbose = False
@@ -32,11 +31,12 @@ def report(*args, **kwargs):
 @cache  # so we don't have to keep reading the spreadsheet
 def get_obi_data() -> pandas.DataFrame:
     """Read budget info from spreadsheet."""
-    data = read_excel(os.path.join(budget_folder, 'OBI Staff Bookings.xlsx'))
+    column_types = {'Task Number': str}  # otherwise it will be interpreted as a float (e.g. 1.01)
+    data = read_excel(os.path.join(budget_folder, 'OBI Staff Bookings.xlsx'), dtype=column_types)
     if otl.fy == 2025:
         # import data from old system, used at beginning of FY25/26
         old_data_file = os.path.join(budget_folder, 'MaRS bookings FY25 pre-Fusion.xlsx')
-        old_data = read_excel(old_data_file, sheet_name='Sheet2')
+        old_data = read_excel(old_data_file, sheet_name='Sheet2', dtype=column_types)
         data = pandas.concat([data, old_data])
     return data
 
@@ -93,8 +93,10 @@ class GroupMember:
         self.new_bookings = Counter()
         self.prev_bookings = {}
 
-    def get_oracle_leave_dates(self) -> dict[date, float]:
-        """Get leave dates using Oracle data for a staff member."""
+    def get_oracle_leave_dates(self) -> dict[date, tuple[str, float]]:
+        """Get leave dates using Oracle data for a staff member.
+        Returns a dict where the keys are dates and each value is a tuple with the leave type
+        (Annual Leave, Sickness Absence) and the hours taken."""
         all_absences = get_absence_data()
         my_absences = all_absences[all_absences['Name'] == self.name]
         off_dates = {}
@@ -108,7 +110,7 @@ class GroupMember:
             # e.g. 8.4 hours over 2 days would be 7.4 hours on day 1, 1 hour on day 2
             for day in date_list:
                 hours_this_day = min(otl.hours_per_day, hours)
-                off_dates[day] = hours_this_day
+                off_dates[day] = (row['Absence Type'], hours_this_day)
                 hours -= hours_this_day
 
         report('Oracle:', *[day.strftime('%d/%m/%Y') for day in sorted(off_dates)])
@@ -119,14 +121,21 @@ class GroupMember:
         start = max(otl.fy_start, date(2025, 6, 2))  # don't go back before Fusion start date
         end = date.today()  # don't look in the future
         outlook_days = outlook.get_away_dates(start, end, user=self.email, look_for=outlook.is_annual_leave)
-        print('Outlook:', *[day.strftime('%d/%m/%Y') for day in sorted(outlook_days)])
-        oracle_days = {day for day in self.get_oracle_leave_dates().keys() if start <= day <= end}
-        not_in_outlook = oracle_days - outlook_days
-        not_in_oracle = outlook_days - oracle_days
-        if not_in_outlook:
-            print('Not in Outlook:', *sorted(not_in_outlook))
-        if not_in_oracle:
-            print('Not in Oracle:', *sorted(not_in_oracle))
+        # print('Outlook:', *[day.strftime('%d/%m/%Y') for day in sorted(outlook_days)])
+        oracle_days = {day for day, (absence_type, hrs) in self.get_oracle_leave_dates().items()
+                       if start <= day <= end and absence_type == 'Annual Leave'}
+        print('\t\t\tOutlook\tOracle')
+        in_either = outlook_days | oracle_days
+        for day in sorted(in_either):
+            print(day.strftime('%d/%m/%Y'),
+                  '✔️  ' if day in outlook_days else '❌  ',
+                  '✔️  ' if day in oracle_days else '❌  ', sep='\t')
+        # not_in_outlook = oracle_days - outlook_days
+        # not_in_oracle = outlook_days - oracle_days
+        # if not_in_outlook:
+        #     print('Not in Outlook:', *sorted(not_in_outlook))
+        # if not_in_oracle:
+        #     print('Not in Oracle:', *sorted(not_in_oracle))
 
     def update_off_days(self, force_reload: bool = False) -> None:
         """Load off days from cached file, or if that's more than a week old, reload from Outlook and Oracle.
@@ -138,25 +147,26 @@ class GroupMember:
             print(f'Fetching Outlook off days for {self.known_as}')
             outlook_days = outlook.get_away_dates(otl.fy_start, otl.fy_end,
                                                   user=self.email, look_for=outlook.is_annual_leave)
-            self.off_days |= {day: otl.hours_per_day for day in outlook_days}
+            self.off_days |= {day: ('Annual Leave', otl.hours_per_day) for day in outlook_days}
             print(f'Fetching Oracle off days for {self.known_as}')
             self.off_days |= self.get_oracle_leave_dates()
             with open(cache_file, 'w') as f:
                 f.write('\n'.join(
-                    [f"{d.strftime('%d/%m/%Y')}\t{hrs:.2f}" for d, hrs in sorted(self.off_days.items())]))
+                    [f"{d.strftime('%d/%m/%Y')}\t{absence_type}\t{hrs:.2f}"
+                     for d, (absence_type, hrs) in sorted(self.off_days.items())]))
         else:
             print(f'Loading off days from cache for {self.known_as}')
             self.off_days = {}
             for l in open(cache_file, 'r').read().splitlines():
-                day, hrs = l.split('\t')
-                self.off_days[datetime.strptime(day, '%d/%m/%Y').date()] = float(hrs)
+                day, absence_type, hrs = l.split('\t')
+                self.off_days[datetime.strptime(day, '%d/%m/%Y').date()] = (absence_type, float(hrs))
 
     def working_days_in_period(self, start: date, end: date) -> int:
         """Return the number of working days in a bin_period between start and end, given a set of off days."""
         dates = [start + timedelta(day) for day in range((end - start).days + 1)]
         dates = [day for day in dates
                  if day.weekday() < 5  # Mon-Fri
-                 and (day, otl.hours_per_day) not in self.off_days.items()]  # not a whole day off!
+                 and self.off_days.get(day, ('', 0))[1] < otl.hours_per_day]  # not a whole day off!
         return len(dates)
 
     def daily_hours(self, entry: otl.Entry, when: date) -> float:
@@ -165,16 +175,17 @@ class GroupMember:
         if entry.end_date < when or entry.start_date > when:  # already ended, or not started yet
             return 0.0
         my_bookings = self.get_my_bookings()
-        code_bookings = my_bookings[
-            (my_bookings['Project Number'] == entry.code.project)
-            & (my_bookings['Task Number'] == entry.code.task)
-            # fix when booking to same code over multiple periods (e.g. UKXFEL CDOA vs continuation)
-            & (my_bookings['Item Date'] >= pandas.to_datetime(entry.code.start))
-            ]
+        project_filter = my_bookings['Project Number'] == entry.code.project
+        task_filter = my_bookings['Task Number'] == entry.code.task
+        # fix when booking to same code over multiple periods (e.g. UKXFEL CDOA vs continuation)
+        date_filter = my_bookings['Item Date'] >= pandas.to_datetime(entry.code.start)
+        # check how many records match for each filter
+        report(f'{sum(project_filter)=}, {sum(task_filter)=}, {sum(date_filter)=}')
+        code_bookings = my_bookings[project_filter & task_filter & date_filter]
         # self.new_bookings stores bookings added this time
         hours_logged = self.new_bookings[entry.code] + sum(code_bookings['Quantity'])
         hours_needed = otl.hours_per_day * otl.days_per_fte * entry.annual_fte - hours_logged
-        report(entry.code, hours_logged, hours_needed)
+        report(entry.code, f'{hours_logged=:.2f}, {hours_needed=:.2f}')
         rest_of_year_day_count = self.working_days_in_period(when, entry.end_date)
         if rest_of_year_day_count == 0:  # no more days in bin_period
             return 0.0
@@ -199,8 +210,8 @@ class GroupMember:
 
     def daily_bookings(self, when: date) -> dict[otl.Code, float]:
         """Return a list of codes and hours to book on a given date."""
-        off_hours = self.off_days.get(when, 0)
-        unproductive_bookings = {otl.unproductive_code: off_hours} if off_hours else {}
+        absence_type, off_hours = self.off_days.get(when, ('', 0))
+        unproductive_bookings = {otl.unproductive_code[absence_type]: off_hours} if off_hours else {}
         working_hours = otl.hours_per_day - off_hours  # in case of a half-day off etc
         if not working_hours:
             return unproductive_bookings
@@ -283,3 +294,7 @@ def dicts_close(dict1: dict, dict2: dict) -> bool:
 
 def check_total_ftes(members: list[GroupMember]):
     print(*[f'{member.known_as}: {member.booking_plan.total_fte()}' for member in members], sep='\n')
+
+
+if __name__ == '__main__':
+    print(*sorted(site_holidays.keys()), sep='\n')

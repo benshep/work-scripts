@@ -32,7 +32,7 @@ def ukxfel_cdoa(wp: int):
     return otl.Code('STKA00183', f'03.{wp:02d}', end=date(2025, 9, 30))
 
 def ukxfel_continuation(wp: int):
-    return otl.Code('STKA00183', f'03.{wp:02d}', start=date(2025, 10, 1))
+    return otl.Code('(waiting for new code)', f'03.{wp:02d}', start=date(2025, 10, 1))
 
 epac = otl.Code('STKA01103', '06.01')
 
