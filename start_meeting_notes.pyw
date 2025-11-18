@@ -1,13 +1,12 @@
 import os
 import re
+import signal
 from typing import Iterator
 
 try:
     import pyvda  # virtual desktops
 except ImportError:  # not available everywhere
     pyvda = None
-import requests
-from icalendar import Calendar
 import outlook
 from work_folders import docs_folder, sharepoint_folder
 
@@ -52,7 +51,6 @@ def start_notes(meeting: outlook.AppointmentItem) -> None:
                 desktop.go()
                 break
     os.startfile(filename)
-    print('End of start_notes')
 
 
 def notes_text(meeting: outlook.AppointmentItem) -> str:
@@ -212,6 +210,8 @@ def format_name(person_name: str, response: outlook.ResponseStatus) -> str:
 
 def ical_to_markdown(url: str) -> str:
     """Given an Indico event URL, return a Markdown agenda."""
+    import requests
+    from icalendar import Calendar
     # url = 'https://indico.desy.de/event/35655/event.ics?scope=contribution'
     if not url.endswith('/'):
         url += '/'
@@ -239,3 +239,5 @@ if __name__ == '__main__':
     # for meeting in outlook.get_appointments_in_range(-30, 30):
     #     print(meeting.Subject, go_to_folder(meeting), sep='; ')
     create_note_file()
+    # Necessary to avoid hanging Python process after opening the note file
+    os.kill(os.getpid(), signal.SIGTERM)
