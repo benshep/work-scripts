@@ -20,9 +20,8 @@ def folder_match(name: str, test_against: str) -> bool:
 
 def create_note_file() -> None:
     """Prompt for a current meeting and start a note file."""
-    if not (meeting := target_meeting()):
-        return  # no current meeting
-    start_notes(meeting)
+    if meeting := target_meeting():  # only continue if there's a valid meeting found
+        start_notes(meeting)
 
 
 def start_notes(meeting: outlook.AppointmentItem) -> None:
@@ -50,7 +49,9 @@ def start_notes(meeting: outlook.AppointmentItem) -> None:
             if desktop.name == '🤝 Meetings':
                 desktop.go()
                 break
-    os.startfile(filename)
+    os.startfile(filename)  # open the file in the associated program
+    # Kill this process - otherwise get 'hanging prompt' issue while notes window is open
+    os.kill(os.getpid(), signal.SIGTERM)
 
 
 def notes_text(meeting: outlook.AppointmentItem) -> str:
@@ -65,21 +66,21 @@ def notes_text(meeting: outlook.AppointmentItem) -> str:
         outlook.ResponseStatus.not_responded,
         outlook.ResponseStatus.declined
     ]
-    response = {r.Name: outlook.ResponseStatus(r.MeetingResponseStatus) for r in meeting.Recipients}
+    response = {recipient.Name: outlook.ResponseStatus(recipient.MeetingResponseStatus)
+                for recipient in meeting.Recipients}
     attendees = filter(None, '; '.join([meeting.RequiredAttendees, meeting.OptionalAttendees]).split('; '))
     attendees = sorted(attendees, key=lambda r: priority.index(response[r]))
     people_list = ', '.join(format_name(person_name, response[person_name]) for person_name in attendees)
     meeting_date = outlook.get_meeting_time(meeting).strftime("%#d/%#m/%Y")  # no leading zeros
-    subtitle = f'*{meeting_date}' + (f'. {people_list}*' if people_list else '*')
+    subtitle = f'*{meeting_date}' + (f'. {people_list}*' if people_list else '*')  # subtitle in *bold*
     description = clean_body(meeting.Body)
     subject = meeting.Subject.strip()
     if match := re.search(r'https://[\w\.]+/event/\d+', meeting.Body):  # Indico link: look for an agenda
         url = match[0]
         agenda = ical_to_markdown(url)
-        text = f'# [{subject}]({url})\n\n{subtitle}\n\n{description}\n\n{agenda}\n\n'
+        return f'# [{subject}]({url})\n\n{subtitle}\n\n{description}\n\n{agenda}\n\n'
     else:
-        text = f'# {subject}\n\n{subtitle}\n\n{description}\n\n'
-    return text
+        return f'# {subject}\n\n{subtitle}\n\n{description}\n\n'
 
 
 def clean_body(description: str) -> str:
@@ -108,6 +109,8 @@ def clean_body(description: str) -> str:
 
 
 def target_meeting(min_count: int = 1, hours_ahead: float = 12) -> outlook.AppointmentItem:
+    """Look for the current meeting in the calendar. Prompt the user to choose one,
+    with options to refresh the list or look further ahead in the future."""
     os.system('title 📓 Start meeting notes')
     time_format = "%a %d/%m %H:%M" if hours_ahead > 12 else "%H:%M"
     current_events = outlook.get_current_events(hours_ahead=hours_ahead, min_count=min_count)
@@ -127,7 +130,7 @@ def target_meeting(min_count: int = 1, hours_ahead: float = 12) -> outlook.Appoi
     if i < meeting_count:  # valid meeting
         return current_events[i]
     # one of last two selected: get more now, or look further ahead
-    if i == meeting_count:
+    elif i == meeting_count:
         return target_meeting(unfiltered_count + 1, hours_ahead)
     else:
         return target_meeting(hours_ahead=hours_ahead + 24 * 7)  # look ahead to next week
@@ -201,9 +204,9 @@ def format_name(person_name: str, response: outlook.ResponseStatus) -> str:
         return_value = ' '.join([word if word.isupper() else word.title() for word in person_name.split()])
         return_value = return_value.replace(' - UKRI', '')
     if response == outlook.ResponseStatus.declined:
-        return f'~~{return_value}~~'  # strikethrough
+        return f'~~{return_value}~~'  # strikethrough when the attendee declined
     elif response in (outlook.ResponseStatus.organized, outlook.ResponseStatus.accepted):
-        return f'**{return_value}**'  # bold
+        return f'**{return_value}**'  # bold when they organised or accepted
     else:
         return return_value
 
@@ -221,6 +224,7 @@ def ical_to_markdown(url: str) -> str:
     except ValueError:
         return ''
     prefix = 'Speakers: '
+    # Build an agenda
     agenda = ''
     for component in sorted(event.walk('VEVENT'), key=lambda c: c.decoded('dtstart')):
         agenda += f"## [{component.get('summary')}]({component.get('url')})\n"
