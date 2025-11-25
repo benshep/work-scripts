@@ -598,8 +598,43 @@ class NameSpace(Protocol):
         """Returns a Folder object that represents the specified default folder for the specified user."""
 
 
+class Reminder(OutlookBaseObject):
+    """Represents an Outlook reminder."""
+
+    IsVisible: bool
+    """Determines if the reminder is currently visible."""
+
+    Caption: str
+    """The reminder title."""
+
+    NextReminderDate: datetime
+    """The next time the specified reminder will occur."""
+
+    OriginalReminderDate: datetime
+    """The original date and time that the specified reminder is set to occur."""
+
+    def Dismiss(self):
+        """Dismisses the current reminder. The Dismiss method will fail if there is no visible reminder."""
+
+    def Snooze(self, SnoozeTime: int = 5):
+        """Delays the reminder by a specified time. This method will fail if the current reminder is not active.
+        :param SnoozeTime: The amount of time (in minutes) to delay the reminder. The default value is 5 minutes.
+        """
+
+
+class Reminders(Collection):
+    """Contains a collection of all the Reminder objects in a Microsoft Outlook application
+    that represent the reminders for all pending items."""
+
+    def Item(self, index) -> Reminder:
+        """Returns an object from the collection."""
+
+
 class OutlookApplication(Protocol):
     """Represents the entire Microsoft Outlook application."""
+
+    Reminders: Reminders
+    """Returns a Reminders collection that represents all current reminders."""
 
     def GetNamespace(self, namespace_type: str) -> NameSpace:
         """Returns a NameSpace object of the specified type."""
@@ -913,10 +948,15 @@ def get_calendar(user: str = 'me') -> Folder:
     return namespace.GetSharedDefaultFolder(recipient, DefaultFolders.calendar)
 
 
-def get_outlook() -> OutlookApplication:
-    """Return a reference to the Outlook application."""
+def get_outlook(dismiss_reminders: bool = True) -> OutlookApplication:
+    """Return a reference to the Outlook application.
+    :param dismiss_reminders: Dismiss all reminders on opening the application reference.
+    """
     pythoncom.CoInitialize()  # try to combat the "CoInitialize has not been called" error
-    return win32com.client.Dispatch('Outlook.Application')
+    application: OutlookApplication = win32com.client.Dispatch('Outlook.Application')
+    if dismiss_reminders:
+        clear_reminders(application)
+    return application
 
 
 def get_meeting_time(event: AppointmentItem, get_end: bool = False) -> datetime:
@@ -1034,7 +1074,8 @@ def get_away_dates(start: date_spec = -30, end: date_spec = 90,
     next_tick = 0
     for event in appointments_in_range:
         if i >= round(next_tick):
-            print('█', end='')  # track progress - can take a while
+            if not verbose:
+                print('█', end='')  # track progress - can take a while
             next_tick += count / len(text)  # progress bar will be same length as line above
         if look_for(event):
             # Need to subtract a day here since the end time of an all-day event is 00:00 on the next day
@@ -1123,15 +1164,27 @@ def get_dl_ral_holidays(year: int = datetime.now().year, clean_titles: bool = Tr
     return whole_days
 
 
+def clear_reminders(application: OutlookApplication):
+    """Clear all the pending Outlook reminders."""
+    reminders = application.Reminders
+    report(f'Clearing up to {reminders.Count} reminders')
+    for i in range(reminders.Count, 0, -1):  # one-based, go backwards through them
+        reminder = reminders.Item(i)
+        if reminder.IsVisible:
+            report(reminder.Caption)
+            reminder.Dismiss()
+
+
 if __name__ == '__main__':
     # print(*sorted(list(get_dl_ral_holidays())), sep='\n')
-    verbose = True
-    away_dates = sorted(
-        list(get_away_dates(
-            # datetime(2025, 4, 1), datetime(2026, 3, 31),
-            user='matthew.king@stfc.ac.uk', look_for=is_annual_leave)))
-    print(len(away_dates))
-    print(*away_dates, sep='\n')
+    # verbose = True
+    # away_dates = sorted(
+    #     list(get_away_dates(
+    #         datetime(2025, 4, 1), datetime(2026, 3, 31),
+    #         user='amelia.pollard@stfc.ac.uk', look_for=is_annual_leave)))
+    # print(len(away_dates))
+    # print(*away_dates, sep='\n')
     # events = get_current_events(min_count=-1)
     # print(len(events))
     # print(*[event.Subject for event in events], sep='\n')
+    get_outlook()
