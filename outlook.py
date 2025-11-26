@@ -1117,19 +1117,21 @@ def list_meetings():
     print(len(event_list))
 
 
-def get_dl_ral_holidays(year: int = datetime.now().year, clean_titles: bool = True) -> dict[date, tuple[str, float]]:
+def get_dl_ral_holidays(year: int = datetime.now().year, whole_days: bool = True,
+                        clean_titles: bool = True) -> dict[date | datetime, tuple[str, float]]:
     """Fetch a list of holiday dates for DL/RAL. Fetches ICS file from STFC HR info folder (synced via OneDrive).
     To set up, go to https://ukri.sharepoint.com/sites/thesource-stfc/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2Fthesource%2Dstfc%2FShared%20Documents%2FHR
     and click Sync.
     Returns a dict where the keys are dates and each value is a tuple with the leave type
     (Public Holiday, Privilege Day) and the hours taken (which will always be 7.4).
+    If whole_days is True, aggregates two half-day entries into one whole day.
     If clean_titles is True, converts Privilege Day and Compensating Leave to Privilege Day,
     and everything else to Bank Holiday."""
     filename = os.path.join(hr_info_folder, f'DL_RAL_Site_Holidays_{year}.ics')
     calendar = Calendar.from_ical(open(filename, encoding='utf-8').read())
 
     # Mostly these are date values. HOWEVER, sometimes we get two events as two half-days. Let's deal with that.
-    whole_days = {}
+    return_dict = {}
     hours = {}
     part_day_name = {}
     for event in calendar.walk('VEVENT'):
@@ -1138,30 +1140,40 @@ def get_dl_ral_holidays(year: int = datetime.now().year, clean_titles: bool = Tr
         title = event.get('summary')
         if isinstance(start, datetime):  # more specific than date, test first
             report('part day', start, end)
-            hour = start.replace(minute=0, second=0)
-            # Create set of hours covered by this event, and add it to the hours dict
-            # which will contain e.g. {2025-11-14: {0, 1, 2, ... 10, 11, 12}}
-            while hour < end:
-                hours.setdefault(start.date(), set()).add(hour)
-                hour += timedelta(hours=1)
-            # Keep track of event titles for each half-day
-            part_day_name.setdefault(start.date(), set()).add(title)
+            if whole_days:
+                hour = start.replace(minute=0, second=0)
+                # Create set of hours covered by this event, and add it to the hours dict
+                # which will contain e.g. {2025-11-14: {0, 1, 2, ... 10, 11, 12}}
+                while hour < end:
+                    hours.setdefault(start.date(), set()).add(hour)
+                    hour += timedelta(hours=1)
+                # Keep track of event titles for each half-day
+                part_day_name.setdefault(start.date(), set()).add(title)
+            else:  # just add the datetime to the dict as-is
+                day_fraction = (end - start) / timedelta(days=1)
+                return_dict[start] = (title, day_fraction * otl.hours_per_day)
         elif isinstance(start, date):
-            whole_days[start] = (title, otl.hours_per_day)
+            return_dict[start] = (title, otl.hours_per_day)
 
-    for day, hour_set in hours.items():
-        # print(sorted(list(h.hour for h in hour_set)), sep='\n')
-        if sorted(h.hour for h in hour_set) == list(range(24)):
-            # print('added', day)
-            title = ', '.join(part_day_name[day])
-            whole_days[day] = (title, otl.hours_per_day)
+    if whole_days:
+        for day, hour_set in hours.items():
+            # print(sorted(list(h.hour for h in hour_set)), sep='\n')
+            if sorted(h.hour for h in hour_set) == list(range(24)):
+                # print('added', day)
+                title = ', '.join(part_day_name[day])
+                return_dict[day] = (title, otl.hours_per_day)
 
     if clean_titles:
-        for day, (title, hrs) in whole_days.items():
-            title = 'Privilege Day' if 'Privilege Day' in title or 'Compensating Leave' in title else 'Bank Holiday'
-            whole_days[day] = (title, hrs)
+        for day, (title, hrs) in return_dict.items():
+            if 'Privilege Day' in title:
+                title = 'Privilege Day'
+            elif 'Compensating Leave' in title:
+                title = 'Compensating Leave'
+            else:
+                title = 'Bank Holiday'
+            return_dict[day] = (title, hrs)
 
-    return whole_days
+    return return_dict
 
 
 def clear_reminders(application: OutlookApplication):
@@ -1176,8 +1188,8 @@ def clear_reminders(application: OutlookApplication):
 
 
 if __name__ == '__main__':
-    # print(*sorted(list(get_dl_ral_holidays())), sep='\n')
-    # verbose = True
+    verbose = True
+    print(*sorted(list(get_dl_ral_holidays())), sep='\n')
     # away_dates = sorted(
     #     list(get_away_dates(
     #         datetime(2025, 4, 1), datetime(2026, 3, 31),
@@ -1187,4 +1199,4 @@ if __name__ == '__main__':
     # events = get_current_events(min_count=-1)
     # print(len(events))
     # print(*[event.Subject for event in events], sep='\n')
-    get_outlook()
+    # get_outlook()

@@ -63,9 +63,9 @@ def show_leave_dates():
     """Iterate through staff, and show the leave dates for each one, not including bank holidays."""
     for member in members:
         print('\n' + member.known_as)
-        member.update_off_days()
-        print(*sorted(day for day in member.off_days - staff.site_holidays.keys() if day > date.today()))
+        member.update_off_days(force_reload=True)
+        print(*sorted(day for day in member.off_days - staff.site_holidays.keys()), sep='\n')
 
 
 if __name__ == '__main__':
-    leave_cross_check()
+    run_otl_calculator()

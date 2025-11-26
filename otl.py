@@ -60,11 +60,15 @@ special_paid_leave = Code('STRA00009', '01.02')
 parental_leave = Code('STRA00009', '01.03')
 sick_leave = Code('STRA00009', '01.04')
 unpaid = Code('(no booking)', 'N/A')  # TODO: need to deal with when we move to automated bookings
+no_booking = Code('(no booking)', 'N/A')
 unproductive_code = {  # list of possible Absence Types in Fusion
     'Annual Leave': annual_leave,
     'Bank Holiday': annual_leave,
     'Privilege Day': annual_leave,
     'Privilege Days': annual_leave,
+    # ‘No booking’ days and half-days relate to the ‘compensating leave’ accrued through the
+    # additional minutes worked each week throughout the year; these should be left blank on OTL
+    'Compensating Leave': no_booking,
     'Career Break': special_paid_leave,
     'Phased Return - Leave': special_paid_leave,
     'Sabbatical Leave': special_paid_leave,
