@@ -13,9 +13,9 @@ from array_round import fair_round
 from work_folders import docs_folder, budget_folder
 from work_tools import read_excel
 
-site_holidays = outlook.get_dl_ral_holidays(otl.fy)
+site_holidays = outlook.get_dl_ral_holidays(otl.fy, whole_days=False)
 try:
-    site_holidays |= outlook.get_dl_ral_holidays(otl.fy + 1)
+    site_holidays |= outlook.get_dl_ral_holidays(otl.fy + 1, whole_days=False)
 except FileNotFoundError:  # not published yet!
     pass
 
@@ -28,17 +28,27 @@ def report(*args, **kwargs):
         print(*args, **kwargs)
 
 
-@cache  # so we don't have to keep reading the spreadsheet
+bookings_file = os.path.join(budget_folder, 'OBI Staff Bookings.xlsx')
+bookings_file_modified = 0
+bookings_data = pandas.DataFrame()
+
 def get_obi_data() -> pandas.DataFrame:
     """Read budget info from spreadsheet."""
-    column_types = {'Task Number': str}  # otherwise it will be interpreted as a float (e.g. 1.01)
-    data = read_excel(os.path.join(budget_folder, 'OBI Staff Bookings.xlsx'), dtype=column_types)
-    if otl.fy == 2025:
-        # import data from old system, used at beginning of FY25/26
-        old_data_file = os.path.join(budget_folder, 'MaRS bookings FY25 pre-Fusion.xlsx')
-        old_data = read_excel(old_data_file, sheet_name='Sheet2', dtype=column_types)
-        data = pandas.concat([data, old_data])
-    return data
+    global bookings_data, bookings_file_modified
+    new_mod_time = os.path.getmtime(bookings_file)
+    if new_mod_time > bookings_file_modified:
+        column_types = {'Task Number': str}  # otherwise it will be interpreted as a float (e.g. 1.01)
+        data = read_excel(bookings_file, dtype=column_types)
+        if otl.fy == 2025:
+            # import data from old system, used at beginning of FY25/26
+            old_data_file = os.path.join(budget_folder, 'MaRS bookings FY25 pre-Fusion.xlsx')
+            old_data = read_excel(old_data_file, sheet_name='Sheet2', dtype=column_types)
+            data = pandas.concat([data, old_data])
+        bookings_data = data
+        bookings_file_modified = new_mod_time
+        return data
+    else:
+        return bookings_data
 
 
 @cache
@@ -50,6 +60,11 @@ def get_absence_data() -> pandas.DataFrame:
 def keep_in_bounds(daily_hours):
     """Coerce the given number to be within 0 and the correct number of hours per day (7.4)."""
     return max(0, min(daily_hours, otl.hours_per_day))
+
+
+def ymd(when: datetime | date) -> str:
+    """Convert the given date or datetime into yyyymmdd format."""
+    return when.strftime('%Y%m%d')
 
 
 class GroupMember:
@@ -103,7 +118,7 @@ class GroupMember:
         for i, row in my_absences.iterrows():
             start_date = row['Date Start'].date()
             end_date = row['Date End'].date()
-            hours = row['Duration'] * 1 if row['UOM'] == 'H' else otl.hours_per_day
+            hours = row['Duration'] * (1 if row['UOM'] == 'H' else otl.hours_per_day)
             date_list = outlook.get_date_list(start_date, end_date)
             # Assumption: listed hours are spread equally over listed days
             # with any 'left-over' hours going into the last day
@@ -121,9 +136,10 @@ class GroupMember:
         start = max(otl.fy_start, date(2025, 6, 2))  # don't go back before Fusion start date
         end = date.today()  # don't look in the future
         outlook_days = outlook.get_away_dates(start, end, user=self.email, look_for=outlook.is_annual_leave)
+        outlook_days -= site_holidays.keys()  # don't include bank holidays
         oracle_days = {day for day, (absence_type, hrs) in self.get_oracle_leave_dates().items()
                        if start <= day <= end and absence_type == 'Annual Leave'}
-        print('\t\t\tOutlook\tOracle')
+        print('\t\tOutlook\tOracle')
         in_either = outlook_days | oracle_days
         for day in sorted(in_either):
             print(day.strftime('%d/%m/%Y'),
@@ -148,7 +164,9 @@ class GroupMember:
             with open(cache_file, 'w') as f:
                 f.write('\n'.join(
                     [f"{d.strftime('%d/%m/%Y')}\t{absence_type}\t{hrs:.2f}"
-                     for d, (absence_type, hrs) in sorted(self.off_days.items())]))
+                     for d, (absence_type, hrs)
+                     # need to convert to string for sorting since can't compare dates and datetimes (hacky)
+                     in sorted(self.off_days.items(), key=lambda item: item[0].strftime('%Y%m%d%H%M'))]))
         else:
             print(f'Loading off days from cache for {self.known_as}')
             self.off_days = {}
@@ -205,9 +223,10 @@ class GroupMember:
 
     def daily_bookings(self, when: date) -> dict[otl.Code, float]:
         """Return a list of codes and hours to book on a given date."""
-        absence_type, off_hours = self.off_days.get(when, ('', 0))
-        unproductive_bookings = {otl.unproductive_code[absence_type]: off_hours} if off_hours else {}
-        working_hours = otl.hours_per_day - off_hours  # in case of a half-day off etc
+        unproductive_bookings = {otl.unproductive_code[absence_type]: off_hours
+                                 for off_datetime, (absence_type, off_hours) in self.off_days.items()
+                                 if ymd(when) == ymd(off_datetime)}  # for comparison between dates and datetimes
+        working_hours = otl.hours_per_day - sum(unproductive_bookings.values())  # in case of a half-day off etc
         if not working_hours:
             return unproductive_bookings
 
@@ -267,9 +286,11 @@ class GroupMember:
             use_date = week_beginning + timedelta(days=day)
             bookings = self.daily_bookings(use_date)
             if manual_mode:
-                yield use_date.strftime('%a')  # Mon
+                line = use_date.strftime('%a')  # Mon
                 if dicts_close(bookings, self.prev_bookings):
+                    yield line + ' - as above'
                     continue
+                yield line
             self.prev_bookings = bookings
             for code, hours in bookings.items():
                 yield '\t'.join([str(code), f'{hours:.02f}']) if manual_mode else \
