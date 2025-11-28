@@ -1,10 +1,6 @@
-import os
 from datetime import date, datetime
 from enum import IntEnum
 from math import isclose
-
-from work_folders import budget_folder
-from work_tools import read_excel
 
 hours_per_day = 7.4
 days_per_fte = 215
@@ -13,9 +9,6 @@ today = datetime.now()
 fy = today.year - (today.month < 4)  # last calendar year if before April
 fy_start = date(fy, 4, 1)
 fy_end = date(fy + 1, 3, 31)
-
-obi_data = read_excel(os.path.join(budget_folder, 'OBI Finance Report.xlsx'), dtype={'Task Number': str})
-
 
 # Classes used for OTL bookings
 

@@ -1,7 +1,6 @@
 import os
 from collections import Counter
 from datetime import date, timedelta, datetime
-from functools import cache
 from math import isclose, prod
 from typing import Generator
 
@@ -11,7 +10,7 @@ import otl
 import outlook
 from array_round import fair_round
 from work_folders import docs_folder, budget_folder
-from work_tools import read_excel
+from work_tools import StoredData
 
 site_holidays = outlook.get_dl_ral_holidays(otl.fy, whole_days=False)
 try:
@@ -28,33 +27,25 @@ def report(*args, **kwargs):
         print(*args, **kwargs)
 
 
-bookings_file = os.path.join(budget_folder, 'OBI Staff Bookings.xlsx')
-bookings_file_modified = 0
-bookings_data = pandas.DataFrame()
+column_types = {'Task Number': str}  # otherwise it will be interpreted as a float (e.g. 1.01)
+bookings_data = StoredData(os.path.join(budget_folder, 'OBI Staff Bookings.xlsx'), dtype=column_types)
+if otl.fy == 2025:
+    old_bookings_data = StoredData(os.path.join(budget_folder, 'MaRS bookings FY25 pre-Fusion.xlsx'),
+                                   sheet_name='Sheet2', dtype=column_types)
+else:
+    old_bookings_data = pandas.DataFrame()
+
 
 def get_obi_data() -> pandas.DataFrame:
     """Read budget info from spreadsheet."""
-    global bookings_data, bookings_file_modified
-    new_mod_time = os.path.getmtime(bookings_file)
-    if new_mod_time > bookings_file_modified:
-        column_types = {'Task Number': str}  # otherwise it will be interpreted as a float (e.g. 1.01)
-        data = read_excel(bookings_file, dtype=column_types)
-        if otl.fy == 2025:
-            # import data from old system, used at beginning of FY25/26
-            old_data_file = os.path.join(budget_folder, 'MaRS bookings FY25 pre-Fusion.xlsx')
-            old_data = read_excel(old_data_file, sheet_name='Sheet2', dtype=column_types)
-            data = pandas.concat([data, old_data])
-        bookings_data = data
-        bookings_file_modified = new_mod_time
-        return data
-    else:
-        return bookings_data
+    data = bookings_data.fetch()
+    if otl.fy == 2025:
+        # import data from old system, used at beginning of FY25/26
+        data = pandas.concat([data, old_bookings_data.fetch()])
+    return data
 
 
-@cache
-def get_absence_data() -> pandas.DataFrame:
-    """Read absence info from spreadsheet."""
-    return read_excel(os.path.join(budget_folder, 'OBI Absence Report.xlsx'))
+absence_data = StoredData(os.path.join(budget_folder, 'OBI Absence Report.xlsx'))
 
 
 def keep_in_bounds(daily_hours):
@@ -112,7 +103,7 @@ class GroupMember:
         """Get leave dates using Oracle data for a staff member.
         Returns a dict where the keys are dates and each value is a tuple with the leave type
         (Annual Leave, Sickness Absence) and the hours taken."""
-        all_absences = get_absence_data()
+        all_absences = absence_data.fetch()
         my_absences = all_absences[all_absences['Name'] == self.name]
         off_dates = {}
         for i, row in my_absences.iterrows():

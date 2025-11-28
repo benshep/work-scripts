@@ -14,3 +14,22 @@ def read_excel(excel_filename: str, **kwargs):
     result = pandas.read_excel(temp_filename, **kwargs)
     os.remove(temp_filename)
     return result
+
+
+class StoredData:
+    """Data stored in an Excel file. Extracting it takes time, so cache the contents and refresh if the file changes."""
+
+    def __init__(self, filename: str, **read_excel_kwargs):
+        self.filename = filename
+        self.modified_time = 0
+        self.data = pandas.DataFrame()
+        self.read_excel_kwargs = read_excel_kwargs
+
+    def fetch(self):
+        """Fetch the data, or return the cached value if the file hasn't changed."""
+        modified_time = os.path.getmtime(self.filename)
+        if modified_time > self.modified_time:
+            self.data = read_excel(self.filename, **self.read_excel_kwargs)
+            self.modified_time = modified_time
+        return self.data
+
