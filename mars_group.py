@@ -31,21 +31,21 @@ zepto_clara_gott = otl.Code('STGA02005', end=date(2026, 2, 28))
 def ukxfel_cdoa(wp: int):
     return otl.Code('STKA00183', f'03.{wp:02d}', end=date(2025, 9, 30))
 
-def ukxfel_continuation(wp: int):
-    return otl.Code('(waiting for new code)', f'03.{wp:02d}', start=date(2025, 10, 1))
+
+ukxfel_continuation = otl.Code('STGA00183', '01', start=date(2025, 10, 1))
 
 epac = otl.Code('STKA01103', '06.01')
 
 members: list[GroupMember] = [
     GroupMember('Ben Shepherd', 207835,
-    booking_plan=otl.BookingPlan([
-        otl.Entry(epac, 0.05),
-        otl.Entry(dae, 0.08),
-        otl.Entry(ruedi_new_code, 0.0434),
-        otl.Entry(clara_user_facility, 0.25),
-        otl.Entry(sustainable_accelerators, 0.46),
-        otl.Entry(magnet_lab),
-    ])),
+                booking_plan=otl.BookingPlan([
+                    otl.Entry(epac, 0.05),
+                    otl.Entry(dae, 0.08),
+                    otl.Entry(ruedi_new_code, 0.0434),
+                    otl.Entry(clara_user_facility, 0.25),
+                    otl.Entry(sustainable_accelerators, 0.46),
+                    otl.Entry(magnet_lab),
+                ])),
     GroupMember('Alexander Bainbridge',
                 200394,
                 'alex.bainbridge@stfc.ac.uk', known_as='Alex B',
@@ -63,8 +63,7 @@ members: list[GroupMember] = [
                 booking_plan=otl.BookingPlan([
                     otl.Entry(ukxfel_cdoa(wp=1), 0.175),
                     otl.Entry(ukxfel_cdoa(wp=5), 0.175),
-                    otl.Entry(ukxfel_continuation(wp=1), 0.2),
-                    otl.Entry(ukxfel_continuation(wp=5), 0.2),
+                    otl.Entry(ukxfel_continuation, 0.4),
                     otl.Entry(xfel_rnd, 0.15),
                     otl.Entry(ai_ml),
                 ])),
@@ -73,7 +72,7 @@ members: list[GroupMember] = [
                 booking_plan=otl.BookingPlan([
                     otl.Entry(epac, 0.2),
                     otl.Entry(ukxfel_cdoa(wp=5), 0.2),
-                    otl.Entry(ukxfel_continuation(wp=5), 0.25),
+                    otl.Entry(ukxfel_continuation, 0.25),
                     otl.Entry(xfel_rnd, 0.25),
                     otl.Entry(novel_acceleration),
                 ])),
@@ -88,7 +87,7 @@ members: list[GroupMember] = [
                 206367,
                 booking_plan=otl.BookingPlan([
                     otl.Entry(ukxfel_cdoa(wp=5), 0.5),
-                    otl.Entry(ukxfel_continuation(wp=5), 0.25),
+                    otl.Entry(ukxfel_continuation, 0.25),
                     otl.Entry(xfel_rnd),
                 ])),
     GroupMember('Alexander Hinton',
@@ -98,7 +97,13 @@ members: list[GroupMember] = [
                     otl.Entry(dae, 0.3),
                     otl.Entry(zepto_clara_gott, 0.08),
                     otl.Entry(scu)
-                ])),
+                ]),
+                ignore_days={
+                    date(2025, 6, 19),
+                    date(2025, 6, 20),
+                    date(2025, 6, 23),
+                    date(2025, 6, 24),
+                }),
     GroupMember('Amelia Pollard',
                 205179,
                 known_as='Amy',
@@ -124,15 +129,15 @@ members: list[GroupMember] = [
 ]
 
 # if __name__ == '__main__':
-    # check_total_ftes(members)
-    # print(*[person.name for person in members], sep='\t')
-        # person.update_off_days()
-        # print(*sorted(list(person.off_days)), sep='\n')
-    # print(person.daily_bookings(date.today()))
-    # run_otl_calculator()
-    #     for entry in member.booking_plan.entries:
-    #         print(entry.code, otl.working_days_in_period(entry.start_date, entry.end_date, member.off_days),
-    #               entry.daily_hours(member.off_days))
-    # hours = me.daily_hours(date(2025, 4, 1))
-    # print(*hours, sep='\n')
-    # print(sum(h for _, h in hours))
+# check_total_ftes(members)
+# print(*[person.name for person in members], sep='\t')
+# person.update_off_days()
+# print(*sorted(list(person.off_days)), sep='\n')
+# print(person.daily_bookings(date.today()))
+# run_otl_calculator()
+#     for entry in member.booking_plan.entries:
+#         print(entry.code, otl.working_days_in_period(entry.start_date, entry.end_date, member.off_days),
+#               entry.daily_hours(member.off_days))
+# hours = me.daily_hours(date(2025, 4, 1))
+# print(*hours, sep='\n')
+# print(sum(h for _, h in hours))

@@ -20,8 +20,8 @@ def run_otl_calculator():
             member.update_off_days(force_reload=False)
             start = date.today()
             start -= timedelta(days=start.weekday())  # Monday of current week
-            start -= timedelta(days=28)  # check last four weeks
-            while start + timedelta(days=4) <= date.today():  # wait until Fri to do current week
+            start -= timedelta(days=7*4)  # check last few weeks
+            while start + timedelta(days=3) <= date.today():  # wait until Thu to do current week
             # for _ in range(1):
                 hours_booked = member.hours_for_week(start)
                 print(f'{start.strftime("%d/%m/%Y")}: {hours_booked=:.2f}')
@@ -54,8 +54,9 @@ def leave_cross_check():
     toast = ''
     for member in members:
         print('\n' + member.known_as)
-        if mismatches := member.leave_cross_check():
-            toast += f'{member.known_as}: {mismatches=}\n'
+        not_in_oracle, not_in_outlook = member.leave_cross_check()
+        if not_in_oracle:
+            toast += f'{member.known_as}: {not_in_oracle=}, {not_in_outlook=}\n'
     return toast
 
 
@@ -68,4 +69,5 @@ def show_leave_dates():
 
 
 if __name__ == '__main__':
-    run_otl_calculator()
+    # run_otl_calculator()
+    print(leave_cross_check())

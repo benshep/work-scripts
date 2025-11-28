@@ -76,7 +76,8 @@ class GroupMember:
 
     def __init__(self, name: str, person_number: int, email: str = '',
                  # person_id: int = 0, assignment_id: int = 0,
-                 known_as: str = '', booking_plan: otl.BookingPlan = None):
+                 known_as: str = '', booking_plan: otl.BookingPlan = None,
+                 ignore_days: set[date] = None):
         """A member of staff.
         :param name: Full name as listed in Oracle Fusion.
         :param person_number: Oracle Fusion person number. Required for OTL bulk upload. View the person number for all your staff at
@@ -86,6 +87,7 @@ class GroupMember:
         :param known_as: 'Nickname' used as a short name when printing output. Defaults to first name.
         Often useful to set this when two group members have the same first name.
         :param booking_plan: OTL booking plan.
+        :param ignore_days: A set of dates to ignore when cross-checking leave dates.
         """
         self.name = name
         self.person_number = person_number
@@ -98,6 +100,7 @@ class GroupMember:
         self.off_days = site_holidays.copy()  # need an independent copy of it, since we'll be making changes!
         self.new_bookings = Counter()
         self.prev_bookings = {}
+        self.ignore_days = ignore_days or set()
 
     def get_oracle_leave_dates(self) -> dict[date, tuple[str, float]]:
         """Get leave dates using Oracle data for a staff member.
@@ -122,22 +125,23 @@ class GroupMember:
         report('Oracle:', *[day.strftime('%d/%m/%Y') for day in sorted(off_dates)])
         return off_dates
 
-    def leave_cross_check(self):
-        """Perform a cross-check between leave days recorded in Outlook and Oracle."""
+    def leave_cross_check(self) -> tuple[int, int]:
+        """Perform a cross-check between leave days recorded in Outlook and Oracle.
+        Returns a tuple: (not_in_oracle, not_in_outlook)."""
         start = max(otl.fy_start, date(2025, 6, 2))  # don't go back before Fusion start date
         end = date.today()  # don't look in the future
         outlook_days = outlook.get_away_dates(start, end, user=self.email, look_for=outlook.is_annual_leave)
         outlook_days -= site_holidays.keys()  # don't include bank holidays
         oracle_days = {day for day, (absence_type, hrs) in self.get_oracle_leave_dates().items()
-                       if start <= day <= end and absence_type == 'Annual Leave'}
+                       if start <= day <= end and absence_type in ('Annual Leave', 'Special Leave - Paid')}
         print('\t\tOutlook\tOracle')
         in_either = outlook_days | oracle_days
         for day in sorted(in_either):
             print(day.strftime('%d/%m/%Y'),
-                  '✔️  ' if day in outlook_days else '❌  ',
-                  '✔️  ' if day in oracle_days else '❌  ', sep='\t')
-        # count of symmetric difference - i.e. days that are only in one set but not both
-        return len(outlook_days ^ oracle_days)
+                  '✔️  ' if day in outlook_days else '🔵  ' if day in self.ignore_days else '❌  ',
+                  '✔️  ' if day in oracle_days else '🔵  ' if day in self.ignore_days else '❌  ', sep='\t')
+        # count of symmetric difference - i.e. days that are only in one set but not both (and not ignored)
+        return len(outlook_days - oracle_days - self.ignore_days), len(oracle_days - outlook_days - self.ignore_days)
 
     def update_off_days(self, force_reload: bool = False) -> None:
         """Load off days from cached file, or if that's more than a week old, reload from Outlook and Oracle.
