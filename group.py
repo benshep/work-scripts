@@ -1,12 +1,6 @@
 from datetime import date, timedelta
-from time import sleep
-from urllib.parse import urlencode
 
-from selenium.webdriver.common.by import By
-
-import oracle
 import staff
-
 from mars_group import members
 
 
@@ -28,25 +22,6 @@ def run_otl_calculator():
                 if hours_booked < 37:
                     print(*member.bulk_upload_lines(start, manual_mode=True), sep='\n')
                 start += timedelta(days=7)
-
-
-def get_leave_balances():
-    """Iterate through staff, and show the leave balance for each one."""
-    web = oracle.go_to_oracle_page()
-    for member in members:
-        print('\n' + member.known_as)
-        url = (f'https://fa-evzn-saasfaukgovprod1.fa.ocs.oraclecloud.com/fscmUI/redwood/absences/plan-balances?'
-               + urlencode(
-                    {'pPersonId': member.person_id,
-                     'pAssignmentId': member.assignment_id,
-                     'pfsUserMode': "'MGR'"
-                     }))
-        # print(url)
-        web.get(url)
-        sleep(10)
-        spans = web.find_elements(By.XPATH, '//span[@class="oj-text-color-primary"]')
-        print(*[span.text for span in spans])
-    web.quit()
 
 
 def leave_cross_check():
