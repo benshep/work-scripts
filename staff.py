@@ -58,6 +58,11 @@ def ymd(when: datetime | date) -> str:
     return when.strftime('%Y%m%d')
 
 
+class DataIssue(Exception):
+    """A problem with data fetched from OBI."""
+    pass
+
+
 class GroupMember:
     """A member of staff."""
 
@@ -107,7 +112,12 @@ class GroupMember:
         Returns a dict where the keys are dates and each value is a tuple with the leave type
         (Annual Leave, Sickness Absence) and the hours taken."""
         all_absences = absence_data.fetch()
-        my_absences = all_absences[all_absences['Name'] == self.name]
+        name = all_absences['Name']
+        unique_names = set(name)
+        # Sometimes the OBI job only returns my information
+        if len(unique_names) == 1 and (listed_name := next(iter(unique_names))) != self.name:
+            raise DataIssue(f'Absence data in {absence_data.filename} only listed for {listed_name}')
+        my_absences = all_absences[name == self.name]
         off_dates = {}
         for i, row in my_absences.iterrows():
             start_date = row['Date Start'].date()

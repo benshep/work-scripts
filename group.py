@@ -28,10 +28,12 @@ def leave_cross_check():
     """Iterate through staff, and check Oracle vs Outlook leave bookings."""
     toast = ''
     for member in members:
-        print('\n' + member.known_as)
-        not_in_oracle, not_in_outlook = member.leave_cross_check()
-        if not_in_oracle:
-            toast += f'{member.known_as}: {not_in_oracle=}, {not_in_outlook=}\n'
+        if member.known_as in ('Ben',):
+        # if True:
+            print('\n' + member.known_as)
+            not_in_oracle, not_in_outlook = member.leave_cross_check()
+            if not_in_oracle:
+                toast += f'{member.known_as}: {not_in_oracle=}, {not_in_outlook=}\n'
     return toast
 
 
