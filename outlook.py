@@ -1187,9 +1187,36 @@ def clear_reminders(application: OutlookApplication):
             reminder.Dismiss()
 
 
+def inspect_events():
+    """Find today's events for a given user. Show the description for a given event."""
+    user_list = ['ThomsonRoom', 'WaltonRoom', 'DLTheatre', 'ChadwickRoom', 'BarklaRoom']
+    while True:
+        print('')
+        for i, user in enumerate(user_list):
+            print(f'{i}. {user}')
+        answer = input('Choose a room or enter user name [0]: ')
+        if answer.isdigit():
+            user = user_list[min(int(answer), len(user_list) - 1)]
+        elif answer == '':
+            user = user_list[0]
+        else:
+            user = answer
+        user += '@stfc.ac.uk'
+        events = get_appointments_in_range(0, 1, user)
+        print('')
+        for i, event in enumerate(events):
+            print(f'{i}. {event.Start.strftime("%H:%M")}-{event.End.strftime("%H:%M")} {event.Subject}')
+        answer = input('Choose an event or hit ENTER to return to user choice: ')
+        if answer.isdigit():
+            answer = min(int(answer), i)
+        else:
+            continue
+        print(events[answer].Body)
+
+
 if __name__ == '__main__':
-    verbose = True
-    print(*sorted(list(get_dl_ral_holidays())), sep='\n')
+    # verbose = True
+    # print(*sorted(list(get_dl_ral_holidays())), sep='\n')
     # away_dates = sorted(
     #     list(get_away_dates(
     #         datetime(2025, 4, 1), datetime(2026, 3, 31),
@@ -1200,3 +1227,4 @@ if __name__ == '__main__':
     # print(len(events))
     # print(*[event.Subject for event in events], sep='\n')
     # get_outlook()
+    inspect_events()
