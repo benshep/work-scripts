@@ -1,5 +1,5 @@
 requests
-pandas >= 3.0.0
+pandas >= 3.0.0rc0
 python-dateutil
 pillow
 selenium
@@ -15,3 +15,4 @@ pywin32 ; sys_platform == 'win32'
 py-trello
 govuk-bank-holidays
 polling2
+rpyc

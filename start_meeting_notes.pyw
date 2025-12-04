@@ -1,6 +1,7 @@
 import os
 import re
 import signal
+import subprocess
 from typing import Iterator
 
 try:
@@ -33,7 +34,7 @@ def start_notes(meeting: outlook.AppointmentItem) -> None:
 
     # special case for SCU weekly meeting
     if meeting.Subject == "SCU VC Meeting":
-        os.startfile(os.path.join('Helical', 'Helical SCU Project Log.docx'))
+        open_file(os.path.join('Helical', 'Helical SCU Project Log.docx'))
         return
 
     start_time = outlook.get_meeting_time(meeting)
@@ -49,9 +50,14 @@ def start_notes(meeting: outlook.AppointmentItem) -> None:
             if desktop.name == '🤝 Meetings':
                 desktop.go()
                 break
-    os.startfile(filename)  # open the file in the associated program
+    open_file(filename)  # open the file in the associated program
     # Kill this process - otherwise get 'hanging prompt' issue while notes window is open
     os.kill(os.getpid(), signal.SIGTERM)
+
+
+def open_file(filename: str) -> None:
+    """Platform-independent version of os.startfile. Opens a file in the OS's default program."""
+    getattr(os, 'startfile', lambda file: subprocess.call(["xdg-open", file]))(filename)
 
 
 def notes_text(meeting: outlook.AppointmentItem) -> str:
@@ -113,7 +119,8 @@ def target_meeting(min_count: int = 1, hours_ahead: float = 12) -> outlook.Appoi
     with options to refresh the list or look further ahead in the future."""
     os.system('title 📓 Start meeting notes')
     time_format = "%a %d/%m %H:%M" if hours_ahead > 12 else "%H:%M"
-    current_events = outlook.get_current_events(hours_ahead=hours_ahead, min_count=min_count)
+    current_events = outlook.get_current_events(hours_ahead=hours_ahead, min_count=min_count,
+                                                remote=not outlook.direct)  # run remotely if not on Windows
     unfiltered_count = len(current_events)
     current_events = filter(lambda ev: not outlook.is_wfh(ev), current_events)
     current_events = filter(lambda ev: ev.Subject != 'ASTeC/CI Coffee', current_events)

@@ -8,9 +8,12 @@ from enum import IntEnum
 from time import sleep
 from typing import Protocol, Callable
 
-import pythoncom
-import pywintypes
-import win32com.client
+direct = sys.platform == 'win32'  # access Outlook directly on Windows
+if direct:
+    import pythoncom
+    import pywintypes
+    import win32com.client
+import rpyc
 from icalendar import Calendar
 
 import otl
@@ -978,14 +981,19 @@ def happening_now(event: AppointmentItem, hours_ahead: float = 0.5) -> bool:
         return False
 
 
-def get_current_events(user: str = 'me', hours_ahead: float = 0.5, min_count: int = 0) -> list[AppointmentItem]:
+def get_current_events(user: str = 'me', hours_ahead: float = 0.5,
+                       min_count: int = 0, remote: bool = False) -> list[AppointmentItem]:
     """Return a list of current events from Outlook, sorted by subject.
     :param user: email address of user to fetch events for, or 'me' for my own events
     :param hours_ahead: how many hours ahead to look
     :param min_count: look for at least this many events. If fewer are returned, run a sync and wait until there are
     at least this many. If a negative value is supplied, wait for this many more than is returned by the first call.
+    :param remote: use rpyc to call the function on desktop machine instead.
     :return: a sorted list of Outlook events.
     """
+    if remote:
+        connection = rpyc.connect('ddast0025', port=18862)
+        return connection.root.get_current_events(user, hours_ahead, min_count)
     i = 0
     syncing = False
     while i < 60 or syncing:  # try for a minute or so
@@ -1227,6 +1235,22 @@ def inspect_events():
         filename = os.path.join(downloads_folder, attachments[answer].FileName)
         attachments[i].SaveAsFile(filename)
         os.startfile(filename)
+
+
+class OutlookService(rpyc.Service):
+    def on_connect(self, conn):
+        # code that runs when a connection is created
+        # (to init the service, if needed)
+        pass
+
+    def on_disconnect(self, conn):
+        # code that runs after the connection has already closed
+        # (to finalize the service, if needed)
+        pass
+
+    def exposed_get_current_events(self, user: str = 'me',
+                                   hours_ahead: float = 0.5, min_count: int = 0) -> list[AppointmentItem]:
+        return get_current_events(user, hours_ahead, min_count)
 
 
 if __name__ == '__main__':
