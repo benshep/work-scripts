@@ -89,6 +89,8 @@ F1:: ;mute/unmute both Teams and Zoom
 #^z::Run %AnacondaCommand% %DocsDir%\Scripts\join_zoom_meeting.pyw
 ;write notes for the Zoom meeting that's nearest to now in the calendar
 #^n::Run %AnacondaCommand% %DocsDir%\Scripts\start_meeting_notes.pyw
+;read today's meeting room or other user events
+#+e::Run %AnacondaCommand% %DocsDir%\Scripts\outlook.py inspect_events
 
 ;Ctrl-Win-` to toggle window always on top
 #^`::
@@ -124,7 +126,7 @@ F1:: ;mute/unmute both Teams and Zoom
 #c::Run cmd.exe "/K" title Python & cd %UserProfile%\Misc\Scripts & %UserProfile%\Miniconda3\Scripts\activate.bat %PythonEnv% & python
 #t::Run taskmgr.exe
 ; Win-Shift-T for a random Trello task
-#+t::Run %AnacondaCommand% %DocsDir%\Scripts\oddjob.py
+;#+t::Run %AnacondaCommand% %DocsDir%\Scripts\oddjob.py
 #+r::Run %AnacondaCommand% %UserProfile%\Misc\scripts\random_cd.py
 #o::Run OUTLOOK.EXE
 #w::Run WINWORD.EXE /q

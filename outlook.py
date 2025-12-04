@@ -2,6 +2,7 @@ from __future__ import annotations  # forward definitions for type-hinting class
 
 import os
 import re
+import sys
 from datetime import date, datetime, timedelta
 from enum import IntEnum
 from time import sleep
@@ -13,7 +14,7 @@ import win32com.client
 from icalendar import Calendar
 
 import otl
-from work_folders import hr_info_folder
+from work_folders import hr_info_folder, downloads_folder
 
 verbose = False
 
@@ -720,7 +721,7 @@ class AppointmentItem(Protocol):
 
     Actions: object
     Application: object
-    Attachments: object
+    Attachments: Collection
     AutoResolvedWinner: object
     BillingInformation: object
     Companies: object
@@ -1189,7 +1190,8 @@ def clear_reminders(application: OutlookApplication):
 
 def inspect_events():
     """Find today's events for a given user. Show the description for a given event."""
-    user_list = ['ThomsonRoom', 'WaltonRoom', 'DLTheatre', 'ChadwickRoom', 'BarklaRoom']
+    os.system('title 🗓️ Inspect events')
+    user_list = ['ThomsonRoom', 'WaltonRoom', 'ChadwickRoom', 'BarklaRoom', 'BoardRmDL']
     while True:
         print('')
         for i, user in enumerate(user_list):
@@ -1201,30 +1203,47 @@ def inspect_events():
             user = user_list[0]
         else:
             user = answer
+            user_list.append(user)
         user += '@stfc.ac.uk'
         events = get_appointments_in_range(0, 1, user)
         print('')
         for i, event in enumerate(events):
             print(f'{i}. {event.Start.strftime("%H:%M")}-{event.End.strftime("%H:%M")} {event.Subject}')
-        answer = input('Choose an event or hit ENTER to return to user choice: ')
+        answer = input('Choose an event or press ENTER to return to user choice: ')
         if answer.isdigit():
             answer = min(int(answer), i)
         else:
             continue
         print(events[answer].Body)
+        attachments = events[answer].Attachments
+        if not len(attachments):
+            continue
+        for i, attachment in enumerate(attachments):
+            print(f'{i}. {attachment.FileName}')
+        answer = input('Choose an attachment to open or press ENTER to return to user choice: ')
+        if not answer.isdigit():
+            continue
+        answer = min(int(answer), i)
+        filename = os.path.join(downloads_folder, attachments[answer].FileName)
+        attachments[i].SaveAsFile(filename)
+        os.startfile(filename)
 
 
 if __name__ == '__main__':
-    # verbose = True
-    # print(*sorted(list(get_dl_ral_holidays())), sep='\n')
-    # away_dates = sorted(
-    #     list(get_away_dates(
-    #         datetime(2025, 4, 1), datetime(2026, 3, 31),
-    #         user='amelia.pollard@stfc.ac.uk', look_for=is_annual_leave)))
-    # print(len(away_dates))
-    # print(*away_dates, sep='\n')
-    # events = get_current_events(min_count=-1)
-    # print(len(events))
-    # print(*[event.Subject for event in events], sep='\n')
-    # get_outlook()
-    inspect_events()
+    if len(sys.argv) > 1 and sys.argv[1] == 'inspect_events':
+        inspect_events()
+    else:
+        # change THIS BIT for testing!
+        # verbose = True
+        # print(*sorted(list(get_dl_ral_holidays())), sep='\n')
+        # away_dates = sorted(
+        #     list(get_away_dates(
+        #         datetime(2025, 4, 1), datetime(2026, 3, 31),
+        #         user='amelia.pollard@stfc.ac.uk', look_for=is_annual_leave)))
+        # print(len(away_dates))
+        # print(*away_dates, sep='\n')
+        # events = get_current_events(min_count=-1)
+        # print(len(events))
+        # print(*[event.Subject for event in events], sep='\n')
+        # get_outlook()
+        inspect_events()
