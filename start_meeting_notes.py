@@ -81,7 +81,7 @@ def notes_text(meeting: outlook.AppointmentItem) -> str:
     subtitle = f'*{meeting_date}' + (f'. {people_list}*' if people_list else '*')  # subtitle in *bold*
     description = clean_body(meeting.Body)
     subject = meeting.Subject.strip()
-    if match := re.search(r'https://[\w\.]+/event/\d+', meeting.Body):  # Indico link: look for an agenda
+    if match := re.search(r'https://[\w.]+/event/\d+', meeting.Body):  # Indico link: look for an agenda
         url = match[0]
         agenda = ical_to_markdown(url)
         return f'# [{subject}]({url})\n\n{subtitle}\n\n{description}\n\n{agenda}\n\n'

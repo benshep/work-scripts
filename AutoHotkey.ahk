@@ -81,9 +81,9 @@ F1:: ;mute/unmute both Teams and Zoom
 !F1::Send {Volume_Mute}
 
 ;launch the Zoom meeting that's nearest to now in the calendar
-#^z::Run %AnacondaCommand% %DocsDir%\Scripts\join_zoom_meeting.pyw
+#^z::Run %AnacondaCommand% %DocsDir%\Scripts\join_zoom_meeting.py
 ;write notes for the Zoom meeting that's nearest to now in the calendar
-#^n::Run %AnacondaCommand% %DocsDir%\Scripts\start_meeting_notes.pyw
+#^n::Run %AnacondaCommand% %DocsDir%\Scripts\start_meeting_notes.py
 ;read today's meeting room or other user events
 #+e::Run %AnacondaCommand% %DocsDir%\Scripts\outlook.py inspect_events
 
