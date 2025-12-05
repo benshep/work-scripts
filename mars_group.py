@@ -26,7 +26,7 @@ ruedi_post_bridging = otl.Code('STGA02008', start=date(2025, 7, 1),
 # code changed in November (email from Julian McKenzie 29/10/25)
 ruedi_new_code = otl.Code('STGA02011', '02', start=date(2025, 11, 1), priority=otl.Priority.AGREED)
 zepto_clara_gott = otl.Code('STGA02005', end=date(2026, 2, 28))
-
+clepto_pocf = otl.Code('STLA00037', '147', start=date(2025, 12, 1))
 
 def ukxfel_cdoa(wp: int):
     return otl.Code('STKA00183', f'03.{wp:02d}', end=date(2025, 9, 30))
@@ -35,7 +35,6 @@ def ukxfel_cdoa(wp: int):
 ukxfel_continuation = otl.Code('STGA00183', '01', start=date(2025, 10, 1))
 
 epac = otl.Code('STKA01103', '06.01')
-
 members: list[GroupMember] = [
     GroupMember('Ben Shepherd', 207835,
                 booking_plan=otl.BookingPlan([
@@ -96,7 +95,8 @@ members: list[GroupMember] = [
                 booking_plan=otl.BookingPlan([
                     otl.Entry(dae, 0.3),
                     otl.Entry(zepto_clara_gott, 0.08),
-                    otl.Entry(scu)
+                    otl.Entry(clepto_pocf, 168 / otl.hours_per_fte),
+                    otl.Entry(scu),
                 ]),
                 ignore_days={
                     date(2025, 6, 19),
@@ -127,6 +127,7 @@ members: list[GroupMember] = [
                 ])),
     # GroupMember('Tom Smith', 0, 100000020412335, 300000117987914, 'thomas.smith@stfc.ac.uk'),
 ]
+
 
 # if __name__ == '__main__':
 # check_total_ftes(members)
