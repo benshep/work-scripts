@@ -4,9 +4,10 @@ import staff
 from mars_group import members
 
 
-def run_otl_calculator():
+def run_otl_calculator() -> str | None:
     """Iterate through staff, listing the hours to upload for new OTL cards required."""
     # staff.verbose = True
+    cards_to_book = 0
     for member in members:
         # if member.known_as in ('Alex B',):
         if True:
@@ -21,15 +22,19 @@ def run_otl_calculator():
                 print(f'{start.strftime("%d/%m/%Y")}: {hours_booked=:.2f}')
                 if hours_booked < 37:
                     print(*member.bulk_upload_lines(start, manual_mode=True), sep='\n')
+                    cards_to_book += 1
                 start += timedelta(days=7)
+    if cards_to_book:
+        return f'{cards_to_book=}'
+    return None
 
 
 def leave_cross_check():
     """Iterate through staff, and check Oracle vs Outlook leave bookings."""
     toast = ''
     for member in members:
-        if member.known_as in ('Ben',):
-        # if True:
+        # if member.known_as in ('Ben',):
+        if True:
             print('\n' + member.known_as)
             not_in_oracle, not_in_outlook = member.leave_cross_check()
             if not_in_oracle:
@@ -46,5 +51,5 @@ def show_leave_dates():
 
 
 if __name__ == '__main__':
-    # run_otl_calculator()
+    run_otl_calculator()
     print(leave_cross_check())
