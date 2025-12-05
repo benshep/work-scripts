@@ -4,6 +4,7 @@ from math import isclose
 
 hours_per_day = 7.4
 days_per_fte = 215
+hours_per_fte = hours_per_day * days_per_fte
 
 today = datetime.now()
 fy = today.year - (today.month < 4)  # last calendar year if before April
