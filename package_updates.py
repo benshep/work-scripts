@@ -16,6 +16,7 @@ from pushbullet_api_key import api_key  # local file, keep secret!
 
 
 def list_packages() -> dict[str, tuple[str, str]]:
+    """Return a list of packages installed in Conda environment."""
     version = sys.version_info
     # guess name if env not defined: convention is e.g. py313
     env_name = os.environ.get('CONDA_DEFAULT_ENV', f'py{version.major}{version.minor}')
@@ -35,6 +36,7 @@ def list_packages() -> dict[str, tuple[str, str]]:
 
 
 def get_rss() -> dict[str, str]:
+    """Return a list of packages from the Anaconda RSS feed."""
     is_64bits = sys.maxsize > 2**32
     my_arch = platform.architecture()[0]
     url = 'https://repo.anaconda.com/pkgs/rss.xml'
@@ -43,7 +45,7 @@ def get_rss() -> dict[str, str]:
         return {}
     packages = {}
     for entry in feed.entries:
-        if match := re.findall(r'([\w\-_]+) (\d[\w\.,\-]+) \[(.*)\]', entry.title):
+        if match := re.findall(r'([\w\-_]+) (\d[\w.,\-]+) \[(.*)]', entry.title):
             name, version, architectures = match[0]
             architectures = architectures.split(', ')
             packages[name] = version
@@ -81,8 +83,10 @@ def check_chocolatey_packages() -> str:
 
 
 def trigger_update() -> None:
+    """Trigger the Task Scheduler custom event that runs the Chocolatey upgrade process."""
     powershell_command = 'powershell -command "Write-EventLog -LogName Application -Source ' + \
-                         "'BenShepherdCustomEvent' -EntryType Information -EventId 8072 -Message 'Admin client_session started.'\""
+                         "'BenShepherdCustomEvent' -EntryType Information -EventId 8072 " + \
+                         "-Message 'Admin client_session started.'\""
     run_command(powershell_command)
 
 
@@ -92,6 +96,7 @@ def run_command(command: str | list[str]) -> list[str]:
 
 
 def find_new_python_packages() -> str:
+    """Return a list of new available packages, from conda, pip and chocolatey."""
     installed_packages = list_packages()
     available_packages = get_rss()
     conda_new = []
@@ -113,7 +118,7 @@ def find_new_python_packages() -> str:
 
 
 def check_updated() -> None:
-    """Read the list of updated packages and notify."""
+    """Runs after upgrade. Read the list of updated packages and notify."""
     toast = ''
     upgrade_output_file = f'choco-upgrade-{node()}.txt'
     upgrade_output = open(upgrade_output_file).read().splitlines()
