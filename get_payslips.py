@@ -15,9 +15,12 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from oracle import go_to_oracle_page
 from work_folders import misc_folder, downloads_folder
 
+payslips_folder = os.path.join(misc_folder, 'Money', 'Payslips')
+
 
 def income_pre_tax(year: int) -> float:
-    os.chdir(os.path.join(misc_folder, 'Money', 'Payslips'))
+    """Add up the pre-tax income for a given year."""
+    os.chdir(payslips_folder)
     total_payments = Counter()
     for fiscal_month in range(12):
         month = (fiscal_month + 3) % 12 + 1  # convert to calendar month
@@ -37,7 +40,7 @@ def get_payslips(only_latest: bool = True, test_mode: bool = False) -> str | dat
     # On page load, shows latest slip
 
     # Get list of payslips we already have
-    os.chdir(os.path.join(misc_folder, 'Money', 'Payslips'))
+    os.chdir(payslips_folder)
     existing_files = os.listdir()
     output = ''
 
@@ -66,26 +69,8 @@ def get_payslips(only_latest: bool = True, test_mode: bool = False) -> str | dat
             prev_amount = payments_last_month.get(description, None)
             symbol = '⭐' if prev_amount is None else \
                 '🔺' if amount > prev_amount else \
-                '🔻' if amount < prev_amount else '➖'
+                    '🔻' if amount < prev_amount else '➖'
             output += f'{description}: £{amount:.02f} {symbol}\n'
-
-        # Amounts for latest
-        # number_cells = web.find_elements(By.CLASS_NAME, 'oj-sp-scoreboard-metric-card-metric')
-        # net_pay = number_cells[1].text.split(' ')[1]  # text is e.g. GBP 1,999.99
-        # Summary table i.e. basic pay and any extras
-        # This doesn't seem to work well
-        # summary_table = web.find_element(By.XPATH, '//div[@aria-label="Summary"]')
-        # web.execute_script("arguments[0].scrollIntoView(true);",
-        #                    summary_table.find_elements(By.TAG_NAME, 'span')[-1])
-        # time.sleep(2)
-        # while True:
-        #     summary = summary_table.text.strip().splitlines()
-        #     if 'Loading' not in summary:
-        #         break
-        # output = f'Net pay: £{net_pay}\n'
-        # for label, value in zip(summary[::2], summary[1::2]):
-        #     output += f'{label}: £{value.replace(" GBP", "")}\n'
-
 
     else:  # get all
         # maybe doesn't work...
@@ -101,13 +86,13 @@ def get_payslips(only_latest: bool = True, test_mode: bool = False) -> str | dat
                 move(filename, new_filename)
                 output += new_filename + '\n'
 
-
     web.quit()
 
     return output
 
 
-def run_download(web: WebDriver):
+def run_download(web: WebDriver) -> str:
+    """Click the download button, and return the name of the downloaded file."""
     old_files = set(os.listdir(downloads_folder))
     web.find_element(By.CLASS_NAME, 'oj-ux-ico-download').click()  # download button
     time.sleep(5)
@@ -131,6 +116,7 @@ def payslip_items(filename: str) -> dict[str, float]:
     for description, amount, _ in items:
         return_dict[description.strip()] = float(amount.replace(',', ''))
     return return_dict
+
 
 if __name__ == '__main__':
     print(get_payslips(test_mode=True, only_latest=False))
