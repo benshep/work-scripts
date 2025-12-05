@@ -49,11 +49,6 @@ Esc::!F4
 #IfWinExist ahk_class ApplicationFrameWindow
 #+a::WinActivate
 
-;shortcuts for timesheet entry page
-#IfWinActive,Time Entry:
-Down::Send {TAB 15}
-Up::Send {Shift Down}{TAB 15}{Shift Up}
-
 ;Alt-D to highlight 'address bar' (name box) in Excel
 #IfWinActive ahk_class XLMAIN
 !d::ControlFocus Edit1
