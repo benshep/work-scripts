@@ -19,14 +19,14 @@ def join_vc_meeting(force_sync: bool = False):
     # j is join - w seems to be webinar
     # 9-11 digits for the meeting ID
     # Following that, URL params with alphanumeric, =&.- (any more required?)
-    zoom_url = re.compile(r'https://(?:[\w\-]+.)?(?:zoom\.us|zoomgov\.com|zoom-x\.de)/[\w/\?=&\-]+\b')  # simpler regex
+    zoom_url = re.compile(r'https://(?:[\w\-]+.)?(?:zoom\.us|zoomgov\.com|zoom-x\.de)/[\w/?=&\-]+\b')  # simpler regex
     teams_url = re.compile(r'https://teams\.microsoft\.com/l/meetup-join/.*\b')
     current_events = outlook.get_current_events(min_count=-1 if force_sync else 1)
     # print('Current events:', [event.Subject for event in current_events])
     joinable_meetings = {}
     for meeting in current_events:
         body_location = f'{meeting.Body}\r\n{meeting.Location}'
-        if match := zoom_url.search(body_location) or teams_url.search(body_location):
+        if (match := zoom_url.search(body_location)) or teams_url.search(body_location):
             url = match.group()
             joinable_meetings[meeting.Subject] = (url, meeting)
     meeting_count = len(joinable_meetings)
