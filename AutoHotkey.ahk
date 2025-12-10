@@ -3,6 +3,8 @@
 
 GroupAdd, firefox, ahk_class MozillaWindowClass ; Add only Firefox windows to this group.
 GroupAdd, excel, ahk_class XLMAIN ; Add only Excel windows to this group.
+GroupAdd, terminal, ahk_exe WindowsTerminal.exe ; Add Terminal windows to this group.
+GroupAdd, terminal, ahk_exe pycharm64.exe ; Add PyCharm windows to this group.
 
 ProgramFilesX86 = C:\Program Files (x86)
 SetTitleMatchMode, 2
@@ -43,7 +45,7 @@ Esc::!F4
 #IfWinExist ahk_class PPTFrameClass
 #q::WinActivate
 #IfWinExist ahk_exe WindowsTerminal.exe
-#c::WinActivate
+#c::GroupActivate, terminal, r
 #IfWinExist ahk_class TeamsWebView
 #!c::WinActivate
 #IfWinExist ahk_class ApplicationFrameWindow
