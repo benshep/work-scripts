@@ -74,7 +74,7 @@ F4:: ;toggle video for Teams and Zoom
 #!c::Teams_Launcher()
 
 F1:: ;mute/unmute both Teams and Zoom
-    Teams_Mute()
+    SoundSet, -1, , MUTE, 2
     ControlSend, , {F1}, Zoom Meeting
     Return
     
@@ -205,4 +205,12 @@ return
    SysGet, Width, 78
    SysGet, Height, 79
    WinMove, %Title%,, X1, Y1, Width, Height
+return
+
+#^d::
+    RegRead mode, % key := "HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", SystemUsesLightTheme
+    RunWait, "C:\Program Files\Everything\Everything.exe" -quit
+    IniWrite, #181818, %AppData%\Everything\Everything.ini, Everything, normal_background_color
+    IniWrite, #ffffff, %AppData%\Everything\Everything.ini, Everything, normal_foreground_color
+    Run, "C:\Program Files\Everything\Everything.exe"
 return
