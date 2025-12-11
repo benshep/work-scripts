@@ -26,7 +26,7 @@ def join_vc_meeting(force_sync: bool = False):
     joinable_meetings = {}
     for meeting in current_events:
         body_location = f'{meeting.Body}\r\n{meeting.Location}'
-        if (match := zoom_url.search(body_location)) or teams_url.search(body_location):
+        if match := zoom_url.search(body_location) or teams_url.search(body_location):
             url = match.group()
             joinable_meetings[meeting.Subject] = (url, meeting)
     meeting_count = len(joinable_meetings)
