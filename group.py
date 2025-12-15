@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 
+import oracle
 import staff
 from mars_group import members
 
@@ -11,7 +12,7 @@ def run_otl_calculator() -> str | None:
     for member in members:
         # if member.known_as in ('Alex B',):
         if True:
-            print('\n' + member.known_as)
+            print('\n', member.name, oracle.apps[('my_timecards',) if member.known_as == 'Ben' else ('team_timecards',)])
             member.update_off_days(force_reload=False)
             start = date.today()
             start -= timedelta(days=start.weekday())  # Monday of current week

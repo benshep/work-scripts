@@ -22,17 +22,18 @@ class Browser(Enum):
 
 
 quoted_path = quote('/shared/STFC Shared/_portal/STFC Projects', safe='')
-fusion_url = 'https://fa-evzn-saasfaukgovprod1.fa.ocs.oraclecloud.com'
+fusion_url = 'https://fa-evzn-saasfaukgovprod1.fa.ocs.oraclecloud.com/fscmUI/redwood/'
 apps: dict[tuple[str, ...], str] = {
     ('obi',): f'https://obi.ssc.rcuk.ac.uk/analytics/saw.dll?dashboard&PortalPath={quoted_path}',  # TODO: update?
     ('taleo',): "https://careersportal.taleo.net/enterprise/fluid?isNavigationCompleted=true",
-    ('absences',): fusion_url + '/fscmUI/redwood/absences/existing-absences/view-summary',
-    ('team_timecards',): fusion_url + '/fscmUI/redwood/human-resources/feature/launch?' + \
+    ('absences',): fusion_url + 'absences/existing-absences/view-summary',
+    ('my_timecards',): fusion_url + 'time/timecards/add-timecard?userContext=WORKER',
+    ('team_timecards',): fusion_url + 'human-resources/feature/launch?' + \
                          urlencode({'vbFlowStringKey': 'addTimeCard', 'action': 'MyTeam_AddTimeCardTLM',
                                     'context': 'MyTeam', 'useSessionStoredFilters': 'true', 'vbAppUi': 'time',
                                     'vbcsFlow': 'timecards', 'vbPage': 'add-timecard',
                                     'vbPageParams': 'pCurrent=false#userContext=LINE_MANAGER'}),
-    ('payslips',): fusion_url + '/fscmUI/redwood/payslips/payslips/launch',
+    ('payslips',): fusion_url + 'payslips/payslips/launch',
     ('home',): fusion_url
 }
 
@@ -49,7 +50,7 @@ def go_to_oracle_page(*links: str,
     :return: web driver instance, so you can do more things with it"""
 
     # which URL to go to? OBI, Taleo, or just default to Oracle homepage
-    url = apps.get(links, fusion_url + '/fscmUI/faces/FuseWelcome')
+    url = apps.get(links, fusion_url)
     firefox_options = webdriver.FirefoxOptions()
     firefox_options.add_argument('--MOZ_LOG=')  # try to silence errors
     edge_options = webdriver.EdgeOptions()
