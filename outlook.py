@@ -8,6 +8,8 @@ from enum import IntEnum
 from time import sleep
 from typing import Protocol, Callable
 
+from progress.bar import IncrementalBar
+
 direct = sys.platform == 'win32'  # access Outlook directly on Windows
 if direct:
     import pythoncom
@@ -471,7 +473,7 @@ class NamedObject(OutlookBaseObject):
     """The display name for the object."""
 
 
-class Collection(OutlookBaseObject):
+class Collection(OutlookBaseObject, list):
     """An Outlook collection object."""
     Count: int
     """The count of objects in the specified collection."""
@@ -1077,19 +1079,13 @@ def get_away_dates(start: date_spec = -30, end: date_spec = 90,
         return set()
     report(count)
     away_list = []
-    i = 0
-    text = f'Fetching away dates in {count} appointments for {user} ...'
-    print(text)
-    next_tick = 0
+    bar = IncrementalBar(f'Fetching away dates for {user}', max=count, suffix='%(index)d/%(max)d | %(eta)ss')
     for event in appointments_in_range:
-        if i >= round(next_tick):
-            if not verbose:
-                print('█', end='')  # track progress - can take a while
-            next_tick += count / len(text)  # progress bar will be same length as line above
+        if not verbose:
+            bar.next()
         if look_for(event):
             # Need to subtract a day here since the end time of an all-day event is 00:00 on the next day
             away_list.append(get_date_list(event.Start.date(), event.End.date() - timedelta(days=1)))
-        i += 1
     print('')  # next line
     return to_set(away_list)
 
@@ -1214,6 +1210,9 @@ def inspect_events():
             user_list.append(user)
         user += '@stfc.ac.uk'
         events = get_appointments_in_range(0, 1, user)
+        if events.Count == 0:
+            print('No events found')
+            continue
         print('')
         for i, event in enumerate(events):
             print(f'{i}. {event.Start.strftime("%H:%M")}-{event.End.strftime("%H:%M")} {event.Subject}')
