@@ -17,6 +17,7 @@ from pushbullet_api_key import api_key  # local file, keep secret!
 
 def list_packages() -> dict[str, tuple[str, str]]:
     """Return a list of packages installed in Conda environment."""
+    print('Listing Conda packages')
     version = sys.version_info
     # guess name if env not defined: convention is e.g. py313
     env_name = os.environ.get('CONDA_DEFAULT_ENV', f'py{version.major}{version.minor}')
@@ -32,11 +33,13 @@ def list_packages() -> dict[str, tuple[str, str]]:
         except ValueError:
             continue
         conda_packages[name] = (version, build_channel)
+    print(len(conda_packages), 'packages installed')
     return conda_packages
 
 
 def get_rss() -> dict[str, str]:
     """Return a list of packages from the Anaconda RSS feed."""
+    print('Getting Anaconda RSS feed')
     is_64bits = sys.maxsize > 2**32
     my_arch = platform.architecture()[0]
     url = 'https://repo.anaconda.com/pkgs/rss.xml'
@@ -49,11 +52,13 @@ def get_rss() -> dict[str, str]:
             name, version, architectures = match[0]
             architectures = architectures.split(', ')
             packages[name] = version
+    print(len(packages), 'packages available')
     return packages
 
 
 def check_chocolatey_packages() -> str:
     """Use Chocolatey to check if any of its packages need updating."""
+    print('Listing outdated Chocolatey packages')
     if sys.platform != 'win32':  # choco is a Windows thing
         return ''
     outdated = run_command(['choco', 'outdated', '-r'])
@@ -64,7 +69,7 @@ def check_chocolatey_packages() -> str:
         package, old, new, pinned = line.split('|')
         if pinned == 'true':
             continue
-        to_upgrade += f'{package}: {old} ➡ {new}\n'
+        to_upgrade += f'{package}: {old} ➡  {new}\n'
         # display release notes if available
         info = run_command(['choco', 'info', package])
         for info_line in info:
@@ -146,4 +151,4 @@ if __name__ == '__main__':
         check_updated()
     else:
         # change THIS BIT for testing!
-        print(trigger_update())
+        print(find_new_python_packages())
