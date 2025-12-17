@@ -8,7 +8,7 @@ from enum import IntEnum
 from time import sleep
 from typing import Protocol, Callable
 
-from progress.bar import IncrementalBar
+from progress.bar import IncrementalBar, Bar
 
 direct = sys.platform == 'win32'  # access Outlook directly on Windows
 if direct:
@@ -954,14 +954,12 @@ def get_calendar(user: str = 'me') -> Folder:
     return namespace.GetSharedDefaultFolder(recipient, DefaultFolders.calendar)
 
 
-def get_outlook(dismiss_reminders: bool = True) -> OutlookApplication:
+def get_outlook() -> OutlookApplication:
     """Return a reference to the Outlook application.
     :param dismiss_reminders: Dismiss all reminders on opening the application reference.
     """
     pythoncom.CoInitialize()  # try to combat the "CoInitialize has not been called" error
     application: OutlookApplication = win32com.client.Dispatch('Outlook.Application')
-    if dismiss_reminders:
-        clear_reminders(application)
     return application
 
 
@@ -971,8 +969,10 @@ def get_meeting_time(event: AppointmentItem, get_end: bool = False) -> datetime:
     return datetime.fromtimestamp(meeting_time.timestamp())
 
 
-def happening_now(event: AppointmentItem, hours_ahead: float = 0.5) -> bool:
+def happening_now(event: AppointmentItem, hours_ahead: float = 0.5, bar: Bar | None = None) -> bool:
     """Return True if an event is currently happening or is due to start in the next half-hour."""
+    if bar:
+        bar.next()
     try:
         report(event.Start)
         start_time = get_meeting_time(event)
@@ -999,8 +999,12 @@ def get_current_events(user: str = 'me', hours_ahead: float = 0.5,
     i = 0
     syncing = False
     while i < 60 or syncing:  # try for a minute or so
-        current_events = list(filter(lambda event: happening_now(event, hours_ahead),
-                                     get_appointments_in_range(-7, 1 + hours_ahead / 24, user=user)))
+        appointments = get_appointments_in_range(-7, 1 + hours_ahead / 24, user=user)
+        count = 0
+        for _ in appointments:  # hack to count them since we can't enumerate a Restrict object
+            count += 1
+        with IncrementalBar('Finding current events', max=count) as bar:
+            current_events = list(filter(lambda event: happening_now(event, hours_ahead, bar), appointments))
         if min_count < 0:
             min_count = len(current_events) - min_count
         if min_count:
@@ -1181,15 +1185,16 @@ def get_dl_ral_holidays(year: int = datetime.now().year, whole_days: bool = True
     return return_dict
 
 
-def clear_reminders(application: OutlookApplication):
+def clear_reminders():
     """Clear all the pending Outlook reminders."""
-    reminders = application.Reminders
-    report(f'Clearing up to {reminders.Count} reminders')
-    for i in range(reminders.Count, 0, -1):  # one-based, go backwards through them
-        reminder = reminders.Item(i)
-        if reminder.IsVisible:
-            report(reminder.Caption)
-            reminder.Dismiss()
+    reminders = get_outlook().Reminders
+    with IncrementalBar('Clearing reminders', max=reminders.Count) as bar:
+        for i in range(reminders.Count, 0, -1):  # one-based, go backwards through them
+            bar.next()
+            reminder = reminders.Item(i)
+            if reminder.IsVisible:
+                report(reminder.Caption)
+                reminder.Dismiss()
 
 
 def inspect_events():

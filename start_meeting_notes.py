@@ -2,6 +2,7 @@ import os
 import re
 import signal
 import subprocess
+import sys
 from typing import Iterator
 
 try:
@@ -51,8 +52,10 @@ def start_notes(meeting: outlook.AppointmentItem) -> None:
                 desktop.go()
                 break
     open_file(filename)  # open the file in the associated program
-    # Kill this process - otherwise get 'hanging prompt' issue while notes window is open
-    os.kill(os.getpid(), signal.SIGTERM)
+    if outlook.direct:
+        outlook.clear_reminders()
+        # Kill this process - otherwise get 'hanging prompt' issue while notes window is open
+        os.kill(os.getpid(), signal.SIGTERM)
 
 
 def open_file(filename: str) -> None:
@@ -117,7 +120,10 @@ def clean_body(description: str) -> str:
 def target_meeting(min_count: int = 1, hours_ahead: float = 12) -> outlook.AppointmentItem:
     """Look for the current meeting in the calendar. Prompt the user to choose one,
     with options to refresh the list or look further ahead in the future."""
-    os.system('title 📓 Start meeting notes')
+    if sys.platform == 'win32':
+        os.system('title 📓 Start meeting notes')
+    else:
+        os.system('echo "\\e]2;📓 Start meeting notes\a"')
     time_format = "%a %d/%m %H:%M" if hours_ahead > 12 else "%H:%M"
     current_events = outlook.get_current_events(hours_ahead=hours_ahead, min_count=min_count,
                                                 remote=not outlook.direct)  # run remotely if not on Windows
@@ -250,5 +256,3 @@ if __name__ == '__main__':
     # for meeting in outlook.get_appointments_in_range(-30, 30):
     #     print(meeting.Subject, go_to_folder(meeting), sep='; ')
     create_note_file()
-    # Necessary to avoid hanging Python process after opening the note file
-    os.kill(os.getpid(), signal.SIGTERM)
