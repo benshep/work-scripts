@@ -16,3 +16,4 @@ py-trello
 govuk-bank-holidays
 polling2
 rpyc
+progress
