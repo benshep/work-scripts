@@ -167,9 +167,12 @@ class GroupMember:
             print(f'Fetching Outlook off days for {self.known_as}')
             outlook_days = outlook.get_away_dates(otl.fy_start, otl.fy_end,
                                                   user=self.email, look_for=outlook.is_annual_leave)
-            self.off_days |= {day: ('Annual Leave', otl.hours_per_day) for day in outlook_days}
+            self.off_days = {day: ('Annual Leave', otl.hours_per_day) for day in outlook_days}
             print(f'Fetching Oracle off days for {self.known_as}')
             self.off_days |= self.get_oracle_leave_dates()
+            # Finally, update with site holidays. This order ensures site holidays have preference
+            # in case of blanket 'AL' calendar bookings that also cover bank holidays etc
+            self.off_days |= site_holidays
             with open(cache_file, 'w') as f:
                 f.write('\n'.join(
                     [f"{d.strftime('%d/%m/%Y')}\t{absence_type}\t{hrs:.2f}"
