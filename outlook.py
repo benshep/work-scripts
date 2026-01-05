@@ -1148,6 +1148,8 @@ def get_dl_ral_holidays(year: int = datetime.now().year, whole_days: bool = True
         end = event.decoded('dtend')
         title = event.get('summary')
         if isinstance(start, datetime):  # more specific than date, test first
+            start = start.replace(tzinfo=None)  # make naive for easy comparison
+            end = end.replace(tzinfo=None)  # make naive for easy comparison
             report('part day', start, end)
             if whole_days:
                 hour = start.replace(minute=0, second=0)
@@ -1162,7 +1164,8 @@ def get_dl_ral_holidays(year: int = datetime.now().year, whole_days: bool = True
                 day_fraction = (end - start) / timedelta(days=1)
                 return_dict[start] = (title, day_fraction * otl.hours_per_day)
         elif isinstance(start, date):
-            return_dict[start] = (title, otl.hours_per_day)
+            key = start if whole_days else datetime(start.year, start.month, start.day)
+            return_dict[key] = (title, otl.hours_per_day)
 
     if whole_days:
         for day, hour_set in hours.items():
