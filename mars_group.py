@@ -35,8 +35,10 @@ def ukxfel_cdoa(wp: int):
 ukxfel_continuation = otl.Code('STGA00183', '01', start=date(2025, 10, 1))
 
 epac = otl.Code('STKA01103', '06.01')
+
 members: list[GroupMember] = [
     GroupMember('Ben Shepherd', 207835,
+                person_id=100000020410836, assignment_id=300000117877863,
                 booking_plan=otl.BookingPlan([
                     otl.Entry(epac, 0.05),
                     otl.Entry(dae, 0.08),
@@ -48,6 +50,7 @@ members: list[GroupMember] = [
     GroupMember('Alexander Bainbridge',
                 200394,
                 'alex.bainbridge@stfc.ac.uk', known_as='Alex B',
+                person_id=100000020410917, assignment_id=300000117882174,
                 booking_plan=otl.BookingPlan([
                     otl.Entry(epac, 0.1),
                     otl.Entry(ruedi_epsrc_bridging, 0.05),
@@ -59,6 +62,7 @@ members: list[GroupMember] = [
     GroupMember('David Dunning',
                 204991,
                 'david.dunning@stfc.ac.uk', known_as='Dave',
+                person_id=100000020417326, assignment_id=300000117978650,
                 booking_plan=otl.BookingPlan([
                     otl.Entry(ukxfel_cdoa(wp=1), 0.175),
                     otl.Entry(ukxfel_cdoa(wp=5), 0.175),
@@ -68,6 +72,7 @@ members: list[GroupMember] = [
                 ])),
     GroupMember('Neil Thompson',
                 206988,
+                person_id=100000020415442, assignment_id=300000117997606,
                 booking_plan=otl.BookingPlan([
                     otl.Entry(epac, 0.2),
                     otl.Entry(ukxfel_cdoa(wp=5), 0.2),
@@ -77,6 +82,7 @@ members: list[GroupMember] = [
                 ])),
     GroupMember('Kiril Marinov',
                 204936,
+                person_id=100000020410826, assignment_id=300000117884336,
                 booking_plan=otl.BookingPlan([
                     otl.Entry(novel_neg, 0.25),
                     otl.Entry(thin_films, 0.5),
@@ -84,6 +90,7 @@ members: list[GroupMember] = [
                 ])),
     GroupMember('Alan Mak',
                 206367,
+                person_id=100000020412139, assignment_id=300000117893427,
                 booking_plan=otl.BookingPlan([
                     otl.Entry(ukxfel_cdoa(wp=5), 0.5),
                     otl.Entry(ukxfel_continuation, 0.25),
@@ -92,6 +99,7 @@ members: list[GroupMember] = [
     GroupMember('Alexander Hinton',
                 201375,
                 'alex.hinton@stfc.ac.uk', known_as='Alex H',
+                person_id=100000020413904, assignment_id=300000117923738,
                 booking_plan=otl.BookingPlan([
                     otl.Entry(dae, 0.3),
                     otl.Entry(zepto_clara_gott, 0.08),
@@ -106,6 +114,7 @@ members: list[GroupMember] = [
                 }),
     GroupMember('Amelia Pollard',
                 205179,
+                person_id=100000020414057, assignment_id=300000117928903,
                 known_as='Amy',
                 booking_plan=otl.BookingPlan([
                     otl.Entry(ai_ml),
@@ -113,6 +122,7 @@ members: list[GroupMember] = [
     GroupMember('Matthew King',
                 207007,
                 'matthew.king@stfc.ac.uk', known_as='Matt',
+                person_id=100000020413933, assignment_id=300000117929802,
                 booking_plan=otl.BookingPlan([
                     otl.Entry(clara_scientific, 0.17),
                     otl.Entry(clara_user_facility, 0.35),
@@ -120,6 +130,7 @@ members: list[GroupMember] = [
                 ])),
     GroupMember('Nasiq Ziyan',
                 207521,
+                person_id=100000020417760, assignment_id=300000117981407,
                 booking_plan=otl.BookingPlan([
                     otl.Entry(clara_scientific, 0.17),
                     otl.Entry(clara_user_facility, 0.35),
