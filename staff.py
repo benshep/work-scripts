@@ -76,11 +76,15 @@ class GroupMember:
     known_as: str
     """'Nickname' of staff member. Used as a short name. Defaults to first name.
     Often useful to set this when two group members have the same first name."""
+    person_id: int
+    """Oracle Fusion person ID."""
+    assignment_id: int
+    """Oracle Fusion assignment ID."""
     booking_plan: otl.BookingPlan
     """OTL booking plan for staff member."""
 
     def __init__(self, name: str, person_number: int, email: str = '',
-                 # person_id: int = 0, assignment_id: int = 0,
+                 person_id: int = 0, assignment_id: int = 0,
                  known_as: str = '', booking_plan: otl.BookingPlan = None,
                  ignore_days: set[date] = None):
         """A member of staff.
@@ -96,8 +100,8 @@ class GroupMember:
         """
         self.name = name
         self.person_number = person_number
-        # self.person_id = person_id
-        # self.assignment_id = assignment_id
+        self.person_id = person_id
+        self.assignment_id = assignment_id
         self.email = email or name.replace(' ', '.').lower() + '@stfc.ac.uk'
         self.known_as = known_as or name.split(' ')[0]
         # print(self.known_as)
@@ -226,11 +230,16 @@ class GroupMember:
                                           week_beginning + timedelta(days=7)))]
         return sum(weekly_bookings['Quantity'])
 
+    def hours_needed(self, when: date) -> float:
+        """Return the expected number of booked hours for a given date, including leave bookings
+        but excluding "no booking" time."""
+        unproductive_bookings = self.get_unproductive_bookings(when)
+        no_booking_hours = sum(hrs for code, hrs in unproductive_bookings.items() if code == otl.no_booking)
+        return otl.hours_per_day - no_booking_hours
+
     def daily_bookings(self, when: date) -> dict[otl.Code, float]:
         """Return a list of codes and hours to book on a given date."""
-        unproductive_bookings = {otl.unproductive_code[absence_type]: off_hours
-                                 for off_datetime, (absence_type, off_hours) in self.off_days.items()
-                                 if ymd(when) == ymd(off_datetime)}  # for comparison between dates and datetimes
+        unproductive_bookings = self.get_unproductive_bookings(when)
         working_hours = otl.hours_per_day - sum(unproductive_bookings.values())  # in case of a half-day off etc
         if not working_hours:
             return unproductive_bookings
@@ -281,6 +290,12 @@ class GroupMember:
                 self.new_bookings[project.code] += hrs
 
         return {**unproductive_bookings, **projects_counter}
+
+    def get_unproductive_bookings(self, when: date) -> dict[otl.Code, float]:
+        """Return a dict with the unproductive bookings for the given date."""
+        return {otl.unproductive_code[absence_type]: off_hours
+                for off_datetime, (absence_type, off_hours) in self.off_days.items()
+                if ymd(when) == ymd(off_datetime)}  # for comparison between dates and datetimes
 
     def bulk_upload_lines(self, week_beginning: date, manual_mode: bool = False) -> Generator[str]:
         """Generate a series of entries for the bulk upload CSV file, with OTL hours for the given week.

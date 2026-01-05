@@ -1,4 +1,6 @@
+import os
 from datetime import date, timedelta
+from urllib.parse import urlencode
 
 import oracle
 import staff
@@ -10,20 +12,25 @@ def run_otl_calculator() -> str | None:
     # staff.verbose = True
     cards_to_book = 0
     for member in members:
-        # if member.known_as in ('Alex B',):
+        # if member.known_as in ('Nasiq',):
         if True:
-            print('\n', member.name, oracle.apps[('my_timecards',) if member.known_as == 'Ben' else ('team_timecards',)])
+            print('\n', member.name)
             member.update_off_days(force_reload=False)
             start = date.today()
             start -= timedelta(days=start.weekday())  # Monday of current week
             start -= timedelta(days=7*4)  # check last few weeks
-            while start + timedelta(days=3) <= date.today():  # wait until Thu to do current week
-            # for _ in range(1):
+            # while start + timedelta(days=3) <= date.today():  # wait until Thu to do current week
+            for _ in range(7):
                 hours_booked = member.hours_for_week(start)
-                print(f'{start.strftime("%d/%m/%Y")}: {hours_booked=:.2f}')
-                if hours_booked < 37:
+                hours_needed = sum(member.hours_needed(start + timedelta(days=day)) for day in range(5))
+                print(f'{start.strftime("%d/%m/%Y")}: {hours_booked=:.2f}, {hours_needed=:.2f}')
+                if hours_needed - hours_booked > 0.01:
                     print(*member.bulk_upload_lines(start, manual_mode=True), sep='\n')
                     cards_to_book += 1
+                    params = {'calledFromAddTimeCard': 'true', 'pAsofdate': start.strftime('%Y-%m-%d')}
+                    if member.known_as != 'Ben':
+                        params |= {'pPersonId': member.person_id, 'userContext': 'LINE_MANAGER'}
+                    # os.startfile(oracle.apps[('home',)] + 'time/timecards/landing-page?' + urlencode(params))
                 start += timedelta(days=7)
     if cards_to_book:
         return f'{cards_to_book=}'
@@ -53,4 +60,5 @@ def show_leave_dates():
 
 if __name__ == '__main__':
     run_otl_calculator()
-    print(leave_cross_check())
+    ######
+    # print(leave_cross_check())
