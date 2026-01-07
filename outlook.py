@@ -1203,7 +1203,7 @@ def clear_reminders():
 def inspect_events():
     """Find today's events for a given user. Show the description for a given event."""
     os.system('title 🗓️ Inspect events')
-    user_list = ['ThomsonRoom', 'WaltonRoom', 'ChadwickRoom', 'BarklaRoom', 'BoardRmDL']
+    user_list = ['ThomsonRoom', 'WaltonRoom', 'ChadwickRoom', 'BarklaRoom', 'BoardRmDL', 'DLCR1']
     while True:
         print('')
         for i, user in enumerate(user_list):
