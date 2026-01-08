@@ -97,7 +97,7 @@ def trigger_update() -> None:
 
 def run_command(command: str | list[str]) -> list[str]:
     """Runs a command and returns the output split into lines."""
-    return subprocess.check_output(command).decode('cp1252').split('\r\n')
+    return subprocess.check_output(command).decode('cp1252', 'ignore').split('\r\n')
 
 
 def find_new_python_packages() -> str:
