@@ -15,7 +15,7 @@ from work_tools import StoredData
 site_holidays = outlook.get_dl_ral_holidays(otl.fy, whole_days=False)
 try:
     site_holidays |= outlook.get_dl_ral_holidays(otl.fy + 1, whole_days=False)
-except FileNotFoundError:  # not published yet!
+except StopIteration:  # not published yet!
     pass
 
 web = None

@@ -924,6 +924,9 @@ def get_appointments_in_range(start: date_spec = 0.0,
     """Get a list of appointments in the given range. start and end are relative days from today, or datetimes.
     user is 'me' or an email address. extra_restriction is another restriction to limit the number of results.
     See https://learn.microsoft.com/en-us/office/vba/api/outlook.items.restrict."""
+    if not direct:
+        connection = rpyc.connect('ddast0025', port=18862)
+        return connection.root.get_appointments_in_range(start, end, user, extra_restriction)
     today = date.today()
     from_date = today + timedelta(days=start) if isinstance(start, (int, float)) else start - timedelta(days=1)
     to_date = today + timedelta(days=end) if isinstance(end, (int, float)) else end
@@ -1136,7 +1139,10 @@ def get_dl_ral_holidays(year: int = datetime.now().year, whole_days: bool = True
     If whole_days is True, aggregates two half-day entries into one whole day.
     If clean_titles is True, converts Privilege Day and Compensating Leave to Privilege Day,
     and everything else to Bank Holiday."""
-    filename = os.path.join(hr_info_folder, f'DL_RAL_Site_Holidays_{year}.ics')
+    # e.g. DL_RAL_Site_Holidays_2025.ics
+    filename = next(file for file in os.listdir(hr_info_folder)
+                    if file.lower().endswith('.ics') and file.upper().startswith('DL_RAL') and int(file[-8:-4]) == year)
+    filename = os.path.join(hr_info_folder, filename)
     calendar = Calendar.from_ical(open(filename, encoding='utf-8').read())
 
     # Mostly these are date values. HOWEVER, sometimes we get two events as two half-days. Let's deal with that.
@@ -1259,7 +1265,12 @@ class OutlookService(rpyc.Service):
                                    hours_ahead: float = 0.5, min_count: int = 0) -> list[AppointmentItem]:
         return get_current_events(user, hours_ahead, min_count)
 
-
+    def exposed_get_appointments_in_range(self, start: date_spec = 0.0,
+                                          end: date_spec = 30.0,
+                                          user: str = 'me',
+                                          extra_restriction: str = '') -> Items:
+        return get_appointments_in_range(start, end, user, extra_restriction)
+	
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == 'inspect_events':
         inspect_events()
@@ -1267,14 +1278,15 @@ if __name__ == '__main__':
         # change THIS BIT for testing!
         # verbose = True
         # print(*sorted(list(get_dl_ral_holidays())), sep='\n')
-        # away_dates = sorted(
-        #     list(get_away_dates(
-        #         datetime(2025, 4, 1), datetime(2026, 3, 31),
-        #         user='amelia.pollard@stfc.ac.uk', look_for=is_annual_leave)))
-        # print(len(away_dates))
-        # print(*away_dates, sep='\n')
+        away_dates = sorted(
+            list(get_away_dates(
+                # datetime(2025, 4, 1), datetime(2026, 3, 31),
+                # user='amelia.pollard@stfc.ac.uk',
+                look_for=is_annual_leave)))
+        print(len(away_dates))
+        print(*away_dates, sep='\n')
         # events = get_current_events(min_count=-1)
         # print(len(events))
         # print(*[event.Subject for event in events], sep='\n')
         # get_outlook()
-        inspect_events()
+        # inspect_events()
