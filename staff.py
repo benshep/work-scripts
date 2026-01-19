@@ -1,6 +1,6 @@
 import os
 from collections import Counter
-from datetime import date, timedelta, datetime
+from datetime import date, timedelta, datetime, time
 from math import isclose, prod
 from typing import Generator
 
@@ -111,7 +111,7 @@ class GroupMember:
         self.prev_bookings = {}
         self.ignore_days = ignore_days or set()
 
-    def get_oracle_leave_dates(self) -> dict[date, tuple[str, float]]:
+    def get_oracle_leave_dates(self) -> dict[datetime, tuple[str, float]]:
         """Get leave dates using Oracle data for a staff member.
         Returns a dict where the keys are dates and each value is a tuple with the leave type
         (Annual Leave, Sickness Absence) and the hours taken."""
@@ -124,8 +124,8 @@ class GroupMember:
         my_absences = all_absences[name == self.name]
         off_dates = {}
         for i, row in my_absences.iterrows():
-            start_date = row['Date Start'].date()
-            end_date = row['Date End'].date()
+            start_date = row['Date Start'].to_pydatetime()
+            end_date = row['Date End'].to_pydatetime()
             hours = row['Duration'] * (1 if row['UOM'] == 'H' else otl.hours_per_day)
             date_list = outlook.get_date_list(start_date, end_date)
             # Assumption: listed hours are spread equally over listed days
@@ -142,8 +142,9 @@ class GroupMember:
     def leave_cross_check(self) -> tuple[int, int]:
         """Perform a cross-check between leave days recorded in Outlook and Oracle.
         Returns a tuple: (not_in_oracle, not_in_outlook)."""
-        start = max(otl.fy_start, date(2025, 6, 2))  # don't go back before Fusion start date
-        end = date.today()  # don't look in the future
+        # don't go back before Fusion start date
+        start = datetime.combine(max(otl.fy_start, date(2025, 6, 2)), time.min)
+        end = datetime.now()  # don't look in the future
         outlook_days = outlook.get_away_dates(start, end, user=self.email, look_for=outlook.is_annual_leave)
         outlook_days -= site_holidays.keys()  # don't include bank holidays
         oracle_days = {day for day, (absence_type, hrs) in self.get_oracle_leave_dates().items()
@@ -327,8 +328,9 @@ class GroupMember:
 
 
 def dicts_close(dict1: dict, dict2: dict) -> bool:
-    """Return True if dict1 and dict2 have the same keys and all their values are close."""
-    return dict1.keys() == dict2.keys() and all([isclose(dict1[key], dict2[key]) for key in dict1.keys()])
+    """Return True if dict1 and dict2 are non-empty, have the same keys and all their values are close."""
+    return (dict1 and dict2 and dict1.keys() == dict2.keys()
+            and all([isclose(dict1[key], dict2[key]) for key in dict1.keys()]))
 
 
 def check_total_ftes(members: list[GroupMember]):

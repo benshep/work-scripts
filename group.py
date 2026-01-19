@@ -67,5 +67,4 @@ def show_leave_dates():
 
 if __name__ == '__main__':
     run_otl_calculator()
-    ######
     # print(leave_cross_check())

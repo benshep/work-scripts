@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 
 import otl
 from staff import GroupMember
@@ -107,10 +107,10 @@ members: list[GroupMember] = [
                     otl.Entry(scu),
                 ]),
                 ignore_days={
-                    date(2025, 6, 19),
-                    date(2025, 6, 20),
-                    date(2025, 6, 23),
-                    date(2025, 6, 24),
+                    datetime(2025, 6, 19),
+                    datetime(2025, 6, 20),
+                    datetime(2025, 6, 23),
+                    datetime(2025, 6, 24),
                 }),
     GroupMember('Amelia Pollard',
                 205179,

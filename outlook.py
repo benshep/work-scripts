@@ -1067,7 +1067,7 @@ def is_wfh(event: AppointmentItem) -> bool:
 
 
 def get_away_dates(start: date_spec = -30, end: date_spec = 90,
-                   user: str = 'me', look_for: Callable = is_out_of_office) -> set[date]:
+                   user: str = 'me', look_for: Callable = is_out_of_office) -> set[datetime]:
     """Return a set of the days in the given range that the user is away from the office.
     The look_for parameter can be:
      - is_my_all_day_event: look for any all day event with only the user as an attendee
@@ -1091,8 +1091,13 @@ def get_away_dates(start: date_spec = -30, end: date_spec = 90,
         if not verbose:
             bar.next()
         if look_for(event):
-            # Need to subtract a day here since the end time of an all-day event is 00:00 on the next day
-            away_list.append(get_date_list(event.Start.date(), event.End.date() - timedelta(days=1)))
+            away_list.append(get_date_list(
+                # Remove time zone info, and set times to midnight, for easy comparison with e.g. Oracle data
+                event.Start.replace(tzinfo=None, hour=0, minute=0, second=0),
+                event.End.replace(tzinfo=None, hour=0, minute=0, second=0)
+                # Need to subtract a day here
+                # since the end time of an all-day event is 00:00 on the next day
+                - timedelta(days=1 if event.AllDayEvent else 0)))
     print('')  # next line
     return to_set(away_list)
 
@@ -1270,7 +1275,8 @@ class OutlookService(rpyc.Service):
                                           user: str = 'me',
                                           extra_restriction: str = '') -> Items:
         return get_appointments_in_range(start, end, user, extra_restriction)
-	
+
+
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == 'inspect_events':
         inspect_events()
