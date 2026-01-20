@@ -139,7 +139,7 @@ class GroupMember:
         report('Oracle:', *[day.strftime('%d/%m/%Y') for day in sorted(off_dates)])
         return off_dates
 
-    def leave_cross_check(self) -> tuple[int, int]:
+    def leave_cross_check(self) -> tuple[int, int, str]:
         """Perform a cross-check between leave days recorded in Outlook and Oracle.
         Returns a tuple: (not_in_oracle, not_in_outlook)."""
         # don't go back before Fusion start date
@@ -149,14 +149,18 @@ class GroupMember:
         outlook_days -= site_holidays.keys()  # don't include bank holidays
         oracle_days = {day for day, (absence_type, hrs) in self.get_oracle_leave_dates().items()
                        if start <= day <= end and absence_type in ('Annual Leave', 'Special Leave - Paid')}
-        print('\t\tOutlook\tOracle')
+        output = '\t\tOutlook\tOracle\n'
         in_either = outlook_days | oracle_days
         for day in sorted(in_either):
-            print(day.strftime('%d/%m/%Y'),
-                  '✔️  ' if day in outlook_days else '🔵  ' if day in self.ignore_days else '❌  ',
-                  '✔️  ' if day in oracle_days else '🔵  ' if day in self.ignore_days else '❌  ', sep='\t')
+            output += '\t'.join((day.strftime('%d/%m/%Y'),
+                                 '✔️  ' if day in outlook_days else '🔵  ' if day in self.ignore_days else '❌  ',
+                                 '✔️  ' if day in oracle_days else '🔵  ' if day in self.ignore_days else '❌  '))
+            output += '\n'
+        print(output)
         # count of symmetric difference - i.e. days that are only in one set but not both (and not ignored)
-        return len(outlook_days - oracle_days - self.ignore_days), len(oracle_days - outlook_days - self.ignore_days)
+        return (len(outlook_days - oracle_days - self.ignore_days),
+                len(oracle_days - outlook_days - self.ignore_days),
+                output)
 
     def update_off_days(self, force_reload: bool = False) -> None:
         """Load off days from cached file, or if that's more than a week old, reload from Outlook and Oracle.

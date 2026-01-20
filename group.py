@@ -1,4 +1,5 @@
 import os
+import tempfile
 from datetime import date, timedelta
 from urllib.parse import urlencode
 
@@ -48,14 +49,17 @@ def run_otl_calculator() -> tuple[str, str] | None:
 def leave_cross_check():
     """Iterate through staff, and check Oracle vs Outlook leave bookings."""
     toast = ''
-    for member in members:
-        # if member.known_as in ('Ben',):
-        if True:
-            print('\n' + member.known_as)
-            not_in_oracle, not_in_outlook = member.leave_cross_check()
-            if not_in_oracle:
-                toast += f'{member.known_as}: {not_in_oracle=}, {not_in_outlook=}\n'
-    return toast
+    _, output_filename = tempfile.mkstemp()
+    with open(output_filename, 'w') as output_file:
+        for member in members:
+            # if member.known_as in ('Ben',):
+            if True:
+                print('\n' + member.known_as)
+                not_in_oracle, not_in_outlook, output = member.leave_cross_check()
+                if not_in_oracle:
+                    toast += f'{member.known_as}: {not_in_oracle=}, {not_in_outlook=}\n'
+                    output_file.write(output)
+    return (toast, output_filename) if toast else toast
 
 
 def show_leave_dates():
@@ -67,5 +71,5 @@ def show_leave_dates():
 
 
 if __name__ == '__main__':
-    run_otl_calculator()
-    # print(leave_cross_check())
+    # run_otl_calculator()
+    print(leave_cross_check())
