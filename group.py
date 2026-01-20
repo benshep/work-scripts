@@ -8,11 +8,12 @@ from mars_group import members
 from work_folders import downloads_folder
 
 
-def run_otl_calculator() -> str | None:
+def run_otl_calculator() -> tuple[str, str] | None:
     """Iterate through staff, listing the hours to upload for new OTL cards required."""
     # staff.verbose = True
     cards_to_book = 0
-    with open(os.path.join(downloads_folder, 'otl_upload_links.html'), 'w') as links_file:
+    links_filename = os.path.join(downloads_folder, 'otl_upload_links.html')
+    with open(links_filename, 'w') as links_file:
         for member in members:
             # if member.known_as in ('Nasiq',):
             if True:
@@ -40,7 +41,7 @@ def run_otl_calculator() -> str | None:
                             links_file.write(f'<p>{line}</p>\n')
                     start += timedelta(days=7)
     if cards_to_book:
-        return f'{cards_to_book=}'
+        return f'{cards_to_book=}', links_filename
     return None
 
 
