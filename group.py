@@ -9,7 +9,7 @@ from mars_group import members
 from work_folders import downloads_folder
 
 
-def run_otl_calculator() -> tuple[str, str] | None:
+def run_otl_calculator(force_this_week: bool = False) -> tuple[str, str] | None:
     """Iterate through staff, listing the hours to upload for new OTL cards required."""
     # staff.verbose = True
     cards_to_book = 0
@@ -24,7 +24,8 @@ def run_otl_calculator() -> tuple[str, str] | None:
                 start = date.today()
                 start -= timedelta(days=start.weekday())  # Monday of current week
                 start -= timedelta(days=7*4)  # check last few weeks
-                while start + timedelta(days=3) <= date.today():  # wait until Thu to do current week
+                # usually wait until Thu to do current week - can force override
+                while start + timedelta(days=0 if force_this_week else 3) <= date.today():
                 # for _ in range(7):
                     hours_booked = member.hours_for_week(start)
                     hours_needed = sum(member.hours_needed(start + timedelta(days=day)) for day in range(5))
@@ -49,12 +50,11 @@ def run_otl_calculator() -> tuple[str, str] | None:
 def leave_cross_check():
     """Iterate through staff, and check Oracle vs Outlook leave bookings."""
     toast = ''
-    _, output_filename = tempfile.mkstemp()
-    with open(output_filename, 'w') as output_file:
+    _, output_filename = tempfile.mkstemp(prefix='leave_cross_check', suffix='.txt')
+    with open(output_filename, 'w', encoding='utf-8') as output_file:
         for member in members:
             # if member.known_as in ('Ben',):
             if True:
-                print('\n' + member.known_as)
                 not_in_oracle, not_in_outlook, output = member.leave_cross_check()
                 if not_in_oracle:
                     toast += f'{member.known_as}: {not_in_oracle=}, {not_in_outlook=}\n'
@@ -71,5 +71,5 @@ def show_leave_dates():
 
 
 if __name__ == '__main__':
-    # run_otl_calculator()
-    print(leave_cross_check())
+    run_otl_calculator(force_this_week=True)
+    # print(leave_cross_check())
