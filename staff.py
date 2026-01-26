@@ -149,7 +149,7 @@ class GroupMember:
         outlook_days -= site_holidays.keys()  # don't include bank holidays
         oracle_days = {day for day, (absence_type, hrs) in self.get_oracle_leave_dates().items()
                        if start <= day <= end and absence_type in ('Annual Leave', 'Special Leave - Paid')}
-        output = '\t\tOutlook\tOracle\n'
+        output = f'{self.known_as}\n\t\tOutlook\tOracle\n\n'
         in_either = outlook_days | oracle_days
         for day in sorted(in_either):
             output += '\t'.join((day.strftime('%d/%m/%Y'),
