@@ -34,14 +34,14 @@ class Code:
         A booking code.
         :param project: The project code, e.g. STGA00001.
         :param task: The task number. Defaults to 01 if not supplied.
-        :param start: The project's start date. Defaults to the start of the current FY.
-        :param end: The project's end date. Defaults to the end of the current FY.
+        :param start: The project's start date. Use the start of the current FY if not provided or starts earlier.
+        :param end: The project's end date. Use the end of the current FY if not provided or finishes later.
         :param priority: The project's priority level.
         """
         self.project = project
         self.task = task
-        self.start = start
-        self.end = end
+        self.start = max(start, fy_start)
+        self.end = min(end, fy_end)
         self.priority = priority
 
     def __repr__(self):
