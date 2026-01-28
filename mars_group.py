@@ -27,12 +27,15 @@ ruedi_post_bridging = otl.Code('STGA02008', start=date(2025, 7, 1),
 ruedi_new_code = otl.Code('STGA02011', '02', start=date(2025, 11, 1), priority=otl.Priority.AGREED)
 zepto_clara_gott = otl.Code('STGA02005', end=date(2026, 2, 28))
 clepto_pocf = otl.Code('STLA00037', '147', start=date(2025, 12, 1))
+# numbers from PoCF Williams EUV Effort.xlsx
+beuv_pocf = otl.Code('to be allocated', start=date(2026, 2, 1))
+
 
 def ukxfel_cdoa(wp: int):
     return otl.Code('STKA00183', f'03.{wp:02d}', end=date(2025, 9, 30))
 
 
-ukxfel_continuation = otl.Code('STGA00183', '01', start=date(2025, 10, 1))
+ukxfel_continuation = otl.Code('STGA00183', '01', start=date(2025, 10, 1), priority=otl.Priority.BALANCING)
 
 epac = otl.Code('STKA01103', '06.01')
 
@@ -69,6 +72,7 @@ members: list[GroupMember] = [
                     otl.Entry(ukxfel_continuation, 0.4),
                     otl.Entry(xfel_rnd, 0.15),
                     otl.Entry(ai_ml),
+                    otl.Entry(beuv_pocf, 53 / otl.hours_per_fte),
                 ])),
     GroupMember('Neil Thompson',
                 206988,
@@ -79,6 +83,7 @@ members: list[GroupMember] = [
                     otl.Entry(ukxfel_continuation, 0.25),
                     otl.Entry(xfel_rnd, 0.25),
                     otl.Entry(novel_acceleration),
+                    otl.Entry(beuv_pocf, 53 / otl.hours_per_fte),
                 ])),
     GroupMember('Kiril Marinov',
                 204936,
