@@ -28,7 +28,7 @@ ruedi_new_code = otl.Code('STGA02011', '02', start=date(2025, 11, 1), priority=o
 zepto_clara_gott = otl.Code('STGA02005', end=date(2026, 2, 28))
 clepto_pocf = otl.Code('STLA00037', '147', start=date(2025, 12, 1))
 # numbers from PoCF Williams EUV Effort.xlsx
-beuv_pocf = otl.Code('to be allocated', start=date(2026, 2, 1))
+beuv_pocf = otl.Code('to be allocated', start=date(2026, 2, 1), end=date(2027, 1, 31))
 
 
 def ukxfel_cdoa(wp: int):
@@ -72,7 +72,8 @@ members: list[GroupMember] = [
                     otl.Entry(ukxfel_continuation, 0.4),
                     otl.Entry(xfel_rnd, 0.15),
                     otl.Entry(ai_ml),
-                    otl.Entry(beuv_pocf, 53 / otl.hours_per_fte),
+                    otl.Entry(beuv_pocf, 53 / otl.hours_per_fte),  # 25/26
+                    # otl.Entry(beuv_pocf, 243 / otl.hours_per_fte),  # 26/27
                 ])),
     GroupMember('Neil Thompson',
                 206988,
@@ -83,7 +84,8 @@ members: list[GroupMember] = [
                     otl.Entry(ukxfel_continuation, 0.25),
                     otl.Entry(xfel_rnd, 0.25),
                     otl.Entry(novel_acceleration),
-                    otl.Entry(beuv_pocf, 53 / otl.hours_per_fte),
+                    otl.Entry(beuv_pocf, 53 / otl.hours_per_fte),  # 25/26
+                    # otl.Entry(beuv_pocf, 424 / otl.hours_per_fte),  # 26/27
                 ])),
     GroupMember('Kiril Marinov',
                 204936,
