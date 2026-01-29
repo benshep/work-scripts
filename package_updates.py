@@ -41,16 +41,21 @@ def get_rss() -> dict[str, str]:
     """Return a list of packages from the Anaconda RSS feed."""
     print('Getting Anaconda RSS feed')
     is_64bits = sys.maxsize > 2**32
-    my_arch = platform.architecture()[0]
+    computer = platform.uname()
+    if computer.processor == 'aarch64':
+        my_arch = 'linux-aarch64'
+    else:
+        my_arch = {'Linux': 'linux', 'Windows': 'win'}[computer.system] + ('-64' if is_64bits else '-32')
+
     url = 'https://repo.anaconda.com/pkgs/rss.xml'
     feed = feedparser.parse(url)
     if feed.status != 200:
         return {}
     packages = {}
     for entry in feed.entries:
-        if match := re.findall(r'([\w\-_]+) (\d[\w.,\-]+) \[(.*)]', entry.title):
-            name, version, architectures = match[0]
-            architectures = architectures.split(', ')
+        # e.g. uuid-utils 0.12.0 [linux-64, linux-aarch64, osx-arm64, win-64]
+        name, version, architectures = entry.title.split(' ', maxsplit=2)
+        if my_arch in architectures or 'noarch' in architectures:
             packages[name] = version
     print(len(packages), 'packages available')
     return packages
