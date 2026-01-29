@@ -6,6 +6,7 @@ GroupAdd, excel, ahk_class XLMAIN ; Add only Excel windows to this group.
 GroupAdd, terminal, ahk_exe WindowsTerminal.exe ; Add Terminal windows to this group.
 GroupAdd, terminal, ahk_exe pycharm64.exe ; Add PyCharm windows to this group.
 GroupAdd, powerpoint, ahk_class PPTFrameClass ; Add PyCharm windows to this group.
+GroupAdd, typora, ahk_exe Typora.exe
 
 ProgramFilesX86 = C:\Program Files (x86)
 SetTitleMatchMode, 2
@@ -47,6 +48,8 @@ Esc::!F4
 #q::GroupActivate, powerpoint, r
 #IfWinExist ahk_exe WindowsTerminal.exe
 #c::GroupActivate, terminal, r
+#IfWinExist ahk_exe Typora.exe
+#+n::GroupActivate, typora, r
 #IfWinExist ahk_class TeamsWebView
 #!c::WinActivate
 #IfWinExist ahk_class ApplicationFrameWindow
@@ -121,6 +124,7 @@ F1:: ;mute/unmute both Teams and Zoom
 #+w::Run mailto:
 #i::Run %ProgramFiles%\irfanview\i_view64.exe
 #n::Run C:\ProgramData\chocolatey\lib\metapad\tools\metapad.exe
+#+n::Run C:\Program Files\Typora\Typora.exe
 #c::Run cmd.exe "/K" title Python & cd %UserProfile%\Misc\Scripts & %UserProfile%\Miniconda3\Scripts\activate.bat %PythonEnv% & python
 #t::Run taskmgr.exe
 ; Win-Shift-T for a random Trello task
@@ -174,14 +178,14 @@ F1:: ;mute/unmute both Teams and Zoom
 ::\omega::ω
 
 ;Subscripts
-::CO2::CO₂
-::kgCO2::kgCO₂
-::kgCO2e::kgCO₂e
-::tCO2e::tCO₂e
-::CO2e::CO₂e
+:*:CO2::CO₂
 
 ;Emojis
 :::)::☺
+
+;@@ to enter work email, @~ to enter home email
+:*:@@::ben.shepherd@stfc.ac.uk
+:*:@~::bjashepherd@gmail.com
 
 ;Ctrl+; to insert date, Ctrl+Shift+; to insert time (like Excel), Ctrl+Alt+; to insert yyyy-mm-dd
 ^;::
