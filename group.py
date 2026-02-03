@@ -100,11 +100,9 @@ def check_in():
     for filename in files:
         name = filename[:-4]
         for checkin in checkins:
-            timestamp = checkin[:18]
-            if not checkin[18:].startswith(name):  # skip timestamp
+            if name not in checkin:
                 continue
-            details = checkin[len(name) + 19:]
-            line = f'{timestamp}{details}\n'
+            line = checkin + '\n'
             if line not in open(filename).read():
                 print(checkin)
                 open(filename, 'a').write(line)
