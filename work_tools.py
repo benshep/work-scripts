@@ -17,6 +17,10 @@ def read_excel(excel_filename: str, **kwargs):
     return result
 
 
+class StoredDataIssue(Exception):
+    pass
+
+
 class StoredData:
     """Data stored in an Excel file. Extracting it takes time, so cache the contents and refresh if the file changes."""
 
@@ -26,11 +30,14 @@ class StoredData:
         self.data = pandas.DataFrame()
         self.read_excel_kwargs = read_excel_kwargs
 
-    def fetch(self):
-        """Fetch the data, or return the cached value if the file hasn't changed."""
+    def fetch(self, strict: bool = True):
+        """Fetch the data, or return the cached value if the file hasn't changed.
+        If strict is True, raise an exception if any columns are 'Unnamed'."""
         modified_time = os.path.getmtime(self.filename)
         if modified_time > self.modified_time:
             self.data = read_excel(self.filename, **self.read_excel_kwargs)
+            if strict and any('Unnamed' in column for column in self.data.columns):
+                raise StoredDataIssue(f'Unnamed columns found in {self.filename}')
             self.modified_time = modified_time
         return self.data
 

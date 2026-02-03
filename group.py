@@ -141,6 +141,6 @@ def check_in() -> str | bool:
 
 
 if __name__ == '__main__':
-    # run_otl_calculator(force_this_week=True)
+    print(run_otl_calculator(force_this_week=True))
     # print(leave_cross_check())
-    print(check_in())
+    # print(check_in())
