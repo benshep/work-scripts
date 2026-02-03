@@ -3,6 +3,7 @@ import tempfile
 from datetime import date, timedelta, datetime
 from itertools import accumulate
 from math import ceil
+from platform import node
 from urllib.parse import urlencode
 
 from pushbullet import Pushbullet
@@ -85,14 +86,16 @@ def get_checkins() -> list[str]:
             for push in pushes if 'title' not in push]  # most have titles: looking for one without (sent from phone)]
 
 
-def check_in():
+def check_in() -> str | bool:
     """Pick a member of staff to check in with."""
+    if node() != 'DDAST0025':  # only run on desktop
+        return False
     now = datetime.now()
     # when am I free? start with 0900-1700
     my_free_times = outlook.find_free_times()
     if not my_free_times:
         print('No free times available for me')
-        return (now + timedelta(days=1)).replace(hour=9)  # do it 9-10am tomorrow
+        return False
 
     checkins = get_checkins()
     os.chdir(os.path.join(docs_folder, 'Group Leader', 'check_in'))
@@ -110,10 +113,12 @@ def check_in():
     files = sorted(files, key=os.path.getmtime)
     # modified X.Y days ago: round down to nearest X
     ages = list(accumulate((now - datetime.fromtimestamp(os.path.getmtime(filename))).days for filename in files))
+    # Select basically at random, but pick the same one on a given day
+    # Weight older entries higher, and zero weighting to any that are less than one day old
     selected = now.toordinal() % ages[-1]
     index = next(i for i, age in enumerate(ages) if age > selected)
-    # go back to oldest, then onwards to newest
-    files = files[index::-1] + list(reversed(files[-1:index:-1]))
+    # When going through list, go back to oldest, then onwards to newest
+    files = files[index::-1] + files[index + 1:]
     for filename in files:
         name = filename[:-4]
         email = open(filename).read().splitlines()[0]
@@ -121,12 +126,11 @@ def check_in():
         free_overlap = my_free_times & their_free_times
         if not free_overlap:
             print(f'No free time overlap with {name}')
-            index += 1
             continue
         break
     else:
         print('No free time overlap with anyone today')
-        return (now + timedelta(days=1)).replace(hour=9)  # do it 9-10am tomorrow
+        return False
     return f'Check in with {name} at {min(free_overlap).strftime("%H:%M")}'
 
 
