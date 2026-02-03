@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta, datetime
 from shutil import copy2
 from tempfile import mkstemp
 
@@ -33,3 +34,13 @@ class StoredData:
             self.modified_time = modified_time
         return self.data
 
+# https://stackoverflow.com/questions/32723150/rounding-up-to-nearest-30-minutes-in-python#answer-65313918
+def ceil_date(date: datetime, **kwargs) -> datetime:
+    """Round a datetime up to the nearest given increment. kwargs are passed to datetime.timedelta."""
+    secs = timedelta(**kwargs).total_seconds()
+    return datetime.fromtimestamp(date.timestamp() + secs - date.timestamp() % secs)
+
+def floor_date(date: datetime, **kwargs) -> datetime:
+    """Round a datetime down to the nearest given increment. kwargs are passed to datetime.timedelta."""
+    secs = timedelta(**kwargs).total_seconds()
+    return datetime.fromtimestamp(date.timestamp() - date.timestamp() % secs)

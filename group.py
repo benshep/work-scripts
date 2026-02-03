@@ -1,12 +1,19 @@
 import os
 import tempfile
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
+from itertools import accumulate
+from math import ceil
 from urllib.parse import urlencode
 
+from pushbullet import Pushbullet
+
 import oracle
+import outlook
 import staff
 from mars_group import members
-from work_folders import downloads_folder
+from work_folders import downloads_folder, docs_folder
+from work_tools import floor_date
+from pushbullet_api_key import api_key  # local file, keep secret!
 
 
 def run_otl_calculator(force_this_week: bool = False) -> tuple[str, str] | None:
@@ -51,7 +58,7 @@ def leave_cross_check():
     """Iterate through staff, and check Oracle vs Outlook leave bookings."""
     toast = ''
     _, output_filename = tempfile.mkstemp(prefix='leave_cross_check', suffix='.txt')
-    with open(output_filename, 'w', encoding='utf-8') as output_file:
+    with open(output_filename, 'w', encoding='utf-8-sig') as output_file:
         for member in members:
             # if member.known_as in ('Ben',):
             if True:
@@ -70,6 +77,63 @@ def show_leave_dates():
         print(*sorted(day for day in member.off_days - staff.site_holidays.keys()), sep='\n')
 
 
+def get_checkins() -> list[str]:
+    """Read messages back regarding check-ins. For instance: Joe chat in office"""
+    pushbullet = Pushbullet(api_key)
+    pushes = pushbullet.get_pushes(modified_after=(datetime.now() - timedelta(days=7)).timestamp())
+    return [datetime.fromtimestamp(pushes[0]['modified']).strftime('%Y-%m-%d %H:%M: ') + push.get('body', '')
+            for push in pushes if 'title' not in push]  # most have titles: looking for one without (sent from phone)]
+
+
+def check_in():
+    """Pick a member of staff to check in with."""
+    now = datetime.now()
+    # when am I free? start with 0900-1700
+    my_free_times = outlook.find_free_times()
+    if not my_free_times:
+        print('No free times available for me')
+        return (now + timedelta(days=1)).replace(hour=9)  # do it 9-10am tomorrow
+
+    checkins = get_checkins()
+    os.chdir(os.path.join(docs_folder, 'Group Leader', 'check_in'))
+    files = [filename for filename in os.listdir() if filename.endswith('.txt')]
+    for filename in files:
+        name = filename[:-4]
+        for checkin in checkins:
+            timestamp = checkin[:18]
+            if not checkin[18:].startswith(name):  # skip timestamp
+                continue
+            details = checkin[len(name) + 19:]
+            line = f'{timestamp}{details}\n'
+            if line not in open(filename).read():
+                print(checkin)
+                open(filename, 'a').write(line)
+
+    files = sorted(files, key=os.path.getmtime)
+    # modified X.Y days ago: round down to nearest X
+    ages = list(accumulate((now - datetime.fromtimestamp(os.path.getmtime(filename))).days for filename in files))
+    selected = now.toordinal() % ages[-1]
+    index = next(i for i, age in enumerate(ages) if age > selected)
+    # go back to oldest, then onwards to newest
+    files = files[index::-1] + list(reversed(files[-1:index:-1]))
+    for filename in files:
+        name = filename[:-4]
+        email = open(filename).read().splitlines()[0]
+        their_free_times = outlook.find_free_times(email)
+        free_overlap = my_free_times & their_free_times
+        if not free_overlap:
+            print(f'No free time overlap with {name}')
+            index += 1
+            continue
+        break
+    else:
+        print('No free time overlap with anyone today')
+        return (now + timedelta(days=1)).replace(hour=9)  # do it 9-10am tomorrow
+    return f'Check in with {name} at {min(free_overlap).strftime("%H:%M")}'
+
+
+
 if __name__ == '__main__':
-    run_otl_calculator(force_this_week=True)
+    # run_otl_calculator(force_this_week=True)
     # print(leave_cross_check())
+    print(check_in())

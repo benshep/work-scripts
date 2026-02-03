@@ -5,10 +5,13 @@ import re
 import sys
 from datetime import date, datetime, timedelta
 from enum import IntEnum
+from math import ceil
 from time import sleep
 from typing import Protocol, Callable
 
 from progress.bar import IncrementalBar, Bar
+
+from work_tools import floor_date, ceil_date
 
 direct = sys.platform == 'win32'  # access Outlook directly on Windows
 if direct:
@@ -1255,6 +1258,21 @@ def inspect_events():
         os.startfile(filename)
 
 
+def find_free_times(user: str = 'me') -> set[datetime]:
+    """Find free half-hour slots between 09:00 and 17:00 today for the given user."""
+    now = datetime.now()
+    day_start = max(datetime(now.year, now.month, now.day, 9, 0), ceil_date(now, minutes=30))
+    day_end = datetime(now.year, now.month, now.day, 17, 0)
+    free_times = {day_start + timedelta(minutes=30) * i
+                  for i in range(round((day_end - day_start) / timedelta(minutes=30)))}
+    for event in get_appointments_in_range(0, 1, user=user):
+        if event.BusyStatus == OlBusyStatus.free:
+            continue
+        start_rounded = floor_date(event.Start.replace(tzinfo=None), minutes=30)
+        free_times -= {start_rounded + i * timedelta(minutes=30) for i in range(ceil(event.Duration / 30))}
+    return free_times
+
+
 class OutlookService(rpyc.Service):
     def on_connect(self, conn):
         # code that runs when a connection is created
@@ -1284,15 +1302,15 @@ if __name__ == '__main__':
         # change THIS BIT for testing!
         # verbose = True
         # print(*sorted(list(get_dl_ral_holidays())), sep='\n')
-        away_dates = sorted(
-            list(get_away_dates(
-                # datetime(2025, 4, 1), datetime(2026, 3, 31),
-                # user='amelia.pollard@stfc.ac.uk',
-                look_for=is_annual_leave)))
-        print(len(away_dates))
-        print(*away_dates, sep='\n')
+        # away_dates = sorted(
+        #     list(get_away_dates(
+        #         datetime(2025, 4, 1), datetime(2026, 3, 31),
+        #         user='amelia.pollard@stfc.ac.uk',
+                # look_for=is_annual_leave)))
+        # print(len(away_dates))
+        # print(*away_dates, sep='\n')
         # events = get_current_events(min_count=-1)
         # print(len(events))
         # print(*[event.Subject for event in events], sep='\n')
         # get_outlook()
-        # inspect_events()
+        inspect_events()
