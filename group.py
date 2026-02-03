@@ -92,11 +92,13 @@ def check_in() -> str | bool:
         return False
     now = datetime.now()
     # when am I free? start with 0900-1700
+    print('Checking my free time')
     my_free_times = outlook.find_free_times()
     if not my_free_times:
         print('No free times available for me')
         return False
 
+    print('Getting previous checkins')
     checkins = get_checkins()
     os.chdir(os.path.join(docs_folder, 'Group Leader', 'check_in'))
     files = [filename for filename in os.listdir() if filename.endswith('.txt')]
@@ -109,6 +111,8 @@ def check_in() -> str | bool:
             if line not in open(filename).read():
                 print(checkin)
                 open(filename, 'a').write(line)
+                timestamp = datetime.strptime(checkin[:16], '%Y-%m-%d %H:%M').timestamp()
+                os.utime(filename, (timestamp, timestamp))
 
     files = sorted(files, key=os.path.getmtime)
     # modified X.Y days ago: round down to nearest X
@@ -122,6 +126,7 @@ def check_in() -> str | bool:
     for filename in files:
         name = filename[:-4]
         email = open(filename).read().splitlines()[0]
+        print(f'Checking free time for {name}')
         their_free_times = outlook.find_free_times(email)
         free_overlap = my_free_times & their_free_times
         if not free_overlap:
