@@ -2,7 +2,6 @@ import os
 import tempfile
 from datetime import date, timedelta, datetime
 from itertools import accumulate
-from math import ceil
 from platform import node
 from urllib.parse import urlencode
 
@@ -12,9 +11,8 @@ import oracle
 import outlook
 import staff
 from mars_group import members
-from work_folders import downloads_folder, docs_folder
-from work_tools import floor_date
 from pushbullet_api_key import api_key  # local file, keep secret!
+from work_folders import downloads_folder, docs_folder
 
 
 def run_otl_calculator(force_this_week: bool = False) -> tuple[str, str] | None:
@@ -35,6 +33,7 @@ def run_otl_calculator(force_this_week: bool = False) -> tuple[str, str] | None:
                 # usually wait until Thu to do current week - can force override
                 while start + timedelta(days=0 if force_this_week else 3) <= date.today():
                 # for _ in range(7):
+                    member.prev_bookings = {}  # reset in case this has already run
                     hours_booked = member.hours_for_week(start)
                     hours_needed = sum(member.hours_needed(start + timedelta(days=day)) for day in range(5))
                     print(f'{start.strftime("%d/%m/%Y")}: {hours_booked=:.2f}, {hours_needed=:.2f}')
