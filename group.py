@@ -83,7 +83,7 @@ def get_checkins() -> list[str]:
     """Read messages back regarding check-ins. For instance: Joe chat in office"""
     pushbullet = Pushbullet(api_key)
     pushes = pushbullet.get_pushes(modified_after=(datetime.now() - timedelta(days=7)).timestamp())
-    return [datetime.fromtimestamp(pushes[0]['modified']).strftime('%Y-%m-%d %H:%M: ') + push.get('body', '')
+    return [datetime.fromtimestamp(push['modified']).strftime('%Y-%m-%d %H:%M: ') + push.get('body', '')
             for push in pushes if 'title' not in push]  # most have titles: looking for one without (sent from phone)]
 
 
