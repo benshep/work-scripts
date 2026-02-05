@@ -21,6 +21,7 @@ def run_otl_calculator(force_this_week: bool = False) -> tuple[str, str] | None:
     cards_to_book = 0
     links_filename = os.path.join(downloads_folder, 'otl_upload_links.html')
     with open(links_filename, 'w') as links_file:
+        links_file.write('<html><head><title>OTL bookings</title></head>\n<body>\n')
         for member in members:
             # if member.known_as in ('Nasiq',):
             if True:
@@ -49,6 +50,7 @@ def run_otl_calculator(force_this_week: bool = False) -> tuple[str, str] | None:
                         for line in lines:
                             links_file.write(f'<p>{line}</p>\n')
                     start += timedelta(days=7)
+        links_file.write('</body></html>\n')
     if cards_to_book:
         return f'{cards_to_book=}', links_filename
     return None
