@@ -158,7 +158,7 @@ def read_licenses():
 
     print(f"{program_name} license log analysis")
     start_date = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=90)
-    print(f"Start date: {str(start_date)}")
+    print("Start date:", start_date)
     timestamp = None
     timezone = None
 
@@ -218,7 +218,7 @@ def read_licenses():
             except ValueError:
                 max_len = 'N/A'
                 last_use = 'never'
-            line = f'  {username} ({email}): {len(user.checkouts)} uses, total {str(user.total_len)}, {last_use=:}'
+            line = f'  {username} ({email}): {len(user.checkouts)} uses, total {user.total_len}, {last_use=:}'
             if user.denied > 0:
                 line += f', denied {user.denied} times'
             print(line)
