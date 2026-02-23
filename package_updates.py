@@ -102,7 +102,11 @@ def trigger_update() -> None:
 
 def run_command(command: str | list[str]) -> list[str]:
     """Runs a command and returns the output split into lines."""
-    return subprocess.check_output(command).decode('cp1252', 'ignore').split('\r\n')
+    try:
+        output = subprocess.check_output(command, timeout=60)
+    except subprocess.TimeoutExpired as timed_out:
+        output = timed_out.output
+    return output.decode('cp1252', 'ignore').split('\r\n')
 
 
 def find_new_python_packages() -> str:
