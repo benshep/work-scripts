@@ -42,6 +42,7 @@ epac = otl.Code('STKA01103', '06.01')
 members: list[GroupMember] = [
     GroupMember('Ben Shepherd', 207835,
                 person_id=100000020410836, assignment_id=300000117877863,
+                title='Mr',
                 booking_plan=otl.BookingPlan([
                     otl.Entry(epac, 0.05),
                     otl.Entry(dae, 0.08),
@@ -106,6 +107,7 @@ members: list[GroupMember] = [
     GroupMember('Alexander Hinton',
                 201375,
                 'alex.hinton@stfc.ac.uk', known_as='Alex H',
+                title='Mr',
                 person_id=100000020413904, assignment_id=300000117923738,
                 booking_plan=otl.BookingPlan([
                     otl.Entry(dae, 0.3),
@@ -129,6 +131,7 @@ members: list[GroupMember] = [
     GroupMember('Matthew King',
                 207007,
                 'matthew.king@stfc.ac.uk', known_as='Matt',
+                title='Mr',
                 person_id=100000020413933, assignment_id=300000117929802,
                 booking_plan=otl.BookingPlan([
                     otl.Entry(clara_scientific, 0.17),
@@ -137,6 +140,7 @@ members: list[GroupMember] = [
                 ])),
     GroupMember('Nasiq Ziyan',
                 207521,
+                title='Mr',
                 person_id=100000020417760, assignment_id=300000117981407,
                 booking_plan=otl.BookingPlan([
                     otl.Entry(clara_scientific, 0.17),

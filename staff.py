@@ -68,11 +68,15 @@ class GroupMember:
 
     name: str
     """Full name of staff member as listed in Oracle Fusion."""
+    name_tuple: tuple[str, str]
+    """A tuple of (first_name, surname)."""
     person_number: int
     """Oracle Fusion person number. Required for OTL bulk upload. View the person number for all your staff at
     https://fa-evzn-saasfaukgovprod1.fa.ocs.oraclecloud.com/fscmUI/redwood/human-resources/feature/launch?action=ManageDirectReportsforPerson"""
     email: str
     """Email address of staff member. Defaults to firstname.surname@stfc.ac.uk if not supplied."""
+    title: str
+    """Title. Defaults to Doctor."""
     known_as: str
     """'Nickname' of staff member. Used as a short name. Defaults to first name.
     Often useful to set this when two group members have the same first name."""
@@ -83,12 +87,13 @@ class GroupMember:
     booking_plan: otl.BookingPlan
     """OTL booking plan for staff member."""
 
-    def __init__(self, name: str, person_number: int, email: str = '',
+    def __init__(self, name: str | tuple[str, str], person_number: int, email: str = '', title: str = 'Doctor',
                  person_id: int = 0, assignment_id: int = 0,
                  known_as: str = '', booking_plan: otl.BookingPlan = None,
                  ignore_days: set[date] = None):
         """A member of staff.
-        :param name: Full name as listed in Oracle Fusion.
+        :param name: Full name as listed in Oracle Fusion. Supply as a string "first_name surname",
+        or use tuple of (first_name, surname) if either have extra spaces in (e.g. Juan Antonio Gomez Moriano).
         :param person_number: Oracle Fusion person number. Required for OTL bulk upload. View the person number for all your staff at
     https://fa-evzn-saasfaukgovprod1.fa.ocs.oraclecloud.com/fscmUI/redwood/human-resources/feature/launch?action=ManageDirectReportsforPerson
         :param email: Email address. Defaults to firstname.surname@stfc.ac.uk if not supplied.
@@ -98,11 +103,13 @@ class GroupMember:
         :param booking_plan: OTL booking plan.
         :param ignore_days: A set of dates to ignore when cross-checking leave dates.
         """
-        self.name = name
+        self.name_tuple = name if isinstance(name, tuple) else name.split(' ')
+        self.name = ' '.join(name)
         self.person_number = person_number
         self.person_id = person_id
         self.assignment_id = assignment_id
         self.email = email or name.replace(' ', '.').lower() + '@stfc.ac.uk'
+        self.title = title
         self.known_as = known_as or name.split(' ')[0]
         # print(self.known_as)
         self.booking_plan = booking_plan or otl.BookingPlan([])
@@ -110,6 +117,11 @@ class GroupMember:
         self.new_bookings = Counter()
         self.prev_bookings = {}
         self.ignore_days = ignore_days or set()
+
+    def formal_name(self):
+        """Return 'formal name', used e.g. in budget sheet."""
+        first_name, surname = self.name_tuple
+        return f'{surname}, {self.title} {first_name}'
 
     def get_oracle_leave_dates(self) -> dict[datetime, tuple[str, float]]:
         """Get leave dates using Oracle data for a staff member.

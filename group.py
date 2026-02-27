@@ -5,12 +5,14 @@ from itertools import accumulate
 from platform import node
 from urllib.parse import urlencode
 
+from dateutil.relativedelta import relativedelta
 from pushbullet import Pushbullet
 
 import oracle
 import outlook
 import staff
 from mars_group import members
+from otl import fy_start
 from pushbullet_api_key import api_key  # local file, keep secret!
 from work_folders import downloads_folder, docs_folder
 
@@ -140,8 +142,25 @@ def check_in() -> str | bool:
     return f'Check in with {name} at {min(free_overlap).strftime("%H:%M")}'
 
 
+def list_ftes():
+    """List staff and committed time against projects."""
+    for member in sorted(members, key=lambda person: person.formal_name()):
+        for entry in member.booking_plan.entries:
+            print(
+                member.formal_name(),
+                entry.code,
+                entry.start_date.strftime('%d/%m/%Y'),
+                entry.end_date.strftime('%d/%m/%Y'),
+                entry.annual_fte,
+                '',
+                *[entry.annual_fte if entry.start_date <= fy_start + relativedelta(months=+i) <= entry.end_date else 0
+                  for i in range(12)],
+            sep='\t')
+
+
 
 if __name__ == '__main__':
-    print(run_otl_calculator(force_this_week=True))
+    # print(run_otl_calculator(force_this_week=True))
     # print(leave_cross_check())
     # print(check_in())
+    list_ftes()
