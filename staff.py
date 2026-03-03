@@ -103,8 +103,8 @@ class GroupMember:
         :param booking_plan: OTL booking plan.
         :param ignore_days: A set of dates to ignore when cross-checking leave dates.
         """
-        self.name_tuple = name if isinstance(name, tuple) else name.split(' ')
-        self.name = ' '.join(name)
+        self.name_tuple = name if isinstance(name, tuple) else tuple(name.split(' ', maxsplit=1))
+        self.name = ' '.join(self.name_tuple)
         self.person_number = person_number
         self.person_id = person_id
         self.assignment_id = assignment_id
