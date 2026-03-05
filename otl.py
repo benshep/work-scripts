@@ -29,7 +29,8 @@ class Code:
 
     def __init__(self, project: str, task: str = '01',
                  start: date = fy_start, end: date = fy_end,
-                 priority: Priority = Priority.EXTERNAL):
+                 priority: Priority = Priority.EXTERNAL,
+                 hours_type: str = 'Labour - Straight Time'):
         """
         A booking code.
         :param project: The project code, e.g. STGA00001.
@@ -37,24 +38,27 @@ class Code:
         :param start: The project's start date. Use the start of the current FY if not provided or starts earlier.
         :param end: The project's end date. Use the end of the current FY if not provided or finishes later.
         :param priority: The project's priority level.
+        :param hours_type: The project's hours type. Defaults to 'Labour - Straight Time'.
         """
         self.project = project
         self.task = task
         self.start = max(start, fy_start)
         self.end = min(end, fy_end)
         self.priority = priority
+        self.hours_type = hours_type
 
     def __repr__(self):
         return f'{self.project} {self.task}'
 
 
 # What to book various types of leave to? These are specific ASTeC codes
-annual_leave = Code('STRA00009', '01.01')
-special_paid_leave = Code('STRA00009', '01.02')
-parental_leave = Code('STRA00009', '01.03')
-sick_leave = Code('STRA00009', '01.04')
-unpaid = Code('(no booking)', 'N/A')  # TODO: need to deal with when we move to automated bookings
-no_booking = Code('(no booking)', 'N/A')
+unproductive = 'Unproductive - Straight Time'
+annual_leave = Code('STRA00009', '01.01', hours_type=unproductive)
+special_paid_leave = Code('STRA00009', '01.02', hours_type=unproductive)
+parental_leave = Code('STRA00009', '01.03', hours_type=unproductive)
+sick_leave = Code('STRA00009', '01.04', hours_type=unproductive)
+unpaid = Code('(no booking)', 'N/A', hours_type=unproductive)  # TODO: need to deal with when we move to automated bookings
+no_booking = Code('(no booking)', 'N/A', hours_type=unproductive)
 unproductive_code = {  # list of possible Absence Types in Fusion
     'Annual Leave': annual_leave,
     'Bank Holiday': annual_leave,
