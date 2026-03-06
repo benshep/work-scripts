@@ -2,6 +2,7 @@ import os
 import tempfile
 from datetime import date, timedelta, datetime
 from itertools import accumulate
+from pathlib import Path
 from platform import node
 from urllib.parse import urlencode
 
@@ -23,11 +24,21 @@ def run_otl_calculator(force_this_week: bool = False) -> tuple[str, str] | None:
     cards_to_book = 0
     links_filename = os.path.join(downloads_folder, 'otl_upload_links.html')
     with open(links_filename, 'w') as links_file:
-        links_file.write('<html><head><title>OTL bookings</title></head>\n<body>\n')
+        folder = os.path.split(__file__)[0]
+        css_path = Path(os.path.join(folder, 'redwood.css')).as_uri()
+        links_file.write(f'''<!doctype html><html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>OTL bookings</title>
+    <link rel="stylesheet" href="{css_path}" id="css" type="text/css">
+</head>
+<body>
+    <main class="app">
+''')
         for member in members:
             # if member.known_as in ('Nasiq',):
             if True:
-                links_file.write(f'<h2>{member.known_as}</h2>\n')
                 print('\n', member.name)
                 member.update_off_days(force_reload=False)
                 start = date.today()
@@ -40,19 +51,45 @@ def run_otl_calculator(force_this_week: bool = False) -> tuple[str, str] | None:
                     hours_booked = member.hours_for_week(start)
                     hours_needed = sum(member.hours_needed(start + timedelta(days=day)) for day in range(5))
                     print(f'{start.strftime("%d/%m/%Y")}: {hours_booked=:.2f}, {hours_needed=:.2f}')
+                    end = start + timedelta(days=6)
                     if hours_needed - hours_booked > 0.01:
                         cards_to_book += 1
                         params = {'calledFromAddTimeCard': 'true', 'pAsofdate': start.strftime('%Y-%m-%d')}
                         if member.known_as != 'Ben':
                             params |= {'pPersonId': member.person_id, 'userContext': 'LINE_MANAGER'}
                         url = oracle.apps[('home',)] + 'time/timecards/landing-page?' + urlencode(params)
-                        links_file.write(f'<p><a href="{url}">{start.strftime("%d/%m/%Y")}</a></p>\n')
-                        lines = list(member.bulk_upload_lines(start, manual_mode=True))
-                        print(*lines, sep='\n')
-                        for line in lines:
-                            links_file.write(f'<p>{line}</p>\n')
+                        links_file.write(f'''
+        <section class="card">
+            <header class="card-header">
+                <h1>Time Card</h1>
+            </header>
+            <div class="meta">
+                <div class="item">
+                    <div class="label">Person</div>
+                    <div class="value">{member.name}</div>
+                </div>
+                <div class="item">
+                    <div class="label">Person Number</div>
+                    <div class="value">{member.person_number}</div>
+                </div>
+                <div class="item">
+                    <div class="label">Time Card Period</div>
+                    <div class="value">{start.strftime("%d/%m/%Y")} - {end.strftime("%d/%m/%Y")}</div>
+                </div>
+                <div class="item">
+                    <div class="label">Scheduled Hours</div>
+                    <div class="value">{hours_needed:.1f}</div>
+                </div>
+                <div class="item">
+                    <div class="label">Upload Link</div>
+                    <div class="value"><a href="{url}">Submit Timecard</a></div>
+                </div>
+            </div>
+''')
+                        links_file.write(member.otl_upload_page(start))
+                        links_file.write('        </section>')
                     start += timedelta(days=7)
-        links_file.write('</body></html>\n')
+        links_file.write('    </main>\n</body>\n</html>\n')
     if cards_to_book:
         return f'{cards_to_book=}', links_filename
     return None
@@ -160,7 +197,7 @@ def list_ftes():
 
 
 if __name__ == '__main__':
-    # print(run_otl_calculator(force_this_week=True))
+    print(run_otl_calculator(force_this_week=True))
     # print(leave_cross_check())
     # print(check_in())
-    list_ftes()
+    # list_ftes()

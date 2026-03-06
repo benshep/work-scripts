@@ -1,0 +1,199 @@
+/* ===== Redwood (very small subset) ===== */
+:root{
+  /* Neutral palette + brand link pulled from Redwood */
+  --oj-neutral-0: #ffffff;
+  --oj-neutral-10: rgb(251,249,248);
+  --oj-neutral-20: rgb(245,244,242);
+  --oj-neutral-40: rgb(228,225,221);
+  --oj-neutral-100: rgb(123,117,112);
+  --oj-neutral-170: rgb(49,45,42);
+  --oj-neutral-180: rgb(32,30,28);
+  --oj-neutral-190: rgb(22,21,19);
+  --oj-brand-ink:  rgb(0,104,140); /* Redwood link color */
+  --oj-divider: rgba(22,21,19,0.12);
+  --oj-hover:   rgba(22,21,19,0.08);
+  --oj-active:  rgba(22,21,19,0.16);
+  --oj-surface: var(--oj-neutral-0);
+  --oj-body-bg: var(--oj-neutral-10);
+
+  /* Typography scale (subset) */
+  --h5-size: 1.25rem;
+  --h6-size: 1.125rem;
+  --body-md: 1rem;
+  --body-sm: 0.859rem;
+
+  /* Radius + spacing (subset) */
+  --radius-md: .25rem;
+  --space-2: .5rem;
+  --space-3: .75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+
+  /* Button tokens (Redwood-like chrome) */
+  --btn-height: 2.75rem;
+  --btn-font: var(--body-sm);
+  --btn-solid-bg: rgba(22,21,19,0.08);
+  --btn-solid-bg-hover: rgba(22,21,19,0.12);
+  --btn-solid-bg-active: rgba(22,21,19,0.16);
+  --btn-text: var(--oj-neutral-190);
+  --btn-border: transparent;
+
+  /* Table */
+  --table-header-bg: var(--oj-neutral-20);
+  --table-row-hover: var(--oj-hover);
+  --table-border: var(--oj-divider);
+}
+
+html {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  background: var(--oj-body-bg);
+  color: var(--oj-neutral-190);
+  line-height: 1.5;
+}
+
+/* ===== Layout ===== */
+.app {
+  max-width: 1100px;
+  margin: 2rem auto;
+  padding: 0 var(--space-4);
+}
+
+.card {
+  background: var(--oj-surface);
+  border: 1px solid var(--oj-divider);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 8px 0 rgba(0,0,0,.08);
+  margin-bottom: 50px;
+}
+
+/* Page header override: burgundy background */
+.card-header {
+  border-bottom: 1px solid var(--oj-divider);
+  padding: var(--space-4);
+
+  /* Burgundy colour */
+  background: #6c3f49;     /* deep burgundy */
+  color: #ffffff;
+}
+
+.card-header h1 {
+  margin: 0 0 .25rem 0;
+  font-size: var(--h5-size);
+  font-weight: 800;
+  color: #ffffff;          /* ensure text stays readable */
+}
+
+.card-header .subtle {
+  color: rgba(255,255,255,0.8);
+}
+
+/* Meta row under header */
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding: 0 var(--space-4) var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--oj-divider);
+}
+.meta .item {
+  min-width: 200px;
+  font-size: var(--body-sm);
+}
+.meta .label {
+  color: rgba(22,21,19,.7);
+}
+.meta .value {
+  font-weight: 600;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--oj-divider);
+  background: linear-gradient(to bottom, rgba(0,0,0,0.02), rgba(0,0,0,0));
+}
+button {
+  height: var(--btn-height);
+  padding: 0 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--btn-border);
+  background: var(--btn-solid-bg);
+  color: var(--btn-text);
+  font-weight: 600;
+  font-size: var(--btn-font);
+  cursor: pointer;
+}
+button:hover { background: var(--btn-solid-bg-hover); }
+button:active { background: var(--btn-solid-bg-active); }
+button.primary {
+  /* Redwood CTA uses a darker neutral; we emulate with neutral-170 background */
+  background: rgb(49,45,42);
+  color: #fff;
+}
+button.primary:hover { background: rgb(58,54,50); }
+button.primary:active { background: rgb(71,66,62); }
+
+/* Content area */
+.card-content {
+  padding: var(--space-4);
+}
+
+/* Table */
+.table-wrap {
+  border: 1px solid var(--table-border);
+  border-radius: var(--radius-md);
+  overflow: auto;
+}
+table {
+  width: 100%;
+  border-collapse: separate; /* to keep sticky header shadow clean */
+  border-spacing: 0;
+  font-size: var(--body-sm);
+}
+thead th {
+  position: sticky;
+  top: 0;
+  background: var(--table-header-bg);
+  text-align: left;
+  font-weight: 700;
+  color: var(--oj-neutral-190);
+  border-bottom: 1px solid var(--table-border);
+  padding: .625rem .75rem;
+  z-index: 1;
+}
+tbody td {
+  border-bottom: 1px solid var(--table-border);
+  padding: .625rem .75rem;
+}
+tbody tr:nth-child(even) td {
+  background: rgba(0,0,0,0.015);
+}
+tbody tr:hover td {
+  background: var(--table-row-hover);
+}
+
+/* Number cells align end; keep totals bold */
+th.num { text-align: right; font-variant-numeric: tabular-nums; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+td.total { font-weight: 700; }
+
+/* Links */
+a { color: var(--oj-brand-ink); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Helpers */
+.kv {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  gap: 0 .5rem;
+  align-items: baseline;
+}
+.kv .k { color: rgba(22,21,19,.7); }
+.kv .v { font-weight: 600; }

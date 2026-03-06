@@ -342,6 +342,40 @@ class GroupMember:
                         'CREATE', '', '', ''
                     ])
 
+    def otl_upload_page(self, week_beginning: date) -> str:
+        """Return HTML output for the OTL upload page."""
+        week_beginning -= timedelta(days=week_beginning.weekday())
+        week_bookings = [self.daily_bookings(week_beginning + timedelta(days=day)) for day in range(5)]
+        all_codes = set().union(*[daily.keys() for daily in week_bookings])
+        week_table = {code: [daily.get(code, 0) for daily in week_bookings] for code in all_codes}
+        html = f'''
+            <div class="table-wrap">
+                <table role="grid" aria-label="Time card grid">
+                    <thead>
+                        <tr>
+                            <th></th> <!-- blank column for index -->
+                            <th>Project</th>
+                            <th>Task</th>
+                            <th>Hours Type *</th>
+'''
+        for day in range(5):
+            entry_date = week_beginning + timedelta(days=day)
+            html += ' ' * 28 + entry_date.strftime('<th class="num">%b %d,%a</th>\n')  # e.g. Feb 09,Mon
+        html += '                        </tr>\n                    </thead>\n                    <tbody>\n'
+        for i, (code, hours) in enumerate(sorted(week_table.items(), key=lambda item: repr(item))):
+            html += f'''
+                        <tr>
+                            <td>{i + 1}</td>
+                            <td>{code.project}</td>
+                            <td>{code.task}</td>
+                            <td>{code.hours_type}</td>
+'''
+            for hour in hours:
+                html += ' ' * 28 + f'<td class="num">{hour:.02f}</td>\n'
+            html += '                        </tr>\n'
+        html += '                    </tbody>\n                </table>\n            </div>\n'
+        return html
+
 
 def dicts_close(dict1: dict, dict2: dict) -> bool:
     """Return True if dict1 and dict2 are non-empty, have the same keys and all their values are close."""
