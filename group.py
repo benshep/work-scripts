@@ -25,14 +25,17 @@ def run_otl_calculator(force_this_week: bool = False) -> tuple[str, str] | None:
     links_filename = os.path.join(downloads_folder, 'otl_upload_links.html')
     with open(links_filename, 'w') as links_file:
         folder = os.path.split(__file__)[0]
-        css_path = Path(os.path.join(folder, 'redwood.css')).as_uri()
+        css_filename = os.path.join(folder, 'redwood.css')
+        css = open(css_filename).read()
         # language=HTML
         links_file.write(f'''<!doctype html><html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>OTL bookings</title>
-    <link rel="stylesheet" href="{css_path}" id="css" type="text/css">
+    <style>
+{css}
+    </style>
 </head>
 <body>
     <main class="app">
