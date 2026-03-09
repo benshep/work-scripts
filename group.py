@@ -26,6 +26,7 @@ def run_otl_calculator(force_this_week: bool = False) -> tuple[str, str] | None:
     with open(links_filename, 'w') as links_file:
         folder = os.path.split(__file__)[0]
         css_path = Path(os.path.join(folder, 'redwood.css')).as_uri()
+        # language=HTML
         links_file.write(f'''<!doctype html><html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -58,6 +59,7 @@ def run_otl_calculator(force_this_week: bool = False) -> tuple[str, str] | None:
                         if member.known_as != 'Ben':
                             params |= {'pPersonId': member.person_id, 'userContext': 'LINE_MANAGER'}
                         url = oracle.apps[('home',)] + 'time/timecards/landing-page?' + urlencode(params)
+                        # language=HTML
                         links_file.write(f'''
         <section class="card">
             <header class="card-header">
@@ -89,6 +91,7 @@ def run_otl_calculator(force_this_week: bool = False) -> tuple[str, str] | None:
                         links_file.write(member.otl_upload_page(start))
                         links_file.write('        </section>')
                     start += timedelta(days=7)
+        # language=HTML
         links_file.write('    </main>\n</body>\n</html>\n')
     if cards_to_book:
         return f'{cards_to_book=}', links_filename

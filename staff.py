@@ -115,7 +115,6 @@ class GroupMember:
         self.booking_plan = booking_plan or otl.BookingPlan([])
         self.off_days = site_holidays.copy()  # need an independent copy of it, since we'll be making changes!
         self.new_bookings = Counter()
-        self.prev_bookings = {}
         self.ignore_days = ignore_days or set()
 
     def formal_name(self):
@@ -317,7 +316,7 @@ class GroupMember:
                 for off_datetime, (absence_type, off_hours) in self.off_days.items()
                 if ymd(when) == ymd(off_datetime)}  # for comparison between dates and datetimes
 
-    def bulk_upload_lines(self, week_beginning: date, manual_mode: bool = False) -> Generator[str]:
+    def bulk_upload_lines(self, week_beginning: date) -> Generator[str]:
         """Generate a series of entries for the bulk upload CSV file, with OTL hours for the given week.
         If manual_mode is True, outputs more user-readable entries."""
         # Coerce back to the beginning of the week (Monday)
@@ -325,16 +324,8 @@ class GroupMember:
         for day in range(5):
             use_date = week_beginning + timedelta(days=day)
             bookings = self.daily_bookings(use_date)
-            if manual_mode:
-                line = use_date.strftime('%a')  # Mon
-                if dicts_close(bookings, self.prev_bookings):
-                    yield line + ' - as above'
-                    continue
-                yield line
-            self.prev_bookings = bookings
             for code, hours in bookings.items():
-                yield '\t'.join([str(code), f'{hours:.02f}']) if manual_mode else \
-                    ','.join([
+                yield ','.join([
                         str(self.person_number),
                         code.project, code.task, 'Labour',
                         use_date.strftime('%d/%m/%Y'), f'{hours:.02f}',
@@ -348,7 +339,8 @@ class GroupMember:
         week_bookings = [self.daily_bookings(week_beginning + timedelta(days=day)) for day in range(5)]
         all_codes = set().union(*[daily.keys() for daily in week_bookings])
         week_table = {code: [daily.get(code, 0) for daily in week_bookings] for code in all_codes}
-        html = f'''
+        # language=HTML
+        html = '''
             <div class="table-wrap">
                 <table role="grid" aria-label="Time card grid">
                     <thead>
@@ -363,6 +355,7 @@ class GroupMember:
             html += ' ' * 28 + entry_date.strftime('<th class="num">%b %d,%a</th>\n')  # e.g. Feb 09,Mon
         html += '                        </tr>\n                    </thead>\n                    <tbody>\n'
         for i, (code, hours) in enumerate(sorted(week_table.items(), key=lambda item: repr(item))):
+            # language=HTML
             html += f'''
                         <tr>
                             <td>{i + 1}</td>
