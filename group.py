@@ -136,7 +136,7 @@ def check_in() -> str | bool:
     my_free_times = outlook.find_free_times()
     if not my_free_times:
         print('No free times available for me')
-        return False
+        return True
 
     print('Getting previous checkins')
     checkins = get_checkins()
@@ -175,7 +175,7 @@ def check_in() -> str | bool:
         break
     else:
         print('No free time overlap with anyone today')
-        return False
+        return True
     return f'Check in with {name} at {min(free_overlap).strftime("%H:%M")}'
 
 
