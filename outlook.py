@@ -1261,6 +1261,8 @@ def inspect_events():
 def find_free_times(user: str = 'me') -> set[datetime]:
     """Find free half-hour slots between 09:00 and 17:00 today for the given user."""
     now = datetime.now()
+    if datetime(now.year, now.month, now.day) in get_away_dates(end=1, user=user):  # in case of a multi-day AL booking
+        return set()
     day_start = max(datetime(now.year, now.month, now.day, 9, 0), ceil_date(now, minutes=30))
     day_end = datetime(now.year, now.month, now.day, 17, 0)
     free_times = {day_start + timedelta(minutes=30) * i
@@ -1302,15 +1304,13 @@ if __name__ == '__main__':
         # change THIS BIT for testing!
         # verbose = True
         # print(*sorted(list(get_dl_ral_holidays())), sep='\n')
-        # away_dates = sorted(
-        #     list(get_away_dates(
-        #         datetime(2025, 4, 1), datetime(2026, 3, 31),
-        #         user='amelia.pollard@stfc.ac.uk',
-                # look_for=is_annual_leave)))
-        # print(len(away_dates))
-        # print(*away_dates, sep='\n')
+        # print(*get_away_dates(end=1, user='nasiq.ziyan@stfc.ac.uk'), sep='\n')
         # events = get_current_events(min_count=-1)
         # print(len(events))
         # print(*[event.Subject for event in events], sep='\n')
         # get_outlook()
-        inspect_events()
+        # inspect_events()
+        # holidays = get_dl_ral_holidays(2025) | get_dl_ral_holidays(2026)
+        # print(*('\t'.join((date.strftime('%d/%m/%Y'), description))
+        #         for date, (description, hours) in sorted(holidays.items())), sep='\n')
+        print(*sorted(find_free_times('nasiq.ziyan@stfc.ac.uk')), sep='\n')
