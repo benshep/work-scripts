@@ -4,40 +4,47 @@ import otl
 from staff import GroupMember
 
 # Relevant codes for the group
-magnet_lab = otl.Code('STGA00029', '02', priority=otl.Priority.BALANCING)
-mars_underpinning = otl.Code('STGA00206', priority=otl.Priority.BALANCING)
+magnet_lab = otl.Code('STGA00029', '02', 'Magnet test facility', priority=otl.Priority.BALANCING)
+mars_underpinning = otl.Code('STGA00206', name='MARS Underpinning', priority=otl.Priority.BALANCING)
 clara_scientific = otl.Code('STGA09000', '520',
                             end=date(2025, 11, 30), priority=otl.Priority.AGREED)
-clara_user_facility = otl.Code('STGA00265',
+clara_user_facility = otl.Code('STGA00265', name='CLARA User Facility (incl. machine development) starts Sep 25',
+                               fusion_name='CLARA User Facility',
                                start=clara_scientific.end + timedelta(days=1), priority=otl.Priority.AGREED)
 # was Apr-Aug, 5mths; Sep-Mar, 7mths
 # now Apr-Nov, 8mths; Dec-Mar, 4mths
-scu = otl.Code('STGA00273', priority=otl.Priority.AGREED)
-sustainable_accelerators = otl.Code('STGA00298', priority=otl.Priority.BALANCING)
-xfel_rnd = otl.Code('STGA00241', priority=otl.Priority.BALANCING)
-novel_acceleration = otl.Code('STGA00242', priority=otl.Priority.BALANCING)
+scu = otl.Code('STGA00273', name='Superconducting Undulator', priority=otl.Priority.AGREED)
+sustainable_accelerators = otl.Code('STGA00298', name='Sustainable Acc (incl CESA and NCF)',
+                                    priority=otl.Priority.BALANCING)
+xfel_rnd = otl.Code('STGA00241', name='XFEL R&D', priority=otl.Priority.BALANCING)
+novel_acceleration = otl.Code('STGA00242', name='Novel Acceleration', priority=otl.Priority.BALANCING)
 ai_ml = xfel_rnd  # Code('STGA09999')  # no code yet
-thin_films = otl.Code('STGA00501', priority=otl.Priority.BALANCING)
-novel_neg = otl.Code('STGA00502', priority=otl.Priority.BALANCING)
-dae = otl.Code('STGA02000', '03', end=date(2026, 3, 31))  # now runs to end FY25/26
+thin_films = otl.Code('STGA00501', name='Cavity SRF Thin Film Preparation & Charact', priority=otl.Priority.BALANCING)
+novel_neg = otl.Code('STGA00502', name='Novel NEG', priority=otl.Priority.BALANCING)
+dae = otl.Code('STGA02000', '03', 'ISPF INDIA DAE', end=date(2026, 3, 31))  # now runs to end FY25/26
 ruedi_epsrc_bridging = otl.Code('STGA02006', '02', end=date(2025, 6, 30))
 ruedi_post_bridging = otl.Code('STGA02008', start=date(2025, 7, 1),
                                end=date(2025, 10, 31), priority=otl.Priority.AGREED)
 # code changed in November (email from Julian McKenzie 29/10/25)
-ruedi_new_code = otl.Code('STGA02011', '02', start=date(2025, 11, 1), priority=otl.Priority.AGREED)
-zepto_clara_gott = otl.Code('STGA02005')
-clepto_pocf = otl.Code('STLA00037', '147', start=date(2025, 12, 1))
+ruedi_new_code = otl.Code('STGA02011', '02', name='RUEDI new code', fusion_name='RUEDI 2nd Bridging',
+                          start=date(2025, 11, 1), priority=otl.Priority.AGREED)
+zepto_clara_gott = otl.Code('STGA02005', 'ZEPTO CLARA GOTT')
+clepto_pocf = otl.Code('STLA00037', '147', name='CLEPTO POCF', start=date(2025, 12, 1))
 # numbers from PoCF Williams EUV Effort.xlsx
-beuv_pocf = otl.Code('STLA00037', '151', start=date(2026, 2, 1), end=date(2027, 1, 31))
+beuv_pocf = otl.Code('STLA00037', '151', name='POCF2526-13',
+                     fusion_name='Proof of Concept',
+                     start=date(2026, 2, 1), end=date(2027, 1, 31))
 
 
 def ukxfel_cdoa(wp: int):
     return otl.Code('STKA00183', f'03.{wp:02d}', end=date(2025, 9, 30))
 
 
-ukxfel_continuation = otl.Code('STGA00183', '01', start=date(2025, 10, 1), priority=otl.Priority.BALANCING)
+ukxfel_continuation = otl.Code('STGA00183', '01', name='UK XFEL Design Study - From Oct 25',
+                               fusion_name='UKXFEL ASTeC',
+                               start=date(2025, 10, 1), priority=otl.Priority.BALANCING)
 
-epac = otl.Code('STKA01103', '06.01')
+epac = otl.Code('STKA01103', '06.01', 'EPAC', fusion_name='EPAC Capital')
 
 members: list[GroupMember] = [
     GroupMember('Ben Shepherd', 207835,

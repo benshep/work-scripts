@@ -11,6 +11,7 @@ fy = today.year - (today.month < 4)  # last calendar year if before April
 fy_start = date(fy, 4, 1)
 fy_end = date(fy + 1, 3, 31)
 
+
 # Classes used for OTL bookings
 
 
@@ -27,7 +28,8 @@ class Priority(IntEnum):
 class Code:
     """A project-task pair."""
 
-    def __init__(self, project: str, task: str = '01', name: str = '',
+    def __init__(self, project: str, task: str = '01',
+                 name: str = '', fusion_name: str = '',
                  start: date = fy_start, end: date = fy_end,
                  priority: Priority = Priority.EXTERNAL,
                  hours_type: str = 'Labour - Straight Time'):
@@ -36,6 +38,7 @@ class Code:
         :param project: The project code, e.g. STGA00001.
         :param task: The task number. Defaults to 01 if not supplied.
         :param name: The name of the task, as used in the budget sheet. Defaults to blank.
+        :param fusion_name: The name of the task, as used in Oracle Fusion. Defaults to same as name.
         :param start: The project's start date. Use the start of the current FY if not provided or starts earlier.
         :param end: The project's end date. Use the end of the current FY if not provided or finishes later.
         :param priority: The project's priority level.
@@ -44,6 +47,7 @@ class Code:
         self.project = project
         self.task = task
         self.name = name
+        self.fusion_name = fusion_name or name
         self.start = max(start, fy_start)
         self.end = min(end, fy_end)
         self.priority = priority
@@ -55,11 +59,12 @@ class Code:
 
 # What to book various types of leave to? These are specific ASTeC codes
 unproductive = 'Unproductive - Straight Time'
-annual_leave = Code('STRA00009', '01.01', hours_type=unproductive)
-special_paid_leave = Code('STRA00009', '01.02', hours_type=unproductive)
-parental_leave = Code('STRA00009', '01.03', hours_type=unproductive)
-sick_leave = Code('STRA00009', '01.04', hours_type=unproductive)
-unpaid = Code('(no booking)', 'N/A', hours_type=unproductive)  # TODO: need to deal with when we move to automated bookings
+annual_leave, special_paid_leave, parental_leave, sick_leave = [
+    Code('STRA00009', f'01.{i + 1:02d}',  # 01.01, 01.02, 01.03, 01.04
+         fusion_name='ASTeC Non-Productive Time', hours_type=unproductive)
+    for i in range(4)]
+unpaid = Code('(no booking)', 'N/A',
+              hours_type=unproductive)  # TODO: need to deal with when we move to automated bookings
 no_booking = Code('(no booking)', 'N/A', hours_type=unproductive)
 unproductive_code = {  # list of possible Absence Types in Fusion
     'Annual Leave': annual_leave,
