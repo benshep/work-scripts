@@ -117,10 +117,10 @@ class GroupMember:
         self.new_bookings = Counter()
         self.ignore_days = ignore_days or set()
 
-    def formal_name(self):
+    def formal_name(self, surname_first: bool = True) -> str:
         """Return 'formal name', used e.g. in budget sheet."""
         first_name, surname = self.name_tuple
-        return f'{surname}, {self.title} {first_name}'
+        return f'{surname}, {self.title} {first_name}' if surname_first else f'{self.title} {first_name} {surname}'
 
     def get_oracle_leave_dates(self) -> dict[datetime, tuple[str, float]]:
         """Get leave dates using Oracle data for a staff member.
