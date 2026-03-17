@@ -190,8 +190,8 @@ def list_ftes():
     for member in sorted(members, key=lambda person: person.formal_name()):
         for entry in member.booking_plan.entries:
             print(
-                member.formal_name(),
-                entry.code,
+                member.formal_name(surname_first=False),
+                entry.code.name,
                 entry.start_date.strftime('%d/%m/%Y'),
                 entry.end_date.strftime('%d/%m/%Y'),
                 entry.annual_fte,
@@ -203,7 +203,7 @@ def list_ftes():
 
 
 if __name__ == '__main__':
-    print(run_otl_calculator(force_this_week=True))
+    # print(run_otl_calculator(force_this_week=True))
     # print(leave_cross_check())
-    # print(check_in())
+    print(check_in())
     # list_ftes()
