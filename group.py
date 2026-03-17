@@ -182,7 +182,37 @@ def check_in() -> str | bool:
     else:
         print('No free time overlap with anyone today')
         return True
-    return f'Check in with {name} at {min(free_overlap).strftime("%H:%M")}'
+    return f'Check in with {name} at {datetimes_to_ranges(free_overlap)}'
+
+
+def datetimes_to_ranges(datetimes: set[datetime]) -> str:
+    """Convert a set of datetimes to a list of ranges in a string."""
+    if not datetimes:
+        return ""
+
+    sorted_times = sorted(datetimes)
+    print(sorted_times)
+    half_hour = timedelta(minutes=30)
+
+    ranges = []
+    start = sorted_times[0]
+    end = sorted_times[0]
+
+    for dt in sorted_times[1:]:
+        if dt - end == half_hour:
+            # Extends the current range
+            end = dt
+        else:
+            # Gap found — save current range and start a new one
+            ranges.append((start, end))
+            start = end = dt
+
+    ranges.append((start, end))
+
+    comma_separated_list = ", ".join(
+        f"{start.strftime('%H:%M')}-{(end + half_hour).strftime('%H:%M')}"
+        for start, end in ranges)
+    return ' or '.join(comma_separated_list.rsplit(', ', 1))  # a, b, c -> a, b or c
 
 
 def list_ftes():
