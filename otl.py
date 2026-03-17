@@ -27,7 +27,7 @@ class Priority(IntEnum):
 class Code:
     """A project-task pair."""
 
-    def __init__(self, project: str, task: str = '01',
+    def __init__(self, project: str, task: str = '01', name: str = '',
                  start: date = fy_start, end: date = fy_end,
                  priority: Priority = Priority.EXTERNAL,
                  hours_type: str = 'Labour - Straight Time'):
@@ -35,6 +35,7 @@ class Code:
         A booking code.
         :param project: The project code, e.g. STGA00001.
         :param task: The task number. Defaults to 01 if not supplied.
+        :param name: The name of the task, as used in the budget sheet. Defaults to blank.
         :param start: The project's start date. Use the start of the current FY if not provided or starts earlier.
         :param end: The project's end date. Use the end of the current FY if not provided or finishes later.
         :param priority: The project's priority level.
@@ -42,6 +43,7 @@ class Code:
         """
         self.project = project
         self.task = task
+        self.name = name
         self.start = max(start, fy_start)
         self.end = min(end, fy_end)
         self.priority = priority
