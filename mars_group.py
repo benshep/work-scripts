@@ -25,7 +25,7 @@ ruedi_post_bridging = otl.Code('STGA02008', start=date(2025, 7, 1),
                                end=date(2025, 10, 31), priority=otl.Priority.AGREED)
 # code changed in November (email from Julian McKenzie 29/10/25)
 ruedi_new_code = otl.Code('STGA02011', '02', start=date(2025, 11, 1), priority=otl.Priority.AGREED)
-zepto_clara_gott = otl.Code('STGA02005', end=date(2026, 2, 28))
+zepto_clara_gott = otl.Code('STGA02005')
 clepto_pocf = otl.Code('STLA00037', '147', start=date(2025, 12, 1))
 # numbers from PoCF Williams EUV Effort.xlsx
 beuv_pocf = otl.Code('STLA00037', '151', start=date(2026, 2, 1), end=date(2027, 1, 31))
