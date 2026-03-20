@@ -266,6 +266,8 @@ class GroupMember:
         current_projects = sorted(
             [entry for entry in self.booking_plan.entries if entry.start_date <= when <= entry.end_date],
             key=lambda entry: entry.priority)  # top priority (0) first
+        if not current_projects:
+            return {}
         current_projects[-1].priority = otl.Priority.BALANCING  # in case there are no low-priority projects
         total_low_priority = sum(entry.annual_fte
                                  for entry in current_projects
@@ -355,11 +357,14 @@ class GroupMember:
             html += ' ' * 28 + entry_date.strftime('<th class="num">%b %d,%a</th>\n')  # e.g. Feb 09,Mon
         html += '                        </tr>\n                    </thead>\n                    <tbody>\n'
         for i, (code, hours) in enumerate(sorted(week_table.items(), key=lambda item: repr(item))):
+            code_display_name = code.project
+            if code.fusion_name:
+                code_display_name += ' - ' + code.fusion_name
             # language=HTML
             html += f'''
                         <tr>
                             <td>{i + 1}</td>
-                            <td>{code.project}</td>
+                            <td>{code_display_name}</td>
                             <td>{code.task}</td>
                             <td>{code.hours_type}</td>
 '''
