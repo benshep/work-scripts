@@ -2,8 +2,6 @@ import os
 import tempfile
 from datetime import date, timedelta, datetime
 from itertools import accumulate
-from pathlib import Path
-from platform import node
 from urllib.parse import urlencode
 
 from dateutil.relativedelta import relativedelta
@@ -49,8 +47,8 @@ def run_otl_calculator(force_this_week: bool = False) -> tuple[str, str] | None:
                 start -= timedelta(days=start.weekday())  # Monday of current week
                 start -= timedelta(days=7*4)  # check last few weeks
                 # usually wait until Thu to do current week - can force override
-                while start + timedelta(days=0 if force_this_week else 3) <= date.today():
-                # for _ in range(7):
+                # while start + timedelta(days=0 if force_this_week else 3) <= date.today():
+                for _ in range(7):
                     member.prev_bookings = {}  # reset in case this has already run
                     hours_booked = member.hours_for_week(start)
                     hours_needed = sum(member.hours_needed(start + timedelta(days=day)) for day in range(5))
@@ -134,8 +132,6 @@ def get_checkins() -> list[str]:
 
 def check_in() -> str | bool:
     """Pick a member of staff to check in with."""
-    if node() != 'DDAST0025':  # only run on desktop
-        return False
     now = datetime.now()
     # when am I free? start with 0900-1700
     print('Checking my free time')
@@ -233,7 +229,7 @@ def list_ftes():
 
 
 if __name__ == '__main__':
-    # print(run_otl_calculator(force_this_week=True))
+    print(run_otl_calculator(force_this_week=True))
     # print(leave_cross_check())
-    print(check_in())
+    # print(check_in())
     # list_ftes()
