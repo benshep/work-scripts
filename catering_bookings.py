@@ -40,7 +40,10 @@ def get_bookings(test_mode: bool = False) -> str | bool:
     now = datetime.now()
     for row in rows[1:]:  # skip header row
         cells = row.find_elements(By.TAG_NAME, 'td')
-        if len(cells) < 7:
+        if len(cells) < 13:
+            continue
+        status = cells[12].text
+        if status == 'Cancelled':
             continue
         location = cells[4].text
         # exclude RAL locations
@@ -52,12 +55,14 @@ def get_bookings(test_mode: bool = False) -> str | bool:
         end_time = cells[2].text
         room = cells[5].text.strip() or location  # use location if room is blank
         title = cells[6].text
+        quantity = int(cells[7].text.strip())
+        total_cost = float(cells[8].text.strip().lstrip('£'))
+        cost_per_person = total_cost / quantity
         start_datetime = datetime.strptime(start_time, '%d/%m/%y %H:%M')
         end_datetime = datetime.strptime(end_time, '%d/%m/%y %H:%M')
         if start_datetime.date() <= now.date() and now < end_datetime:  # today, not finished yet?
-            toast += f'{start_time[-5:]}-{end_time[-5:]} {title}, {room}\n'
-        print(start_time, end_time, title, location, room, sep='\t')
-        print(f'{start_time=}, {end_time=}, {title=}, {location=}, {room=}', sep='\t')
+            toast += f'{start_time[-5:]}-{end_time[-5:]} {title}, {room} (£{cost_per_person:.2f} x {quantity})\n'
+        print(start_time, end_time, title, location, f'£{cost_per_person:.2f} x', quantity)
 
     if not test_mode:
         web.quit()
