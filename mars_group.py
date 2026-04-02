@@ -21,6 +21,8 @@ novel_neg = otl.Code('STGA00502', name='Novel NEG', priority=otl.Priority.BALANC
 # code changed in November (email from Julian McKenzie 29/10/25)
 ruedi_new_code = otl.Code('STGA02011', '02', name='RUEDI new code', fusion_name='RUEDI 2nd Bridging',
                           priority=otl.Priority.AGREED)
+clepto_pocf = otl.Code('STLA00037', '147', name='CLEPTO POCF', fusion_name='Proof of Concept',
+                       end=date(2026, 4, 30))
 # numbers from PoCF Williams EUV Effort.xlsx
 beuv_pocf = otl.Code('STLA00037', '151', name='POCF2526-13',
                      fusion_name='Proof of Concept',
@@ -106,6 +108,7 @@ members: list[GroupMember] = [
                 person_id=100000020413904, assignment_id=300000117923738,
                 booking_plan=otl.BookingPlan([
                     otl.Entry(scu),
+                    otl.Entry(clepto_pocf, otl.hours_per_day * 5),
                     otl.Entry(epita, 0.2178),
                     otl.Entry(leaps_tech, 0.25 * 7/19)  # for 27/28: 0.25 * 12/19
                 ])),
@@ -140,7 +143,7 @@ members: list[GroupMember] = [
                 person_id=100000020412335, assignment_id=300000117987914,
                 email='thomas.smith@stfc.ac.uk',
                 booking_plan=otl.BookingPlan([
-                    otl.Entry(magnet_lab)
+                    otl.Entry(magnet_lab, start_date=date(2026, 9, 7)),
                 ]))
 ]
 
