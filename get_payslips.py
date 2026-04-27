@@ -34,7 +34,7 @@ def income_pre_tax(year: int) -> float:
     return total_payments.total()
 
 
-def get_payslips(only_latest: bool = True, test_mode: bool = False) -> str | date:
+def get_payslips(only_latest: bool = True, test_mode: bool = False) -> str | datetime:
     """Download all my payslips, or just the latest."""
     web = go_to_oracle_page('payslips', show_window=test_mode)
     # On page load, shows latest slip
@@ -53,11 +53,11 @@ def get_payslips(only_latest: bool = True, test_mode: bool = False) -> str | dat
         if new_filename in existing_files:
             print(f'Already got payslip for {slip_date.strftime("%b %Y")}')
             # When do we expect to get next one? Paid on second-to-last working day, should see payslip day before
-            today = datetime.now().date()
+            today = datetime.now()
             _, days_in_month = monthrange(today.year, today.month)
             rest_of_month = [today + timedelta(days=d) for d in range(1, days_in_month - today.day + 1)]
             bank_holidays = [bh['date'] for bh in BankHolidays().get_holidays(division=BankHolidays.ENGLAND_AND_WALES)]
-            working_days = [day for day in rest_of_month if day.weekday() < 5 and day not in bank_holidays]
+            working_days = [day for day in rest_of_month if day.weekday() < 5 and day.date() not in bank_holidays]
             return working_days[-3] if len(working_days) > 2 else today + timedelta(days=1)
 
         move(os.path.join(downloads_folder, downloaded_file), new_filename)
@@ -85,9 +85,7 @@ def get_payslips(only_latest: bool = True, test_mode: bool = False) -> str | dat
                 archive.extract(filename)
                 move(filename, new_filename)
                 output += new_filename + '\n'
-
     web.quit()
-
     return output
 
 
