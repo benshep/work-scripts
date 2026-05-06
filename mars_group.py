@@ -4,7 +4,7 @@ import otl
 from staff import GroupMember
 
 # Relevant codes for the group
-magnet_lab = otl.Code('STGA00029', '02', 'Magnet test facility', priority=otl.Priority.BALANCING)
+magnet_lab = otl.Code('STGA00029', '02', 'MARS Group Costs', priority=otl.Priority.BALANCING)
 mars_underpinning = otl.Code('STGA00206', name='MARS Underpinning', priority=otl.Priority.BALANCING)
 clara_user_facility = otl.Code('STGA00265', name='CLARA User Facility (incl. machine development) starts Sep 25',
                                fusion_name='CLARA User Facility',
@@ -24,6 +24,7 @@ ruedi_new_code = otl.Code('STGA02011', '02', name='RUEDI new code', fusion_name=
 clepto_pocf = otl.Code('STLA00037', '147', name='CLEPTO POCF', fusion_name='Proof of Concept',
                        end=date(2026, 4, 30))
 # numbers from PoCF Williams EUV Effort.xlsx
+# not confirmed by BID yet (Teams message from PHW 2/4)
 beuv_pocf = otl.Code('STLA00037', '151', name='POCF2526-13',
                      fusion_name='Proof of Concept',
                      end=date(2027, 1, 31))
@@ -37,7 +38,9 @@ ukxfel_continuation = otl.Code('STGA00183', '01', name='UK XFEL Design Study - F
 epac = otl.Code('STKA01103', '06.01', name='EPAC', fusion_name='EPAC Capital')
 
 # Calculations for EPITA: 2025-07-27 INFRA_TECH budget_IFAST2 Permanent Magnets_FINAL.xlsx
-epita = otl.Code('no code yet', name='EPITA',
+# Task 01: Performance Review & Accelerator Quadrupole Specification
+# Task 02: Modular ZEPTO Product Line Engineering - starts later
+epita = otl.Code('STGA02014', name='EPITA',
                  start=date(2026, 5, 1), end=date(2030, 4, 30))
 
 # LEAPS-TECH: see WP1_INFRA-2025-TECH-02_budget_WP_Sources_v4.xlsx
@@ -55,8 +58,8 @@ members: list[GroupMember] = [
                 person_id=100000020410836, assignment_id=300000117877863,
                 title='Mr',
                 booking_plan=otl.BookingPlan([
-                    otl.Entry(epac, 0.05),
-                    otl.Entry(ruedi_new_code, 0.0434),
+                    otl.Entry(epac, 0.03),
+                    # otl.Entry(ruedi_new_code, 0.0434),
                     otl.Entry(clara_user_facility, 0.25),
                     otl.Entry(epita, 0.0198),
                     otl.Entry(sustainable_accelerators, 0.46),
@@ -67,8 +70,8 @@ members: list[GroupMember] = [
                 'alex.bainbridge@stfc.ac.uk', known_as='Alex B',
                 person_id=100000020410917, assignment_id=300000117882174,
                 booking_plan=otl.BookingPlan([
-                    otl.Entry(epac, 0.1),
-                    otl.Entry(ruedi_new_code, 0.1851),
+                    otl.Entry(epac, 0.15),
+                    # otl.Entry(ruedi_new_code, 0.1851),
                     otl.Entry(clara_user_facility, 0.2),
                     otl.Entry(epita, 0.1584),
                     otl.Entry(magnet_lab),
@@ -81,17 +84,17 @@ members: list[GroupMember] = [
                     otl.Entry(ukxfel_continuation, 0.4),
                     otl.Entry(xfel_rnd, 0.15),
                     otl.Entry(ai_ml),
-                    otl.Entry(beuv_pocf, 243 / otl.hours_per_fte),  # 26/27
+                    # otl.Entry(beuv_pocf, 243 / otl.hours_per_fte),  # 26/27
                 ])),
     GroupMember('Neil Thompson',
                 206988,
                 person_id=100000020415442, assignment_id=300000117997606,
                 booking_plan=otl.BookingPlan([
-                    otl.Entry(epac, 0.2),
+                    otl.Entry(epac, 0.05),
                     otl.Entry(ukxfel_continuation, 0.25),
                     otl.Entry(xfel_rnd, 0.25),
                     otl.Entry(novel_acceleration),
-                    otl.Entry(beuv_pocf, 424 / otl.hours_per_fte),  # 26/27
+                    # otl.Entry(beuv_pocf, 424 / otl.hours_per_fte),  # 26/27
                 ])),
     GroupMember('Kiril Marinov',
                 204936,
@@ -108,7 +111,7 @@ members: list[GroupMember] = [
                 person_id=100000020413904, assignment_id=300000117923738,
                 booking_plan=otl.BookingPlan([
                     otl.Entry(scu),
-                    otl.Entry(clepto_pocf, otl.hours_per_day * 5),
+                    otl.Entry(clepto_pocf, otl.hours_per_day * 5 / otl.hours_per_fte),
                     otl.Entry(epita, 0.2178),
                     otl.Entry(leaps_tech, 0.25 * 7/19)  # for 27/28: 0.25 * 12/19
                 ])),
@@ -136,21 +139,21 @@ members: list[GroupMember] = [
                     otl.Entry(clara_user_facility, 0.35),
                     otl.Entry(ai_ml),
                 ])),
-    GroupMember('Thomas Smith',  # starts 2026-09-07
-                0,
-                known_as='Tom',
-                title='Mr',
-                person_id=100000020412335, assignment_id=300000117987914,
-                email='thomas.smith@stfc.ac.uk',
-                booking_plan=otl.BookingPlan([
-                    otl.Entry(magnet_lab, start_date=date(2026, 9, 7)),
-                ]))
+    # GroupMember('Thomas Smith',  # starts 2026-09-07
+    #             0,
+    #             known_as='Tom',
+    #             title='Mr',
+    #             person_id=100000020412335, assignment_id=300000117987914,
+    #             email='thomas.smith@stfc.ac.uk',
+    #             booking_plan=otl.BookingPlan([
+    #                 otl.Entry(magnet_lab, start_date=date(2026, 9, 7)),
+    #             ]))
 ]
 
 
 # if __name__ == '__main__':
 # check_total_ftes(members)
-# print(*[person.name for person in members], sep='\t')
+# print(*[person.name for person in members], sep='\trace')
 # person.update_off_days()
 # print(*sorted(list(person.off_days)), sep='\n')
 # print(person.daily_bookings(date.today()))
