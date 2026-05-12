@@ -34,7 +34,7 @@ def start_notes(meeting: outlook.AppointmentItem) -> None:
     print(go_to_folder(meeting))
 
     # special case for SCU weekly meeting
-    if meeting.Subject == "SCU VC Meeting":
+    if meeting.Subject == "SCU meeting":
         open_file(os.path.join('Helical', 'Helical SCU Project Log.docx'))
         return
 
@@ -42,7 +42,7 @@ def start_notes(meeting: outlook.AppointmentItem) -> None:
     subject = meeting.Subject.strip()  # remove leading and trailing spaces
     bad_chars = str.maketrans({char: ' ' for char in '*?/\\<>:|"'})  # can't use these in filenames
     filename = f'{start_time.strftime("%Y-%m-%d")} {subject.translate(bad_chars)}.md'
-    if not os.path.exists(filename):
+    if not os.path.exists(filename) or os.path.getsize(filename) == 0:
         # Haven't created file yet: open it and put in title, date, attendees, agenda
         open(filename, 'a', encoding='utf-8').write(notes_text(meeting))
 
@@ -55,12 +55,13 @@ def start_notes(meeting: outlook.AppointmentItem) -> None:
     if outlook.direct:
         outlook.clear_reminders()
         # Kill this process - otherwise get 'hanging prompt' issue while notes window is open
-        os.kill(os.getpid(), signal.SIGTERM)
+        # os.kill(os.getpid(), signal.SIGTERM)
 
 
 def open_file(filename: str) -> None:
     """Platform-independent version of os.startfile. Opens a file in the OS's default program."""
-    getattr(os, 'startfile', lambda file: subprocess.call(["xdg-open", file]))(filename)
+    command = ['cmd', '/c', 'start', "", filename] if sys.platform == 'win32' else ["xdg-open", filename]
+    subprocess.Popen(command)
 
 
 def notes_text(meeting: outlook.AppointmentItem) -> str:
@@ -232,8 +233,10 @@ def ical_to_markdown(url: str) -> str:
     if not url.endswith('/'):
         url += '/'
     # Some Indico versions use ?scope=contribution instead - use both!
+    ical = f'{url}event.ics?detail=contributions&scope=contribution'
+    print(ical)
     try:
-        event = Calendar.from_ical(requests.get(f'{url}event.ics?detail=contributions&scope=contribution').text)
+        event = Calendar.from_ical(requests.get(ical).text)
     except ValueError:
         return ''
     prefix = 'Speakers: '
