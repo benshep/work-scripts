@@ -6,9 +6,7 @@ from staff import GroupMember
 # Relevant codes for the group
 magnet_lab = otl.Code('STGA00029', '02', 'MARS Group Costs', priority=otl.Priority.BALANCING)
 mars_underpinning = otl.Code('STGA00206', name='MARS Underpinning', priority=otl.Priority.BALANCING)
-clara_user_facility = otl.Code('STGA00265', name='CLARA User Facility (incl. machine development) starts Sep 25',
-                               fusion_name='CLARA User Facility',
-                               priority=otl.Priority.AGREED)
+clara = otl.Code('STGA00266', name='CLARA', priority=otl.Priority.AGREED)
 scu = otl.Code('STGA00273', name='Superconducting Undulator', priority=otl.Priority.AGREED)
 sustainable_accelerators = otl.Code('STGA00298', name='Sustainable Acc (incl CESA and NCF)',
                                     priority=otl.Priority.BALANCING)
@@ -60,7 +58,7 @@ members: list[GroupMember] = [
                 booking_plan=otl.BookingPlan([
                     otl.Entry(epac, 0.03),
                     # otl.Entry(ruedi_new_code, 0.0434),
-                    otl.Entry(clara_user_facility, 0.25),
+                    otl.Entry(clara, 0.25),
                     otl.Entry(epita, 0.0198),
                     otl.Entry(sustainable_accelerators, 0.46),
                     otl.Entry(magnet_lab),
@@ -72,7 +70,7 @@ members: list[GroupMember] = [
                 booking_plan=otl.BookingPlan([
                     otl.Entry(epac, 0.15),
                     # otl.Entry(ruedi_new_code, 0.1851),
-                    otl.Entry(clara_user_facility, 0.2),
+                    otl.Entry(clara, 0.2),
                     otl.Entry(epita, 0.1584),
                     otl.Entry(magnet_lab),
                 ])),
@@ -128,7 +126,7 @@ members: list[GroupMember] = [
                 title='Mr',
                 person_id=100000020413933, assignment_id=300000117929802,
                 booking_plan=otl.BookingPlan([
-                    otl.Entry(clara_user_facility, 0.35),
+                    otl.Entry(clara, 0.35),
                     otl.Entry(ai_ml),
                 ])),
     GroupMember('Nasiq Ziyan',
@@ -136,7 +134,7 @@ members: list[GroupMember] = [
                 title='Mr',
                 person_id=100000020417760, assignment_id=300000117981407,
                 booking_plan=otl.BookingPlan([
-                    otl.Entry(clara_user_facility, 0.35),
+                    otl.Entry(clara, 0.35),
                     otl.Entry(ai_ml),
                 ])),
     # GroupMember('Thomas Smith',  # starts 2026-09-07
