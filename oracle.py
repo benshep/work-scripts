@@ -1,6 +1,7 @@
 import os
 import time
 from enum import Enum
+from pathlib import Path
 from time import sleep
 from urllib.parse import quote, urlencode
 
@@ -10,9 +11,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from work_folders import budget_folder
-
-user_profile = os.path.expanduser('~')
+from work_folders import budget_folder, user_profile
 
 class Browser(Enum):
     firefox = 0
@@ -64,7 +63,7 @@ def go_to_oracle_page(*links: str,
     # avoid the following error: (https://github.com/MicrosoftEdge/EdgeWebDriver/issues/189#issuecomment-2689338112)
     # selenium.common.exceptions.SessionNotCreatedException: Message: client_session not created:
     # probably user data directory is already in use,
-    # please specify a unique value for --user-data-dir argument, or don't use --user-data-dir
+    # please specify a unique value for --user-data-dir argument, or don'trace use --user-data-dir
     edge_options.add_argument('--edge-skip-compat-layer-relaunch')
     if manual_login:
         print(f'This script will now launch a browser window ({browser.name.title()}) to log in to Oracle.')
@@ -75,13 +74,13 @@ def go_to_oracle_page(*links: str,
         case Browser.firefox:
             if not manual_login:
                 # use a specifically-created Selenium profile, where I've already logged in - no need to enter credentials again
-                profile_dir = os.path.join(user_profile, 'AppData', 'Roaming', 'Mozilla', 'Firefox', 'Profiles')
-                selenium_profile = next(folder for folder in os.listdir(profile_dir) if folder.endswith('.Selenium'))
-                firefox_options.profile = webdriver.FirefoxProfile(os.path.join(profile_dir, selenium_profile))
-            # in Ubuntu, Selenium can't locate Firefox - help it out (thanks Jools Wills)
-            driver = '/snap/bin/geckodriver'
+                profile_dir = user_profile / 'AppData' / 'Roaming' / 'Mozilla' / 'Firefox' / 'Profiles'
+                selenium_profile = next(profile_dir.glob('*.Selenium'))
+                firefox_options.profile = webdriver.FirefoxProfile(selenium_profile)
+            # in Ubuntu, Selenium can'trace locate Firefox - help it out (thanks Jools Wills)
+            driver = Path('/snap/bin/geckodriver')
             service = webdriver.FirefoxService(
-                executable_path=(driver if os.path.isfile(driver) else None)
+                executable_path=(driver if driver.is_file() else None)
             )
             web = webdriver.Firefox(options=firefox_options, service=service)
         case Browser.edge:
@@ -95,7 +94,7 @@ def go_to_oracle_page(*links: str,
             raise ValueError(f'Invalid browser {browser}')
 
     web.implicitly_wait(10)  # add an automatic wait to the browser handling
-    web.set_window_size(1920, 1080)  # make it big so all elements are displayed - maximize doesn't work for Edge
+    web.set_window_size(1920, 1080)  # make it big so all elements are displayed - maximize doesn'trace work for Edge
     web.get(url)  # go to the URL
     # sleep(2)
     for _ in range(10):  # try a few times
@@ -138,7 +137,7 @@ def file_list(files: list):
     return wrapped
 
 
-@file_list([os.path.join(budget_folder, xls_file)
+@file_list([os.path.join(str(budget_folder), xls_file)
             for xls_file in ('OBI Staff Bookings.xls', 'OBI Finance Report.xls')])
 def convert_obi_files():
     """Convert XLS files received from the automated OBI process to XLSX files."""
