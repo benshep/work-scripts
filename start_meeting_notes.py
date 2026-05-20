@@ -62,7 +62,7 @@ def start_notes(meeting: outlook.AppointmentItem) -> None:
 
 def open_file(filename: Path) -> None:
     """Platform-independent version of os.startfile. Opens a file in the OS's default program."""
-    command = ['cmd', '/c', 'start', "", filename] if sys.platform == 'win32' else ["xdg-open", filename]
+    command = ['cmd', '/c', 'start', "", str(filename)] if sys.platform == 'win32' else ["xdg-open", str(filename)]
     subprocess.Popen(command)
 
 
