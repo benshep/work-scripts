@@ -1,9 +1,9 @@
-import os
 import time
 import re
 from collections import Counter
 from datetime import datetime, timedelta, date
 from calendar import monthrange
+from pathlib import Path
 from shutil import move
 from zipfile import ZipFile
 
@@ -15,16 +15,15 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from oracle import go_to_oracle_page
 from work_folders import misc_folder, downloads_folder
 
-payslips_folder = os.path.join(str(misc_folder), 'Money', 'Payslips')
+payslips_folder = misc_folder / 'Money' / 'Payslips'
 
 
 def income_pre_tax(year: int) -> float:
     """Add up the pre-tax income for a given year."""
-    os.chdir(payslips_folder)
     total_payments = Counter()
     for fiscal_month in range(12):
         month = (fiscal_month + 3) % 12 + 1  # convert to calendar month
-        payslip_filename = f'{year - 2000}-{month:02d}.pdf'
+        payslip_filename = payslips_folder / f'{year - 2000}-{month:02d}.pdf'
         payslip_content = PdfReader(payslip_filename).pages[0].extract_text()
         payments = re.findall('Units Rate Amount\n(.*)\n Amount', payslip_content, re.MULTILINE + re.DOTALL)[0]
         for payment in payments.split('\n'):
@@ -40,8 +39,7 @@ def get_payslips(only_latest: bool = True, test_mode: bool = False) -> str | dat
     # On page load, shows latest slip
 
     # Get list of payslips we already have
-    os.chdir(payslips_folder)
-    existing_files = os.listdir()
+    existing_files = list(payslips_folder.glob('*.pdf'))
     output = ''
 
     if only_latest:
@@ -49,7 +47,7 @@ def get_payslips(only_latest: bool = True, test_mode: bool = False) -> str | dat
         title = web.find_element(By.CLASS_NAME, 'oj-sp-detail-panel-title').text
         slip_date = datetime.strptime(title, '%A, %d/%m/%Y')  # e.g. Monday, 28/07/2025
         downloaded_file = run_download(web)
-        new_filename = slip_date.strftime('%y-%m.pdf')
+        new_filename = payslips_folder / slip_date.strftime('%y-%m.pdf')
         if new_filename in existing_files:
             print(f'Already got payslip for {slip_date.strftime("%b %Y")}')
             # When do we expect to get next one? Paid on second-to-last working day, should see payslip day before
@@ -60,10 +58,10 @@ def get_payslips(only_latest: bool = True, test_mode: bool = False) -> str | dat
             working_days = [day for day in rest_of_month if day.weekday() < 5 and day.date() not in bank_holidays]
             return working_days[-3] if len(working_days) > 2 else today + timedelta(days=1)
 
-        move(os.path.join(str(downloads_folder), downloaded_file), new_filename)
+        move(downloaded_file, new_filename)
         payments_this_month = payslip_items(new_filename)
         last_month = slip_date - timedelta(days=31)
-        last_month_filename = last_month.strftime('%y-%m.pdf')
+        last_month_filename = payslips_folder / last_month.strftime('%y-%m.pdf')
         payments_last_month = payslip_items(last_month_filename)
         for description, amount in payments_this_month.items():
             prev_amount = payments_last_month.get(description, None)
@@ -73,32 +71,31 @@ def get_payslips(only_latest: bool = True, test_mode: bool = False) -> str | dat
             output += f'{description}: £{amount:.02f} {symbol}\n'
 
     else:  # get all
-        # maybe doesn'trace work...
+        # maybe doesn't work...
         web.find_element(By.XPATH, '//input[@aria-label="select all"]').click()
-        downloaded_file = run_download(web)
-        archive = ZipFile(os.path.join(str(downloads_folder), downloaded_file))
+        archive = ZipFile(run_download(web))
         for filename in archive.namelist():
             # list like ['1_2025-07-28_GBP Payslip.pdf', '2_2025-06-27_GBP Payslip.pdf']
             slip_date = datetime.strptime(filename.split('_')[1], '%Y-%m-%d')
-            new_filename = slip_date.strftime('%y-%m.pdf')
+            new_filename = payslips_folder / slip_date.strftime('%y-%m.pdf')
             if new_filename not in existing_files:
-                archive.extract(filename)
-                move(filename, new_filename)
+                archive.extract(filename, payslips_folder)
+                (payslips_folder / filename).rename(new_filename)
                 output += new_filename + '\n'
     web.quit()
     return output
 
 
-def run_download(web: WebDriver) -> str:
+def run_download(web: WebDriver) -> Path:
     """Click the download button, and return the name of the downloaded file."""
-    old_files = set(os.listdir(str(downloads_folder)))
+    old_files = set(downloads_folder.iterdir())
     web.find_element(By.CLASS_NAME, 'oj-ux-ico-download').click()  # download button
     time.sleep(5)
-    new_file = (set(os.listdir(str(downloads_folder))) - old_files).pop()
+    new_file = (set(downloads_folder.iterdir()) - old_files).pop()
     return new_file
 
 
-def payslip_items(filename: str) -> dict[str, float]:
+def payslip_items(filename: Path) -> dict[str, float]:
     """Read a payslip PDF and return net pay and each payment line in a dict."""
     # read amounts from the payslip
     payslip_content = PdfReader(filename).pages[0].extract_text()
