@@ -2,6 +2,7 @@ import os
 import tempfile
 from datetime import date, timedelta, datetime
 from itertools import accumulate
+from pathlib import Path
 from urllib.parse import urlencode
 
 from dateutil.relativedelta import relativedelta
@@ -20,11 +21,11 @@ def run_otl_calculator(weeks_ahead: int = 0) -> tuple[str, str] | None:
     """Iterate through staff, listing the hours to upload for new OTL cards required."""
     # staff.verbose = True
     cards_to_book = 0
-    links_filename = os.path.join(str(downloads_folder), 'otl_upload_links.html')
+    links_filename = downloads_folder / 'otl_upload_links.html'
     with open(links_filename, 'w') as links_file:
-        folder = os.path.split(__file__)[0]
-        css_filename = os.path.join(folder, 'redwood.css')
-        css = open(css_filename).read()
+        folder = Path(__file__).parent
+        css_filename = folder / 'redwood.css'
+        css = css_filename.read_text()
         # language=HTML
         links_file.write(f'''<!doctype html><html lang="en">
 <head>
@@ -144,15 +145,15 @@ def check_in() -> str | bool:
 
     print('Getting previous checkins')
     checkins = get_checkins()
-    os.chdir(os.path.join(str(docs_folder), 'Group Leader', 'check_in'))
-    files = [filename for filename in os.listdir() if filename.endswith('.txt')]
+
+    files: list[Path] = list((docs_folder / 'Group Leader' / 'check_in').glob('*.txt'))
     for filename in files:
-        name = filename[:-4]
+        name = filename.stem
         for checkin in checkins:
             if name not in checkin:
                 continue
             line = checkin + '\n'
-            if line not in open(filename).read():
+            if line not in filename.read_text():
                 print(checkin)
                 open(filename, 'a').write(line)
                 timestamp = datetime.strptime(checkin[:16], '%Y-%m-%d %H:%M').timestamp()
@@ -160,7 +161,7 @@ def check_in() -> str | bool:
 
     files = sorted(files, key=os.path.getmtime)
     # modified X.Y days ago: round down to nearest X
-    ages = list(accumulate((now - datetime.fromtimestamp(os.path.getmtime(filename))).days for filename in files))
+    ages = list(accumulate((now - datetime.fromtimestamp(filename.stat().st_mtime)).days for filename in files))
     # Select basically at random, but pick the same one on a given day
     # Weight older entries higher, and zero weighting to any that are less than one day old
     selected = now.toordinal() % ages[-1]
@@ -168,8 +169,8 @@ def check_in() -> str | bool:
     # When going through list, go back to oldest, then onwards to newest
     files = files[index::-1] + files[index + 1:]
     for filename in files:
-        name = filename[:-4]
-        email = open(filename).read().splitlines()[0]
+        name = filename.stem
+        email = filename.read_text().splitlines()[0]
         print(f'Checking free time for {name}')
         their_free_times = outlook.find_free_times(email)
         free_overlap = my_free_times & their_free_times
