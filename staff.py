@@ -1,4 +1,3 @@
-import os
 from collections import Counter
 from datetime import date, timedelta, datetime, time
 from math import isclose, prod
@@ -28,9 +27,9 @@ def report(*args, **kwargs):
 
 
 column_types = {'Task Number': str}  # otherwise it will be interpreted as a float (e.g. 1.01)
-bookings_data = StoredData(os.path.join(str(budget_folder), 'OBI Staff Bookings.xlsx'), dtype=column_types)
+bookings_data = StoredData(budget_folder / 'OBI Staff Bookings.xlsx', dtype=column_types)
 if otl.fy == 2025:
-    old_bookings_data = StoredData(os.path.join(str(budget_folder), 'MaRS bookings FY25 pre-Fusion.xlsx'),
+    old_bookings_data = StoredData(budget_folder / 'MaRS bookings FY25 pre-Fusion.xlsx',
                                    sheet_name='Sheet2', dtype=column_types)
 else:
     old_bookings_data = pandas.DataFrame()
@@ -45,7 +44,7 @@ def get_obi_data() -> pandas.DataFrame:
     return data
 
 
-absence_data = StoredData(os.path.join(str(budget_folder), 'OBI Absence Report.xlsx'))
+absence_data = StoredData(budget_folder / 'OBI Absence Report.xlsx')
 
 
 def keep_in_bounds(daily_hours):
@@ -176,10 +175,10 @@ class GroupMember:
     def update_off_days(self, force_reload: bool = False) -> None:
         """Load off days from cached file, or if that's more than a week old, reload from Outlook and Oracle.
         :param force_reload: Ignore any cached information."""
-        cache_file = os.path.join(str(docs_folder), 'Group Leader', 'off_days_cache', f'{self.name}.txt')
+        cache_file = docs_folder / 'Group Leader' / 'off_days_cache' / f'{self.name}.txt'
         last_week = datetime.now() - timedelta(days=7)
-        cache_exists = os.path.exists(cache_file)
-        if force_reload or not cache_exists or datetime.fromtimestamp(os.path.getmtime(cache_file)) < last_week:
+        cache_exists = cache_file.exists()
+        if force_reload or not cache_exists or datetime.fromtimestamp(cache_file.stat().st_mtime) < last_week:
             print(f'Fetching Outlook off days for {self.known_as}')
             outlook_days = outlook.get_away_dates(otl.fy_start, otl.fy_end,
                                                   user=self.email, look_for=outlook.is_annual_leave)
@@ -189,16 +188,16 @@ class GroupMember:
             # Finally, update with site holidays. This order ensures site holidays have preference
             # in case of blanket 'AL' calendar bookings that also cover bank holidays etc
             self.off_days |= site_holidays
-            with open(cache_file, 'w') as f:
-                f.write('\n'.join(
+            cache_file.write_text(
+                '\n'.join(
                     [f"{d.strftime('%d/%m/%Y')}\t{absence_type}\t{hrs:.2f}"
                      for d, (absence_type, hrs)
-                     # need to convert to string for sorting since can'trace compare dates and datetimes (hacky)
+                     # need to convert to string for sorting since can't compare dates and datetimes (hacky)
                      in sorted(self.off_days.items(), key=lambda item: item[0].strftime('%Y%m%d%H%M'))]))
         else:
             print(f'Loading off days from cache for {self.known_as}')
             self.off_days = {}
-            for l in open(cache_file, 'r').read().splitlines():
+            for l in cache_file.read_text().splitlines():
                 day, absence_type, hrs = l.split('\t')
                 self.off_days[datetime.strptime(day, '%d/%m/%Y').date()] = (absence_type, float(hrs))
 
@@ -328,12 +327,12 @@ class GroupMember:
             bookings = self.daily_bookings(use_date)
             for code, hours in bookings.items():
                 yield ','.join([
-                        str(self.person_number),
-                        code.project, code.task, 'Labour',
-                        use_date.strftime('%d/%m/%Y'), f'{hours:.02f}',
-                        f'{self.known_as} timecard submitted through bulk upload {date.today().strftime("%d/%m/%Y")}',
-                        'CREATE', '', '', ''
-                    ])
+                    str(self.person_number),
+                    code.project, code.task, 'Labour',
+                    use_date.strftime('%d/%m/%Y'), f'{hours:.02f}',
+                    f'{self.known_as} timecard submitted through bulk upload {date.today().strftime("%d/%m/%Y")}',
+                    'CREATE', '', '', ''
+                ])
 
     def otl_upload_page(self, week_beginning: date) -> str:
         """Return HTML output for the OTL upload page."""
@@ -343,15 +342,15 @@ class GroupMember:
         week_table = {code: [daily.get(code, 0) for daily in week_bookings] for code in all_codes}
         # language=HTML
         html = '''
-            <div class="table-wrap">
-                <table role="grid" aria-label="Time card grid">
-                    <thead>
-                        <tr>
-                            <th></th> <!-- blank column for index -->
-                            <th>Project</th>
-                            <th>Task</th>
-                            <th>Hours Type *</th>
-'''
+               <div class="table-wrap">
+                   <table role="grid" aria-label="Time card grid">
+                       <thead>
+                       <tr>
+                           <th></th> <!-- blank column for index -->
+                           <th>Project</th>
+                           <th>Task</th>
+                           <th>Hours Type *</th> \
+               '''
         for day in range(5):
             entry_date = week_beginning + timedelta(days=day)
             html += ' ' * 28 + entry_date.strftime('<th class="num">%b %d,%a</th>\n')  # e.g. Feb 09,Mon
