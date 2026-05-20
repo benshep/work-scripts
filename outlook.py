@@ -1148,8 +1148,7 @@ def get_dl_ral_holidays(year: int = datetime.now().year, whole_days: bool = True
     If clean_titles is True, converts Privilege Day and Compensating Leave to Privilege Day,
     and everything else to Bank Holiday."""
     # e.g. DL_RAL_Site_Holidays_2025.ics
-    filename = next(file for file in hr_info_folder.glob('DL_RAL*.ics') if int(file[-8:-4]) == year)
-    filename = hr_info_folder / filename
+    filename = next(file for file in hr_info_folder.glob('DL_RAL*.ics') if int(file.stem[-4:]) == year)
     calendar = Calendar.from_ical(filename.read_text(encoding='utf-8'))
 
     # Mostly these are date values. HOWEVER, sometimes we get two events as two half-days. Let's deal with that.
