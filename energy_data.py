@@ -1,5 +1,4 @@
 import asyncio
-import os
 import sys
 import pandas
 from openpyxl import load_workbook
@@ -10,7 +9,7 @@ from rayleigh_api_key import api_key
 from work_folders import docs_folder, misc_folder
 from work_tools import read_excel
 
-sys.path.append(os.path.join(str(misc_folder), 'Scripts'))
+sys.path.append(str(misc_folder / 'Scripts'))
 from get_energy_usage import get_co2_data  # function to get carbon intensity data from the National Grid API
 
 rayleigh = EasyAPI(api_key)
@@ -41,7 +40,7 @@ def update_energy_data() -> bool | None:
 
 async def archive_data() -> bool | None:
     """Fetch new energy and carbon data and drop it into the spreadsheet."""
-    excel_filename = os.path.join(str(docs_folder), 'CLARA', 'CLARA electricity usage.xlsx')
+    excel_filename = docs_folder / 'CLARA' / 'CLARA electricity usage.xlsx'
     meters_sheet = 'Meters'
     # Get the list of sensors from the top 3 rows of this Excel file
     workbook = read_excel(excel_filename, header=[0, 1, 2],
