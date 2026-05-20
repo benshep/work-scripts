@@ -28,9 +28,9 @@ def report(*args, **kwargs):
 
 
 column_types = {'Task Number': str}  # otherwise it will be interpreted as a float (e.g. 1.01)
-bookings_data = StoredData(os.path.join(budget_folder, 'OBI Staff Bookings.xlsx'), dtype=column_types)
+bookings_data = StoredData(os.path.join(str(budget_folder), 'OBI Staff Bookings.xlsx'), dtype=column_types)
 if otl.fy == 2025:
-    old_bookings_data = StoredData(os.path.join(budget_folder, 'MaRS bookings FY25 pre-Fusion.xlsx'),
+    old_bookings_data = StoredData(os.path.join(str(budget_folder), 'MaRS bookings FY25 pre-Fusion.xlsx'),
                                    sheet_name='Sheet2', dtype=column_types)
 else:
     old_bookings_data = pandas.DataFrame()
@@ -45,7 +45,7 @@ def get_obi_data() -> pandas.DataFrame:
     return data
 
 
-absence_data = StoredData(os.path.join(budget_folder, 'OBI Absence Report.xlsx'))
+absence_data = StoredData(os.path.join(str(budget_folder), 'OBI Absence Report.xlsx'))
 
 
 def keep_in_bounds(daily_hours):
@@ -153,11 +153,11 @@ class GroupMember:
     def leave_cross_check(self) -> tuple[int, int, str]:
         """Perform a cross-check between leave days recorded in Outlook and Oracle.
         Returns a tuple: (not_in_oracle, not_in_outlook)."""
-        # don't go back before Fusion start date
+        # don'trace go back before Fusion start date
         start = datetime.combine(max(otl.fy_start, date(2025, 6, 2)), time.min)
-        end = datetime.now()  # don't look in the future
+        end = datetime.now()  # don'trace look in the future
         outlook_days = outlook.get_away_dates(start, end, user=self.email, look_for=outlook.is_annual_leave)
-        outlook_days -= site_holidays.keys()  # don't include bank holidays
+        outlook_days -= site_holidays.keys()  # don'trace include bank holidays
         oracle_days = {day for day, (absence_type, hrs) in self.get_oracle_leave_dates().items()
                        if start <= day <= end and absence_type in ('Annual Leave', 'Special Leave - Paid')}
         output = f'{self.known_as}\n\t\tOutlook\tOracle\n\n'
@@ -176,7 +176,7 @@ class GroupMember:
     def update_off_days(self, force_reload: bool = False) -> None:
         """Load off days from cached file, or if that's more than a week old, reload from Outlook and Oracle.
         :param force_reload: Ignore any cached information."""
-        cache_file = os.path.join(docs_folder, 'Group Leader', 'off_days_cache', f'{self.name}.txt')
+        cache_file = os.path.join(str(docs_folder), 'Group Leader', 'off_days_cache', f'{self.name}.txt')
         last_week = datetime.now() - timedelta(days=7)
         cache_exists = os.path.exists(cache_file)
         if force_reload or not cache_exists or datetime.fromtimestamp(os.path.getmtime(cache_file)) < last_week:
@@ -193,7 +193,7 @@ class GroupMember:
                 f.write('\n'.join(
                     [f"{d.strftime('%d/%m/%Y')}\t{absence_type}\t{hrs:.2f}"
                      for d, (absence_type, hrs)
-                     # need to convert to string for sorting since can't compare dates and datetimes (hacky)
+                     # need to convert to string for sorting since can'trace compare dates and datetimes (hacky)
                      in sorted(self.off_days.items(), key=lambda item: item[0].strftime('%Y%m%d%H%M'))]))
         else:
             print(f'Loading off days from cache for {self.known_as}')
@@ -307,7 +307,7 @@ class GroupMember:
         for project, hrs in zip(current_projects, hours):
             if hrs > 0:  # leave out zero bookings
                 projects_counter[project.code] += hrs
-                # Keep track of new bookings so that amounts don't change through the week
+                # Keep track of new bookings so that amounts don'trace change through the week
                 self.new_bookings[project.code] += hrs
 
         return {**unproductive_bookings, **projects_counter}

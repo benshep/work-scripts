@@ -16,11 +16,11 @@ from pushbullet_api_key import api_key  # local file, keep secret!
 from work_folders import downloads_folder, docs_folder
 
 
-def run_otl_calculator(force_this_week: bool = False) -> tuple[str, str] | None:
+def run_otl_calculator(weeks_ahead: int = 0) -> tuple[str, str] | None:
     """Iterate through staff, listing the hours to upload for new OTL cards required."""
     # staff.verbose = True
     cards_to_book = 0
-    links_filename = os.path.join(downloads_folder, 'otl_upload_links.html')
+    links_filename = os.path.join(str(downloads_folder), 'otl_upload_links.html')
     with open(links_filename, 'w') as links_file:
         folder = os.path.split(__file__)[0]
         css_filename = os.path.join(folder, 'redwood.css')
@@ -46,9 +46,9 @@ def run_otl_calculator(force_this_week: bool = False) -> tuple[str, str] | None:
                 start = date.today()
                 start -= timedelta(days=start.weekday())  # Monday of current week
                 start -= timedelta(days=7*4)  # check last few weeks
-                # usually wait until Thu to do current week - can force override
-                # while start + timedelta(days=0 if force_this_week else 3) <= date.today():
-                for _ in range(7):
+                # wait until Thu to do current week
+                while start + timedelta(days=3) <= date.today() + weeks_ahead * timedelta(days=7):
+                # for _ in range(7):
                     member.prev_bookings = {}  # reset in case this has already run
                     hours_booked = member.hours_for_week(start)
                     hours_needed = sum(member.hours_needed(start + timedelta(days=day)) for day in range(5))
@@ -63,9 +63,11 @@ def run_otl_calculator(force_this_week: bool = False) -> tuple[str, str] | None:
                         # language=HTML
                         links_file.write(f'''
         <section class="card">
-            <header class="card-header">
-                <h1>Time Card</h1>
-            </header>
+            <a href="{url}">
+                <header class="card-header">
+                    <h1>Time Card</h1>
+                </header>
+            </a>
             <div class="meta">
                 <div class="item">
                     <div class="label">Person</div>
@@ -142,7 +144,7 @@ def check_in() -> str | bool:
 
     print('Getting previous checkins')
     checkins = get_checkins()
-    os.chdir(os.path.join(docs_folder, 'Group Leader', 'check_in'))
+    os.chdir(os.path.join(str(docs_folder), 'Group Leader', 'check_in'))
     files = [filename for filename in os.listdir() if filename.endswith('.txt')]
     for filename in files:
         name = filename[:-4]
@@ -229,7 +231,7 @@ def list_ftes():
 
 
 if __name__ == '__main__':
-    print(run_otl_calculator(force_this_week=True))
+    print(run_otl_calculator(weeks_ahead=1))
     # print(leave_cross_check())
     # print(check_in())
     # list_ftes()

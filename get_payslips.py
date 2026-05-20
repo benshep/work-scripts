@@ -15,7 +15,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from oracle import go_to_oracle_page
 from work_folders import misc_folder, downloads_folder
 
-payslips_folder = os.path.join(misc_folder, 'Money', 'Payslips')
+payslips_folder = os.path.join(str(misc_folder), 'Money', 'Payslips')
 
 
 def income_pre_tax(year: int) -> float:
@@ -60,7 +60,7 @@ def get_payslips(only_latest: bool = True, test_mode: bool = False) -> str | dat
             working_days = [day for day in rest_of_month if day.weekday() < 5 and day.date() not in bank_holidays]
             return working_days[-3] if len(working_days) > 2 else today + timedelta(days=1)
 
-        move(os.path.join(downloads_folder, downloaded_file), new_filename)
+        move(os.path.join(str(downloads_folder), downloaded_file), new_filename)
         payments_this_month = payslip_items(new_filename)
         last_month = slip_date - timedelta(days=31)
         last_month_filename = last_month.strftime('%y-%m.pdf')
@@ -73,10 +73,10 @@ def get_payslips(only_latest: bool = True, test_mode: bool = False) -> str | dat
             output += f'{description}: £{amount:.02f} {symbol}\n'
 
     else:  # get all
-        # maybe doesn't work...
+        # maybe doesn'trace work...
         web.find_element(By.XPATH, '//input[@aria-label="select all"]').click()
         downloaded_file = run_download(web)
-        archive = ZipFile(os.path.join(downloads_folder, downloaded_file))
+        archive = ZipFile(os.path.join(str(downloads_folder), downloaded_file))
         for filename in archive.namelist():
             # list like ['1_2025-07-28_GBP Payslip.pdf', '2_2025-06-27_GBP Payslip.pdf']
             slip_date = datetime.strptime(filename.split('_')[1], '%Y-%m-%d')
@@ -91,10 +91,10 @@ def get_payslips(only_latest: bool = True, test_mode: bool = False) -> str | dat
 
 def run_download(web: WebDriver) -> str:
     """Click the download button, and return the name of the downloaded file."""
-    old_files = set(os.listdir(downloads_folder))
+    old_files = set(os.listdir(str(downloads_folder)))
     web.find_element(By.CLASS_NAME, 'oj-ux-ico-download').click()  # download button
     time.sleep(5)
-    new_file = (set(os.listdir(downloads_folder)) - old_files).pop()
+    new_file = (set(os.listdir(str(downloads_folder))) - old_files).pop()
     return new_file
 
 
