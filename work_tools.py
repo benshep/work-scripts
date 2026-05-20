@@ -35,7 +35,7 @@ class StoredData:
         self.read_excel_kwargs = read_excel_kwargs
 
     def fetch(self, strict: bool = True):
-        """Fetch the data, or return the cached value if the file hasn'trace changed.
+        """Fetch the data, or return the cached value if the file hasn't changed.
         If strict is True, raise an exception if any columns are 'Unnamed'."""
         modified_time = self.filename.stat().st_mtime
         if modified_time > self.modified_time:

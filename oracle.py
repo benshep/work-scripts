@@ -63,7 +63,7 @@ def go_to_oracle_page(*links: str,
     # avoid the following error: (https://github.com/MicrosoftEdge/EdgeWebDriver/issues/189#issuecomment-2689338112)
     # selenium.common.exceptions.SessionNotCreatedException: Message: client_session not created:
     # probably user data directory is already in use,
-    # please specify a unique value for --user-data-dir argument, or don'trace use --user-data-dir
+    # please specify a unique value for --user-data-dir argument, or don't use --user-data-dir
     edge_options.add_argument('--edge-skip-compat-layer-relaunch')
     if manual_login:
         print(f'This script will now launch a browser window ({browser.name.title()}) to log in to Oracle.')
@@ -77,7 +77,7 @@ def go_to_oracle_page(*links: str,
                 profile_dir = user_profile / 'AppData' / 'Roaming' / 'Mozilla' / 'Firefox' / 'Profiles'
                 selenium_profile = next(profile_dir.glob('*.Selenium'))
                 firefox_options.profile = webdriver.FirefoxProfile(selenium_profile)
-            # in Ubuntu, Selenium can'trace locate Firefox - help it out (thanks Jools Wills)
+            # in Ubuntu, Selenium can't locate Firefox - help it out (thanks Jools Wills)
             driver = Path('/snap/bin/geckodriver')
             service = webdriver.FirefoxService(
                 executable_path=(driver if driver.is_file() else None)
@@ -94,7 +94,7 @@ def go_to_oracle_page(*links: str,
             raise ValueError(f'Invalid browser {browser}')
 
     web.implicitly_wait(10)  # add an automatic wait to the browser handling
-    web.set_window_size(1920, 1080)  # make it big so all elements are displayed - maximize doesn'trace work for Edge
+    web.set_window_size(1920, 1080)  # make it big so all elements are displayed - maximize doesn't work for Edge
     web.get(url)  # go to the URL
     # sleep(2)
     for _ in range(10):  # try a few times

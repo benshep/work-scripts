@@ -50,6 +50,8 @@ epita = otl.Code('STGA02014', name='EPITA',
 # Book up to M19 (March 2028)
 leaps_tech = otl.Code('no code yet', name='LEAPS-TECH',
                  start=date(2026, 9, 1), end=date(2028, 3, 31))
+# DAE extension to end Sep 2026
+dae = otl.Code('STGA02000', '03', 'ISPF INDIA DAE', end=date(2026, 9, 30))
 
 members: list[GroupMember] = [
     GroupMember('Ben Shepherd', 207835,
@@ -61,6 +63,7 @@ members: list[GroupMember] = [
                     otl.Entry(clara, 0.25),
                     otl.Entry(epita, 0.0198),
                     otl.Entry(sustainable_accelerators, 0.46),
+                    otl.Entry(dae, 0.04),
                     otl.Entry(magnet_lab),
                 ])),
     GroupMember('Alexander Bainbridge',
@@ -111,7 +114,8 @@ members: list[GroupMember] = [
                     otl.Entry(scu),
                     otl.Entry(clepto_pocf, otl.hours_per_day * 5 / otl.hours_per_fte),
                     otl.Entry(epita, 0.2178),
-                    otl.Entry(leaps_tech, 0.25 * 7/19)  # for 27/28: 0.25 * 12/19
+                    otl.Entry(leaps_tech, 0.25 * 7/19),  # for 27/28: 0.25 * 12/19
+                    otl.Entry(dae, 0.15),
                 ])),
     GroupMember('Amelia Pollard',
                 205179,
@@ -151,7 +155,7 @@ members: list[GroupMember] = [
 
 # if __name__ == '__main__':
 # check_total_ftes(members)
-# print(*[person.name for person in members], sep='\trace')
+# print(*[person.name for person in members], sep='\t')
 # person.update_off_days()
 # print(*sorted(list(person.off_days)), sep='\n')
 # print(person.daily_bookings(date.today()))

@@ -9,10 +9,6 @@ class APIException(Exception):
     pass
 
 
-def dt_to_rfc3339(dt: datetime) -> str:
-    return dt.isoformat().split('.')[0] + 'Z'
-
-
 class EasyAPI:
     """Application Programming Interface for applications displaying and processing data.
     https://docs.rayleighconnect.net/api/easy/"""
@@ -47,8 +43,11 @@ class EasyAPI:
 
     async def fetch_data(self, gateway_id: str, sensor_id: str, start: datetime, end: datetime | None = None):
         """Fetch raw archival data."""
-        payload = {'from': dt_to_rfc3339(start)}
+        # print(f'Fetching data for {gateway_id=}, {sensor_id=} from', start, 'to', end)
+        payload = {'from': start.strftime('%FT%TZ')}  # e.g. '2025-11-20T15:12:33Z'
         if end is not None:
-            payload['to'] = dt_to_rfc3339(end)
-        return await self.request(f'gateways/{gateway_id}/{sensor_id}/data', payload)
+            payload['to'] = end.strftime('%FT%TZ')
+        response = await self.request(f'gateways/{gateway_id}/{sensor_id}/data', payload)
+        # print(response)
+        return response
 

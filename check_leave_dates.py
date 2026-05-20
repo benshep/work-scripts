@@ -1,17 +1,18 @@
 from datetime import datetime, date
 from time import sleep
+
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.webdriver import WebDriver
 from selenium.webdriver.support.ui import WebDriverWait
 
 import otl
-from oracle import go_to_oracle_page
 import outlook
+from oracle import go_to_oracle_page
 
 
 def list_missing(date_set : set[date]) -> str:
     """Convert a set of missing dates to a comma-separated string."""
-    return ', '.join(date.strftime("%#d %b") for date in sorted(list(date_set)))  # e.g. 4 Aug
+    return ', '.join(date.strftime("%#d %b") for date in sorted(date_set))  # e.g. 4 Aug
 
 # def nice_range_text():
 #     from datetime import datetime

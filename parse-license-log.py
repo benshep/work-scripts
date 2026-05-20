@@ -144,7 +144,7 @@ def read_licenses():
         program_name = 'MATLAB'
         reset_message = 'License verification completed successfully.'
     else:  # Opera
-        log_path = os.path.join(docs_folder, 'Opera Models')
+        log_path = os.path.join(str(docs_folder), 'Opera Models')
         log_name = 'cst-lmgrd.log'  # get it from /tmp on apclara1
         program_name = 'Opera'
         reset_message = 'Starting vendor daemons ... '

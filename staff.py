@@ -152,11 +152,11 @@ class GroupMember:
     def leave_cross_check(self) -> tuple[int, int, str]:
         """Perform a cross-check between leave days recorded in Outlook and Oracle.
         Returns a tuple: (not_in_oracle, not_in_outlook)."""
-        # don'trace go back before Fusion start date
+        # don't go back before Fusion start date
         start = datetime.combine(max(otl.fy_start, date(2025, 6, 2)), time.min)
-        end = datetime.now()  # don'trace look in the future
+        end = datetime.now()  # don't look in the future
         outlook_days = outlook.get_away_dates(start, end, user=self.email, look_for=outlook.is_annual_leave)
-        outlook_days -= site_holidays.keys()  # don'trace include bank holidays
+        outlook_days -= site_holidays.keys()  # don't include bank holidays
         oracle_days = {day for day, (absence_type, hrs) in self.get_oracle_leave_dates().items()
                        if start <= day <= end and absence_type in ('Annual Leave', 'Special Leave - Paid')}
         output = f'{self.known_as}\n\t\tOutlook\tOracle\n\n'
@@ -306,7 +306,7 @@ class GroupMember:
         for project, hrs in zip(current_projects, hours):
             if hrs > 0:  # leave out zero bookings
                 projects_counter[project.code] += hrs
-                # Keep track of new bookings so that amounts don'trace change through the week
+                # Keep track of new bookings so that amounts don't change through the week
                 self.new_bookings[project.code] += hrs
 
         return {**unproductive_bookings, **projects_counter}

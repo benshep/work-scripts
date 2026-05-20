@@ -5,4 +5,4 @@ choco list >choco-packages-%ComputerName%.txt
 @rem Remove all the shortcuts placed on the desktop
 del C:\Users\Public\Desktop\*.lnk
 del C:\Users\Public\Desktop\*.url
-C:\Users\bjs54\Miniconda3\envs\py314\python.exe package_updates.py check_updated
+C:\Users\bjs54\Miniconda3\envs\py314\python.exe C:\users\bjs54\Misc\Scripts\package_updates.py check_updated

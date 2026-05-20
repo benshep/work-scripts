@@ -54,6 +54,8 @@ Esc::!F4
 #!c::WinActivate
 #IfWinExist ahk_class ApplicationFrameWindow
 #+a::WinActivate
+#IfWinExist ahk_class Notepad++
+#n::WinActivate
 
 ;Alt-D to highlight 'address bar' (name box) in Excel
 #IfWinActive ahk_class XLMAIN
@@ -123,7 +125,7 @@ F1:: ;mute/unmute both Teams and Zoom
 #2::Run %DocsDir%
 #+w::Run mailto:
 #i::Run %ProgramFiles%\irfanview\i_view64.exe
-#n::Run C:\ProgramData\chocolatey\lib\metapad\tools\metapad.exe
+#n::Run C:\Program Files\Notepad++\notepad++.exe
 #+n::Run C:\Program Files\Typora\Typora.exe
 #c::Run cmd.exe "/K" title Python & cd %UserProfile%\Misc\Scripts & %UserProfile%\Miniconda3\Scripts\activate.bat %PythonEnv% & python
 #t::Run taskmgr.exe

@@ -1,6 +1,6 @@
-import os
 import time
 import pickle
+from pathlib import Path
 from time import sleep
 from typing import Any, Callable, TypedDict
 
@@ -8,7 +8,6 @@ import selenium.common.exceptions
 import pandas
 from datetime import datetime, timedelta, date
 
-from pandas.io.common import file_exists
 from selenium.webdriver.firefox.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.ui import WebDriverWait
@@ -36,7 +35,7 @@ supervisor_page = 'STFC OTL Supervisor'
 
 def get_project_hours() -> tuple[dict[str, pandas.Series], set[pandas.Timestamp]]:
     """Fetch the standard hours worked on each project from a spreadsheet."""
-    excel_filename = os.path.join(user_profile, 'STFC', 'Documents', 'Group Leader', 'MaRS staff and projects.xlsx')
+    excel_filename = user_profile / 'STFC' / 'Documents' / 'Group Leader' / 'MaRS staff and projects.xlsx'
     booking_plan = read_excel(excel_filename, sheet_name='Book', header=0, index_col=2, skiprows=1)
     booking_plan = booking_plan[booking_plan.index.notnull()]  # remove any rows without a project code
     print(booking_plan)
@@ -127,8 +126,8 @@ def otl_submit(test_mode: bool = False,
     all_hours, change_dates = get_project_hours()
 
     # get Oracle holiday dates
-    off_dates_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'off_dates.db')
-    if file_exists(off_dates_file) and (now - datetime.fromtimestamp(os.path.getmtime(off_dates_file))).days < 1:
+    off_dates_file = Path(__file__).parent.resolve() / 'off_dates.db'
+    if off_dates_file.exists() and (now - datetime.fromtimestamp(off_dates_file.stat().st_mtime)).days < 1:
         all_off_dates = pickle.load(open(off_dates_file, 'rb'))
     else:
         all_off_dates = get_staff_leave_dates(test_mode, staff_names=staff_names)

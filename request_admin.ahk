@@ -8,7 +8,7 @@ sentences := StrSplit(fileContent, "`n")
 Random, randomIndex, 1, % sentences.MaxIndex()
 randomSentence := sentences[randomIndex]
 
-; start local admin session
+; start local admin client_session
 Run "C:\Program Files (x86)\FastTrack Software\Admin By Request\AdminByRequest.exe" /Elevate
 WinWait, ahk_exe AdminByRequest.exe
 WinActivate, ahk_exe AdminByRequest.exe
