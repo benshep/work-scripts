@@ -53,9 +53,9 @@ def join_vc_meeting(force_sync: bool = False):
         return
     print(f'Joining {subject} ...')
     if 'zoom' in url:
-        appdata_exe = os.path.join(user_profile, r'AppData\Roaming\Zoom\bin\Zoom.exe')
+        appdata_exe = user_profile / r'AppData\Roaming\Zoom\bin\Zoom.exe'
         program_files_exe = r'C:\Program Files\Zoom\bin\Zoom.exe'
-        subprocess.Popen([appdata_exe if os.path.exists(appdata_exe) else program_files_exe, f"--url={url}"])
+        subprocess.Popen([appdata_exe if appdata_exe.exists() else program_files_exe, f"--url={url}"])
     else:  # Teams
         subprocess.Popen(['ms-teams.exe', url])
     print('Starting note file')
