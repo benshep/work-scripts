@@ -3,6 +3,7 @@ import re
 import signal
 import subprocess
 import sys
+from pathlib import Path
 from typing import Iterator
 
 try:
@@ -31,20 +32,21 @@ def start_notes(meeting: outlook.AppointmentItem) -> None:
      searching first the subject then the body of the meeting for a folder name. Use Other if none found.
      Don't use the Zoom folder (this is often found in the meeting body).
      The file is in Markdown format, with the meeting title, date and attendees filled in at the top."""
-    print(go_to_folder(meeting))
+    notes_folder = go_to_folder(meeting)
+    print(notes_folder)
 
     # special case for SCU weekly meeting
     if meeting.Subject == "SCU meeting":
-        open_file(os.path.join('Helical', 'Helical SCU Project Log.docx'))
+        open_file(notes_folder / 'Helical' / 'Helical SCU Project Log.docx')
         return
 
     start_time = outlook.get_meeting_time(meeting)
     subject = meeting.Subject.strip()  # remove leading and trailing spaces
     bad_chars = str.maketrans({char: ' ' for char in '*?/\\<>:|"'})  # can't use these in filenames
-    filename = f'{start_time.strftime("%Y-%m-%d")} {subject.translate(bad_chars)}.md'
-    if not os.path.exists(filename) or os.path.getsize(filename) == 0:
+    filename = notes_folder / f'{start_time.strftime("%Y-%m-%d")} {subject.translate(bad_chars)}.md'
+    if not filename.exists() or filename.stat().st_size == 0:
         # Haven't created file yet: open it and put in title, date, attendees, agenda
-        open(filename, 'a', encoding='utf-8').write(notes_text(meeting))
+        filename.write_text(notes_text(meeting), encoding='utf-8')
 
     if pyvda:  # switch to meetings desktop if possible
         for desktop in pyvda.get_virtual_desktops():
@@ -58,7 +60,7 @@ def start_notes(meeting: outlook.AppointmentItem) -> None:
         # os.kill(os.getpid(), signal.SIGTERM)
 
 
-def open_file(filename: str) -> None:
+def open_file(filename: Path) -> None:
     """Platform-independent version of os.startfile. Opens a file in the OS's default program."""
     command = ['cmd', '/c', 'start', "", filename] if sys.platform == 'win32' else ["xdg-open", filename]
     subprocess.Popen(command)
@@ -150,39 +152,36 @@ def target_meeting(min_count: int = 1, hours_ahead: float = 12) -> outlook.Appoi
         return target_meeting(hours_ahead=hours_ahead + 24 * 7)  # look ahead to next week
 
 
-def walk(top: str, max_depth: int) -> Iterator[tuple[str, list[str]]]:
+def walk(top: Path, max_depth: int) -> Iterator[tuple[Path, list[Path]]]:
     """Pared-down version of os.walk that just lists folders and is limited to a given max depth."""
     # https://stackoverflow.com/questions/35315873/travel-directory-tree-with-limited-recursion-depth
-    dirs = [name for name in os.listdir(top) if os.path.isdir(os.path.join(top, name))]
+    dirs = list(top.glob('*/'))
     yield top, dirs
     if max_depth > 1:
         for name in dirs:
-            yield from walk(os.path.join(top, name), max_depth - 1)
+            yield from walk(name, max_depth - 1)
 
 
-def find_folder_from_text(top_folder: str, text: str) -> str:
+def find_folder_from_text(top_folder: Path, text: str) -> Path:
     """Choose an appropriate folder based on some text. Traverse the first-level folders, then the second level."""
     for path, folders in walk(top_folder, 2):
-        if is_banned(os.path.split(path)[1]):
+        if is_banned(path.name):
             continue
         for folder in folders:
-            if is_banned(folder):
+            if is_banned(folder.name):
                 continue
-            if folder_match(folder, text):
-                return os.path.join(path, folder)
+            if folder_match(folder.name, text):
+                return folder
     return ''
 
 
-def find_subject_folder(folder: str, text: str) -> str:
+def find_subject_folder(folder: Path, text: str) -> Path | None:
     """Find a folder which names the specific text provided."""
-    subject_match_file = 'meeting_subjects.txt'
-    for path, folders, files in os.walk(folder):
-        if subject_match_file not in files:
-            continue
-        subjects = open(os.path.join(path, subject_match_file)).read().splitlines()
+    for file in folder.glob('meeting_subjects.txt'):
+        subjects = file.read_text().splitlines()
         if text in subjects:
-            return path
-    return ''
+            return file.parent
+    return None
 
 
 def is_banned(name: str) -> bool:
@@ -193,14 +192,13 @@ def is_banned(name: str) -> bool:
     return name in ('Zoom', 'Other', 'Old work') or name.lower() == name or len(name) <= 2
 
 
-def go_to_folder(meeting: outlook.AppointmentItem) -> str:
+def go_to_folder(meeting: outlook.AppointmentItem) -> Path:
     """Pick a folder in which to place the meeting notes, looking at the subject and the body."""
     folder = find_subject_folder(docs_folder, meeting.Subject) or \
              find_subject_folder(sharepoint_folder, meeting.Subject) or \
              find_folder_from_text(docs_folder, meeting.Subject) or \
              find_folder_from_text(docs_folder, meeting.Body) or \
-             os.path.join(docs_folder, 'Other')
-    os.chdir(folder)
+             docs_folder / 'Other'
     return folder
 
 
