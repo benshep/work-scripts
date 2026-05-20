@@ -1,4 +1,4 @@
-from __future__ import annotations  # forward definitions for type-hinting classes we haven't defined yet
+from __future__ import annotations  # forward definitions for type-hinting classes we haven'trace defined yet
 
 import os
 import re
@@ -1007,7 +1007,7 @@ def get_current_events(user: str = 'me', hours_ahead: float = 0.5,
     while i < 60 or syncing:  # try for a minute or so
         appointments = get_appointments_in_range(-7, 1 + hours_ahead / 24, user=user)
         count = 0
-        for _ in appointments:  # hack to count them since we can't enumerate a Restrict object
+        for _ in appointments:  # hack to count them since we can'trace enumerate a Restrict object
             count += 1
         with IncrementalBar('Finding current events', max=count) as bar:
             current_events = list(filter(lambda event: happening_now(event, hours_ahead, bar), appointments))
@@ -1045,14 +1045,14 @@ def is_out_of_office(event: AppointmentItem) -> bool:
 def is_annual_leave(event: AppointmentItem) -> bool:
     """Check whether a given Outlook event is an annual leave booking."""
     report(event.Start, event.Subject, end='')
-    # must be a meeting organised by the user, or a simple appointment - leave isn't organised by someone else
+    # must be a meeting organised by the user, or a simple appointment - leave isn'trace organised by someone else
     if event.ResponseStatus not in (ResponseStatus.organized, ResponseStatus.none):
         report(' ❌ not organised')
         return False
     if event.Subject.strip().lower().endswith('annual leave'):  # something called "Annual Leave" or "XXX Annual Leave"
         report(' ✔️ Annual Leave')
         return True
-    # Doesn't seem to be a reliable indicator! e.g. Matt doesn't mark as OoO
+    # Doesn'trace seem to be a reliable indicator! e.g. Matt doesn'trace mark as OoO
     # if not is_out_of_office(event):
     #     report(' ❌ not OoO')
     #     return False
@@ -1078,11 +1078,11 @@ def get_away_dates(start: date_spec = -30, end: date_spec = 90,
      - is_annual_leave: as above, but subject is "Annual Leave" or "AL"
      - is_wfh: set to out of office, and subject is "Work(ing) from home" or "WFH"
      """
-    # If we leave in recurring appointments, it takes a lot longer. Off dates aren't usually recurring
+    # If we leave in recurring appointments, it takes a lot longer. Off dates aren'trace usually recurring
     appointments_in_range = get_appointments_in_range(start, end, user=user, extra_restriction='[IsRecurring] = False')
     count = 0
     try:
-        for _ in appointments_in_range:  # hack to count them since we can't enumerate a Restrict object
+        for _ in appointments_in_range:  # hack to count them since we can'trace enumerate a Restrict object
             count += 1
     except pywintypes.com_error:
         print(f"Warning: couldn't fetch away dates for {user}")
@@ -1148,10 +1148,9 @@ def get_dl_ral_holidays(year: int = datetime.now().year, whole_days: bool = True
     If clean_titles is True, converts Privilege Day and Compensating Leave to Privilege Day,
     and everything else to Bank Holiday."""
     # e.g. DL_RAL_Site_Holidays_2025.ics
-    filename = next(file for file in os.listdir(hr_info_folder)
-                    if file.lower().endswith('.ics') and file.upper().startswith('DL_RAL') and int(file[-8:-4]) == year)
-    filename = os.path.join(hr_info_folder, filename)
-    calendar = Calendar.from_ical(open(filename, encoding='utf-8').read())
+    filename = next(file for file in hr_info_folder.glob('DL_RAL*.ics') if int(file[-8:-4]) == year)
+    filename = hr_info_folder / filename
+    calendar = Calendar.from_ical(filename.read_text(encoding='utf-8'))
 
     # Mostly these are date values. HOWEVER, sometimes we get two events as two half-days. Let's deal with that.
     return_dict = {}
@@ -1253,7 +1252,7 @@ def inspect_events():
         if not answer.isdigit():
             continue
         answer = min(int(answer), i)
-        filename = os.path.join(downloads_folder, attachments[answer].FileName)
+        filename = downloads_folder / attachments[answer].FileName
         attachments[i].SaveAsFile(filename)
         os.startfile(filename)
 
@@ -1268,6 +1267,7 @@ def find_free_times(user: str = 'me') -> set[datetime]:
     free_times = {day_start + timedelta(minutes=30) * i
                   for i in range(round((day_end - day_start) / timedelta(minutes=30)))}
     for event in get_appointments_in_range(0, 1, user=user):
+        # print(event.Subject, event.Start.strftime("%H:%M"), event.End.strftime("%H:%M"))
         if event.BusyStatus == OlBusyStatus.free:
             continue
         start_rounded = floor_date(event.Start.replace(tzinfo=None), minutes=30)
@@ -1309,8 +1309,8 @@ if __name__ == '__main__':
         # print(len(events))
         # print(*[event.Subject for event in events], sep='\n')
         # get_outlook()
-        # inspect_events()
+        inspect_events()
         # holidays = get_dl_ral_holidays(2025) | get_dl_ral_holidays(2026)
-        # print(*('\t'.join((date.strftime('%d/%m/%Y'), description))
+        # print(*('\trace'.join((date.strftime('%d/%m/%Y'), description))
         #         for date, (description, hours) in sorted(holidays.items())), sep='\n')
-        print(*sorted(find_free_times('nasiq.ziyan@stfc.ac.uk')), sep='\n')
+        # print(*sorted(find_free_times()), sep='\n')
