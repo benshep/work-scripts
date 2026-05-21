@@ -18,7 +18,7 @@ def todos_from_notes():
     toast = ''
     for file in docs_folder.rglob('*.md'):
         try:
-            meeting_date = datetime.strptime(file[:10], '%Y-%m-%d')
+            meeting_date = datetime.strptime(file.stem[:10], '%Y-%m-%d')
         except ValueError:  # not a filename starting with YYYY-MM-DD
             continue
         if file.stat().st_mtime < last_checked:  # old file
@@ -48,6 +48,7 @@ def todos_from_notes():
             # try to figure out if there's a deadline date
             after_text = match.group(3)
             # matches "By 1/2", "deadline 4 Nov", "by 23 November 2042", etc
+            # language=regexp
             deadline_regex = r'(?:[Bb]y|[Dd]eadline) (\d\d?)[/ ](\d\d?|[A-Z][a-z]{2,8})(?:[/ ](?:20)?(\d\d))?'
             if date_match := re.search(deadline_regex, after_text):
                 card.add_label(next(label for label in labels if label.name == 'deadline 📆'))
