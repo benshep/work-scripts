@@ -4,9 +4,9 @@ import otl
 from staff import GroupMember
 
 # Relevant codes for the group
-magnet_lab = otl.Code('STGA00029', '02', 'MARS Group Costs', priority=otl.Priority.BALANCING)
+magnet_lab = otl.Code('STGA00038', '01', 'Magnet test facility', priority=otl.Priority.BALANCING)
 mars_underpinning = otl.Code('STGA00206', name='MARS Underpinning', priority=otl.Priority.BALANCING)
-clara = otl.Code('STGA00266', name='CLARA', priority=otl.Priority.AGREED)
+clara = otl.Code('STGA00266', name='CLARA Mothball', priority=otl.Priority.AGREED)
 scu = otl.Code('STGA00273', name='Superconducting Undulator', priority=otl.Priority.AGREED)
 sustainable_accelerators = otl.Code('STGA00298', name='Sustainable Acc (incl CESA and NCF)',
                                     priority=otl.Priority.BALANCING)
@@ -49,7 +49,7 @@ epita = otl.Code('STGA02014', name='EPITA',
 leaps_tech = otl.Code('STGA02015', name='LEAPS-TECH',
                  start=date(2026, 9, 1), end=date(2028, 3, 31))
 eu_xfel = otl.Code('STGA02016', name='European XFEL')
-liora_phase1a = otl.Code('STGA04017', name='LIORA Phase A',
+liora_phase1a = otl.Code('STGA04017', name='LIORA Phase A', fusion_name='AVO System Completion Study',
                          start=date(2026, 6, 1), end=date(2026, 7, 31))
 liora_phase1b = otl.Code('STGA04018', name='LIORA Phase B',
                          # start date: unknown at the moment!
@@ -83,7 +83,7 @@ members: list[GroupMember] = [
                     otl.Entry(clara, 0.07),
                     otl.Entry(epita, 0.09),
                     otl.Entry(liora_phase1a, 0.02),
-                    otl.Entry(liora_phase1b, 0.01),
+                    # otl.Entry(liora_phase1b, 0.01),
                     otl.Entry(magnet_lab),
                 ])),
     GroupMember('David Dunning',
@@ -93,9 +93,9 @@ members: list[GroupMember] = [
                 booking_plan=otl.BookingPlan([
                     otl.Entry(ukxfel_continuation, 0.07),
                     otl.Entry(xfel_rnd, 0.23),
-                    otl.Entry(novel_acceleration, 0.3),
+                    otl.Entry(novel_acceleration),
                     otl.Entry(eu_xfel, 0.4),
-                    # otl.Entry(beuv_pocf, 243 / otl.hours_per_fte),  # 26/27
+                    otl.Entry(beuv_pocf, 243 / otl.hours_per_fte),  # 26/27
                 ])),
     GroupMember('Neil Thompson',
                 206988,
@@ -103,18 +103,10 @@ members: list[GroupMember] = [
                 booking_plan=otl.BookingPlan([
                     otl.Entry(epac, 0.05),
                     otl.Entry(ukxfel_continuation, 0.03),
-                    otl.Entry(xfel_rnd, 0.52),
+                    otl.Entry(xfel_rnd),
                     otl.Entry(eu_xfel, 0.2),
-                    otl.Entry(novel_acceleration),
-                    # otl.Entry(beuv_pocf, 424 / otl.hours_per_fte),  # 26/27
-                ])),
-    GroupMember('Kiril Marinov',
-                204936,
-                person_id=100000020410826, assignment_id=300000117884336,
-                booking_plan=otl.BookingPlan([
-                    otl.Entry(novel_neg, 0.25),
-                    otl.Entry(thin_films, 0.5),
-                    otl.Entry(mars_underpinning),
+                    # otl.Entry(novel_acceleration),
+                    otl.Entry(beuv_pocf, 424 / otl.hours_per_fte),  # 26/27
                 ])),
     GroupMember('Alexander Hinton',
                 201375,
@@ -122,7 +114,7 @@ members: list[GroupMember] = [
                 title='Mr',
                 person_id=100000020413904, assignment_id=300000117923738,
                 booking_plan=otl.BookingPlan([
-                    otl.Entry(scu, 0.52),
+                    otl.Entry(scu),
                     otl.Entry(clepto_pocf, otl.hours_per_day * 5 / otl.hours_per_fte),
                     otl.Entry(epita, 0.2178),
                     otl.Entry(leaps_tech, 0.25 * 7/19),  # for 27/28: 0.25 * 12/19
