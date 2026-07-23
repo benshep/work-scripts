@@ -3,7 +3,9 @@ import tempfile
 from datetime import date, timedelta, datetime
 from itertools import accumulate
 from pathlib import Path
+from time import sleep
 from urllib.parse import urlencode
+from selenium.webdriver.common.by import By
 
 from dateutil.relativedelta import relativedelta
 from pushbullet import Pushbullet
@@ -230,9 +232,22 @@ def list_ftes():
             sep='\t')
 
 
+def goal_page_urls():
+    """List this year's objectives for each staff member."""
+    web = oracle.go_to_oracle_page('home', show_window=True)
+    for member in members:
+        url = f'{oracle.fusion_url}goals/goal-center?pPersonId={member.person_id}'
+        web.get(url)
+        sleep(10)
+        goal_titles = web.find_elements(By.CLASS_NAME, 'oj-link')
+        print(member.name, len(goal_titles) - 1, 'objectives', url)
+        for goal_title in goal_titles[1:]:  # first is 'Skip to main content'
+            print('', goal_title.text)
+
 
 if __name__ == '__main__':
-    print(run_otl_calculator(weeks_ahead=1))
+    # print(run_otl_calculator(weeks_ahead=1))
     # print(leave_cross_check())
     # print(check_in())
     # list_ftes()
+    goal_page_urls()
