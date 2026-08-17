@@ -94,7 +94,7 @@ members: list[GroupMember] = [
                     otl.Entry(ukxfel_continuation, 0.07),
                     otl.Entry(xfel_rnd, 0.23),
                     otl.Entry(novel_acceleration),
-                    otl.Entry(eu_xfel, 0.4),
+                    # otl.Entry(eu_xfel, 0.4),  # wait until contract signed
                     otl.Entry(beuv_pocf, 243 / otl.hours_per_fte),  # 26/27
                 ])),
     GroupMember('Neil Thompson',
@@ -104,7 +104,7 @@ members: list[GroupMember] = [
                     otl.Entry(epac, 0.05),
                     otl.Entry(ukxfel_continuation, 0.03),
                     otl.Entry(xfel_rnd),
-                    otl.Entry(eu_xfel, 0.2),
+                    # otl.Entry(eu_xfel, 0.2),  # wait until contract signed
                     # otl.Entry(novel_acceleration),
                     otl.Entry(beuv_pocf, 424 / otl.hours_per_fte),  # 26/27
                 ])),
@@ -146,15 +146,14 @@ members: list[GroupMember] = [
                     otl.Entry(clara, 0.35),
                     otl.Entry(new_opps, 0.65),
                 ])),
-    # GroupMember('Thomas Smith',  # starts 2026-09-07
-    #             0,
-    #             known_as='Tom',
-    #             title='Mr',
-    #             person_id=100000020412335, assignment_id=300000117987914,
-    #             email='thomas.smith@stfc.ac.uk',
-    #             booking_plan=otl.BookingPlan([
-    #                 otl.Entry(magnet_lab, start_date=date(2026, 9, 7)),
-    #             ]))
+    GroupMember('Thomas Smith',  # starts 2026-08-17
+                304560,
+                known_as='Tom',
+                title='Mr',
+                person_id=300000399437168, assignment_id=300000735307053,
+                booking_plan=otl.BookingPlan([
+                    otl.Entry(magnet_lab, start_date=date(2026, 8, 17)),
+                ]))
 ]
 # if __name__ == '__main__':
 # check_total_ftes(members)
