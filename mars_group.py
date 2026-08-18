@@ -150,6 +150,7 @@ members: list[GroupMember] = [
                 304560,
                 known_as='Tom',
                 title='Mr',
+                email='thomas.smith2@stfc.ac.uk',
                 person_id=300000399437168, assignment_id=300000735307053,
                 booking_plan=otl.BookingPlan([
                     otl.Entry(magnet_lab, start_date=date(2026, 8, 17)),
