@@ -84,6 +84,8 @@ members: list[GroupMember] = [
                     otl.Entry(epita, 0.09),
                     otl.Entry(liora_phase1a, 0.02),
                     # otl.Entry(liora_phase1b, 0.01),
+                    # PM solenoid design for Kiril & Oleg's plasma deposition experiment
+                    otl.Entry(thin_films, (4 * 5 * otl.hours_per_day) / otl.hours_per_fte, priority=otl.Priority.AGREED),
                     otl.Entry(magnet_lab),
                 ])),
     GroupMember('David Dunning',
