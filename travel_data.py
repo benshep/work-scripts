@@ -1,4 +1,6 @@
 import re
+
+import numpy as np
 import requests
 
 from math import radians, sin, cos, sqrt, atan2, copysign
@@ -26,14 +28,60 @@ known_stations = {
     'XPG': (48.881111, 2.355278),  # Gare du Nord
 }
 # from https://www.gov.uk/government/collections/government-conversion-factors-for-company-reporting
+hotel_conversions = {
+    # hotel (kgCO₂e/night)
+    'London': 11.5,
+    'United Kingdom': 10.4,
+    'Australia': 35,
+    'Belgium': 12.2,
+    'Brazil': 8.7,
+    'Canada': 7.4,
+    'Chile': 27.6,
+    'China': 53.5,
+    'Colombia': 14.7,
+    'Costa Rica': 4.7,
+    'Egypt': 44.2,
+    'France': 6.7,
+    'Germany': 13.2,
+    'Hong Kong, China': 51.5,
+    'India': 58.9,
+    'Indonesia': 62.7,
+    'Italy': 14.3,
+    'Japan': 39,
+    'Jordan': 68.9,
+    'Korea': 55.8,
+    'Malaysia': 61.5,
+    'Maldives': 152.2,
+    'Mexico': 19.3,
+    'Netherlands': 14.8,
+    'Oman': 90.3,
+    'Philippines': 54.3,
+    'Portugal': 19,
+    'Qatar': 86.2,
+    'Russian Federation': 24.2,
+    'Saudi Arabia': 106.4,
+    'Singapore': 24.5,
+    'South Africa': 51.4,
+    'Spain': 7,
+    'Switzerland': 6.6,
+    'Thailand': 43.4,
+    'Turkey': 32.1,
+    'United Arab Emirates': 63.8,
+    'United States': 16.1,
+    'Vietnam': 38.5,
+    None: 32.1  # median value
+}
 # 2026 factors, assuming economy class throughout: values in kgCO₂e/passenger.km
-conversions = {'Domestic': 0.22928,
-               'Short': 0.12576,
-               'Long': 0.11704,
-               'International': 0.10916,
-               'National Rail': 0.03092,  # intended for UK trains
-               'International Rail': 0.01135  # i.e. Eurostar
-               }
+conversions = {
+    # air
+    'Domestic': 0.22928,
+    'Short': 0.12576,
+    'Long': 0.11704,
+    'International': 0.10916,
+    # rail
+    'National Rail': 0.03092,  # intended for UK trains
+    'International Rail': 0.01135  # i.e. Eurostar
+}
 routing_url = 'https://routes.googleapis.com/directions/v2:computeRoutes'
 routing_headers = {
     "Content-Type": "application/json",
@@ -58,6 +106,14 @@ def extract_station_codes(text: str) -> list[str]:
     for m in matches:
         codes.extend(m.split('/'))  # split each group into individual codes
     return codes or line_to_iata_pairs(text)
+
+
+def extract_country_name(text: str):
+    """Return a country name contained within a comment field."""
+    for country in hotel_conversions.keys():
+        if country and country in text:
+            return country
+    return None
 
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -232,6 +288,20 @@ def get_rail_data():
     save_data(rail, 'Rail')
 
 
+def get_hotel_data():
+    """Read a spreadsheet of spending (gleaned from OBI) and extract data on hotel bookings,
+    calculating emissions for each booking.
+    Add just the rows containing useful hotel data to a new sheet in the workbook."""
+    travel = get_clarity_rows()
+    hotel = travel[travel['Comment'].str.contains('Hotel[- ]Hotel')]
+    hotel['country'] = hotel['Comment'].apply(extract_country_name)
+    hotel['nights'] = np.ceil(hotel['Cost'] / 150)  # VERY APPROXIMATE
+    hotel['emissions_kgco2e'] = hotel['country'].map(hotel_conversions) * hotel['nights']
+    # rail[['distance_km', 'emissions_kgco2e']] = rail.apply(total_train_distance, axis=1, result_type='expand')
+    print(hotel)
+    save_data(hotel, 'Hotel')
+
+
 def get_clarity_rows():
     """Return the spreadsheet rows where the supplier is Clarity."""
     data = read_excel(excel_file)
@@ -240,4 +310,4 @@ def get_clarity_rows():
 
 
 if __name__ == '__main__':
-    get_rail_data()
+    get_hotel_data()
