@@ -1,4 +1,5 @@
 import re
+from datetime import datetime, timedelta
 
 import numpy as np
 import requests
@@ -7,16 +8,19 @@ from math import radians, sin, cos, sqrt, atan2, copysign
 
 import airportsdata
 import pandas
+import serpapi
 
 from work_folders import docs_folder
 from work_tools import read_excel
 from google_routing_credentials import api_key
+from serp_credentials import serp_api_key
 
 iata_pattern = re.compile(r'\b[A-Z]{3}\b(?:/[A-Z]{3}\b)+')
 airports = airportsdata.load('IATA')
 excel_file = docs_folder / 'Sustainability' / 'Travel' / '2026-27 ASTeC spending.xlsx'
 uk_stations = pandas.read_csv(
     'https://raw.githubusercontent.com/davwheat/uk-railway-stations/refs/heads/main/stations.csv')
+serp = serpapi.Client(api_key=serp_api_key)
 known_stations = {
     'PARIS ST LAZARE': (48.876944, 2.324444),
     'PAZ': (48.876944, 2.324444),
@@ -108,12 +112,17 @@ def extract_station_codes(text: str) -> list[str]:
     return codes or line_to_iata_pairs(text)
 
 
-def extract_country_name(text: str):
+def extract_country_name(row) -> tuple[str | None, str | None]:
     """Return a country name contained within a comment field."""
+    # format e.g. 16/05/2026 JONES/MATTHEW Hotel Hotel  France MERCURE TROUVILLE-SUR-MER;14360; - EXPEDIA BOOKING
+    text = row['Comment']
     for country in hotel_conversions.keys():
         if country and country in text:
-            return country
-    return None
+            description = text.split(';')[0]
+            pos = description.find(country)
+            hotel_name = description[pos + len(country) + 1:]
+            return country, hotel_name
+    return None, None
 
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -288,16 +297,44 @@ def get_rail_data():
     save_data(rail, 'Rail')
 
 
+hotel_rates = {}
+def estimate_nights(row) -> int:
+    """Use the hotel name to estimate the price and therefore number of nights stayed."""
+    global hotel_rates
+    rate = 150  # VERY APPROXIMATE GUESS
+    if name := row['hotel_name']:
+        if name in hotel_rates:
+            rate = hotel_rates[name]
+        else:
+            check_in = datetime.now() + timedelta(days=30)  # simulate booking 1 month in advance
+            check_out = check_in + timedelta(days=1)  # 1 night
+            results = serp.search({'engine': 'google_hotels',
+                                   'q': name, 'adults': 1,
+                                   'check_in_date': check_in.strftime('%Y-%m-%d'),
+                                   'check_out_date': check_out.strftime('%Y-%m-%d'),
+                                   'currency': 'GBP', 'gl': 'gb', 'hl': 'en'})
+            try:
+                rate = results['rate_per_night']['extracted_lowest']
+                print(name, rate)
+            except KeyError:
+                pass
+    nights = np.ceil(row['Cost'] / rate)
+    max_nights = 7  # seems an OK limit for work trips
+    if nights > max_nights:  # i.e. we paid more than the estimated nightly rate
+        print(name, nights, 'nights estimated: reducing to', max_nights)
+        nights = max_nights
+    return nights
+
+
 def get_hotel_data():
     """Read a spreadsheet of spending (gleaned from OBI) and extract data on hotel bookings,
     calculating emissions for each booking.
     Add just the rows containing useful hotel data to a new sheet in the workbook."""
     travel = get_clarity_rows()
     hotel = travel[travel['Comment'].str.contains('Hotel[- ]Hotel')]
-    hotel['country'] = hotel['Comment'].apply(extract_country_name)
-    hotel['nights'] = np.ceil(hotel['Cost'] / 150)  # VERY APPROXIMATE
+    hotel[['country', 'hotel_name']] = hotel.apply(extract_country_name, axis=1, result_type='expand')
+    hotel['nights'] = hotel.apply(estimate_nights, axis=1)
     hotel['emissions_kgco2e'] = hotel['country'].map(hotel_conversions) * hotel['nights']
-    # rail[['distance_km', 'emissions_kgco2e']] = rail.apply(total_train_distance, axis=1, result_type='expand')
     print(hotel)
     save_data(hotel, 'Hotel')
 
