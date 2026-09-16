@@ -1303,12 +1303,12 @@ if __name__ == '__main__':
         # change THIS BIT for testing!
         # verbose = True
         # print(*sorted(list(get_dl_ral_holidays())), sep='\n')
-        # print(*get_away_dates(end=1, user='nasiq.ziyan@stfc.ac.uk'), sep='\n')
+        print(*get_away_dates(end=1, user='thomas.smith2@stfc.ac.uk'), sep='\n')
         # events = get_current_events(min_count=-1)
         # print(len(events))
         # print(*[event.Subject for event in events], sep='\n')
         # get_outlook()
-        inspect_events()
+        # inspect_events()
         # holidays = get_dl_ral_holidays(2025) | get_dl_ral_holidays(2026)
         # print(*('\t'.join((date.strftime('%d/%m/%Y'), description))
         #         for date, (description, hours) in sorted(holidays.items())), sep='\n')

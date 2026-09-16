@@ -33,7 +33,7 @@ def income_pre_tax(year: int) -> float:
     return total_payments.total()
 
 
-def get_payslips(only_latest: bool = True, test_mode: bool = False) -> str | datetime:
+def get_payslips(only_latest: bool = True, test_mode: bool = False, **kwargs) -> str | datetime:
     """Download all my payslips, or just the latest."""
     web = go_to_oracle_page('payslips', show_window=test_mode)
     # On page load, shows latest slip

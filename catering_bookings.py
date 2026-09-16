@@ -8,7 +8,7 @@ from selenium.webdriver.common.by import By
 from hosp_credentials import username, password
 
 
-def get_bookings(test_mode: bool = False) -> str | bool:
+def get_bookings(test_mode: bool = False, **kwargs) -> str | bool:
     """Open the STFC Hospitality bookings and find the DL ones booked for the next week."""
     toast = ''
     if not test_mode:

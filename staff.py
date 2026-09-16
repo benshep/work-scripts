@@ -173,12 +173,12 @@ class GroupMember:
                 output)
 
     def update_off_days(self, force_reload: bool = False) -> None:
-        """Load off days from cached file, or if that's more than a week old, reload from Outlook and Oracle.
+        """Load off days from cached file, or if that's more than a day old, reload from Outlook and Oracle.
         :param force_reload: Ignore any cached information."""
         cache_file = docs_folder / 'Group Leader' / 'off_days_cache' / f'{self.name}.txt'
-        last_week = datetime.now() - timedelta(days=7)
+        yesterday = datetime.now() - timedelta(days=1)
         cache_exists = cache_file.exists()
-        if force_reload or not cache_exists or datetime.fromtimestamp(cache_file.stat().st_mtime) < last_week:
+        if force_reload or not cache_exists or datetime.fromtimestamp(cache_file.stat().st_mtime) < yesterday:
             print(f'Fetching Outlook off days for {self.known_as}')
             outlook_days = outlook.get_away_dates(otl.fy_start, otl.fy_end,
                                                   user=self.email, look_for=outlook.is_annual_leave)

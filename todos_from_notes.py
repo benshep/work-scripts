@@ -4,7 +4,7 @@ from trello import TrelloClient
 import trello_auth
 from work_folders import docs_folder
 
-def todos_from_notes():
+def todos_from_notes(**kwargs):
     """Go through Markdown files in Documents; find any action points that should be added to my to-do list."""
     trello_client = TrelloClient(**trello_auth.oauth)
     to_do_board = next(board for board in trello_client.list_boards() if board.name == 'To-Do List')

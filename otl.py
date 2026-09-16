@@ -125,8 +125,8 @@ class BookingPlan:
         # If any entries don't have an annual FTE amount, assign them one to make the total up to 1
         blank_entries = [entry for entry in self.entries if entry.annual_fte is None]
         if not blank_entries:
-            if not isclose(self.total_fte(), 1):
-                raise BadDataError(f'Total FTE for plan ({self.total_fte():.2f}) != 1.0, no blank entries')
+            if not isclose(self.total_fte(), 1, abs_tol=1e-3):
+                raise BadDataError(f'Total FTE for plan ({self.total_fte():.4f}) != 1.0, no blank entries')
             return
         fte_share = (1 - self.total_fte()) / len(blank_entries)
         if fte_share < -1e-4:  # ignore rounding errors

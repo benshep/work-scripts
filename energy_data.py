@@ -15,6 +15,10 @@ from get_energy_usage import get_co2_data  # function to get carbon intensity da
 rayleigh = EasyAPI(api_key)
 
 
+class NotEnoughData(Exception):
+    pass
+
+
 async def find_sensors(names: list[str]) -> dict[str, tuple[str, str]]:
     """Returns the gateway and sensor IDs for the given sensor names."""
     return_dict = {}
@@ -33,7 +37,7 @@ async def list_sensors():
                 print(gateway['name'], gateway['id'], sensor['id'], sensor['name'], sep='\t')
 
 
-def update_energy_data() -> bool | None:
+def update_energy_data(**kwargs) -> bool | None:
     """Sync wrapper for async archive_data function."""
     return asyncio.run(archive_data())
 
@@ -51,8 +55,9 @@ async def archive_data() -> bool | None:
     last_timestamp = max(meter_data.index)
     start = last_timestamp - pandas.to_timedelta(5, unit='hours')  # go back a bit, to avoid gaps
     # a manageable amount of data for the server: we expect to update more often than this anyway
-    end = last_timestamp + pandas.to_timedelta(14, 'days')
-    print('Fetching data from', start, 'to', end)
+    end = min(start + pandas.to_timedelta(14, 'days'), pandas.to_datetime('now').floor('h'))
+    expected_data_points = (end - start) // pandas.to_timedelta(30, 'minute')
+    print(f'Fetching data from {start} to {end}, {expected_data_points=}')
     # print(meter_data.columns[:3])
     # Fetch data from the server asynchronously, since we're making a lot of requests!
     # print(meter_data.columns)
@@ -63,19 +68,28 @@ async def archive_data() -> bool | None:
             start.to_pydatetime(),
             end.to_pydatetime(),
         ) for gateway, sensor, sensor_name in meter_data.columns])
-    # print(frames)
     # Resample so that data points are on half-hour intervals
     frames = [resample(frame, key) for frame, key in zip(frames, meter_data.columns)]
     # What is the last data point common to all datasets? Trying to avoid 'orphans'
     first_new_time = last_timestamp + pandas.to_timedelta(30, unit='minutes')
     max_times = [max(frame.index) for frame in frames if len(frame) > 0]
     if not max_times:
-        print('No new data')
-        return None
+        print('No data received for any sensors')
+        return failed(expected_data_points)
+    smaller_frames = {
+        sensor_name: max(frame.index)
+        for frame, (_, _, sensor_name) in zip(frames, meter_data.columns)
+        if len(frame) < expected_data_points // 2
+    }
     last_new_time = min(max_times)
     if last_new_time <= first_new_time:
-        print('No new data')
-        return None
+        if len(smaller_frames) == len(frames):
+            print(f'No data received after {last_timestamp} for any sensor')
+        else:
+            print('Sensors returning less than expected - last data point received:')
+            for frame in smaller_frames.items():
+                print(*frame)
+        return failed(expected_data_points)
     # Concatenate all the data together horizontally...
     new_data = pandas.concat(frames, axis=1)
     # Delete all rows with data after this last common point, and remove any overlap
@@ -126,6 +140,13 @@ async def archive_data() -> bool | None:
                     cell.alignment = word_wrap
     workbook.save(excel_filename)
     return True
+
+
+def failed(expected_points: int):
+    if expected_points < 48:  # less than a day, never mind
+        return None
+    else:
+        raise NotEnoughData()
 
 
 def resample(data: list[list], key: tuple[str, str, str]) -> pandas.Series:

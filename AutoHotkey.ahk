@@ -185,9 +185,10 @@ F1:: ;mute/unmute both Teams and Zoom
 ;Emojis
 :::)::☺
 
-;@@ to enter work email, @~ to enter home email
+;@@ to enter work email, @~ to enter home email, ;; to enter postcode
 :*:@@::ben.shepherd@stfc.ac.uk
 :*:@~::bjashepherd@gmail.com
+:*:;;::WA10 4RL
 
 ;Ctrl+; to insert date, Ctrl+Shift+; to insert time (like Excel), Ctrl+Alt+; to insert yyyy-mm-dd
 ^;::

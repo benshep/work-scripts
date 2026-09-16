@@ -19,7 +19,7 @@ from pushbullet_api_key import api_key  # local file, keep secret!
 from work_folders import downloads_folder, docs_folder
 
 
-def run_otl_calculator(weeks_ahead: int = 0) -> tuple[str, str] | None:
+def run_otl_calculator(weeks_ahead: int = 0, **kwargs) -> tuple[str, str] | None:
     """Iterate through staff, listing the hours to upload for new OTL cards required."""
     # staff.verbose = True
     cards_to_book = 0
@@ -104,7 +104,7 @@ def run_otl_calculator(weeks_ahead: int = 0) -> tuple[str, str] | None:
     return None
 
 
-def leave_cross_check():
+def leave_cross_check(**kwargs):
     """Iterate through staff, and check Oracle vs Outlook leave bookings."""
     toast = ''
     _, output_filename = tempfile.mkstemp(prefix='leave_cross_check', suffix='.txt')
@@ -135,7 +135,7 @@ def get_checkins() -> list[str]:
             for push in pushes if 'title' not in push]  # most have titles: looking for one without (sent from phone)]
 
 
-def check_in() -> str | bool:
+def check_in(**kwargs) -> str | bool:
     """Pick a member of staff to check in with."""
     now = datetime.now()
     # when am I free? start with 0900-1700
@@ -246,8 +246,8 @@ def goal_page_urls():
 
 
 if __name__ == '__main__':
-    # print(run_otl_calculator(weeks_ahead=1))
+    print(run_otl_calculator(weeks_ahead=2))
     # print(leave_cross_check())
     # print(check_in())
     # list_ftes()
-    goal_page_urls()
+    # goal_page_urls()
