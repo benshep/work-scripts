@@ -11,6 +11,8 @@ fy = today.year - (today.month < 4)  # last calendar year if before April
 fy_start = date(fy, 4, 1)
 fy_end = date(fy + 1, 3, 31)
 
+unproductive = 'Unproductive - Straight Time'
+straight_time = 'Labour - Straight Time'
 
 # Classes used for OTL bookings
 
@@ -25,6 +27,11 @@ class Priority(IntEnum):
     """Internally-funded project that can be used to balance bookings."""
 
 
+def table_cell(key: str, display_value: str) -> str:
+    """A representation of a table cell that can be pasted into Fusion."""
+    return f'{{"data":"{key}","valueItem":{{"key":"{key}","data":{{"Code":"{key}","DisplayValue":"{display_value}","UnitOfMeasure":"HR"}}}}}}'
+
+
 class Code:
     """A project-task pair."""
 
@@ -32,7 +39,8 @@ class Code:
                  name: str = '', fusion_name: str = '',
                  start: date = fy_start, end: date = fy_end,
                  priority: Priority = Priority.EXTERNAL,
-                 hours_type: str = 'Labour - Straight Time'):
+                 project_key: str = '', task_key: str = '',
+                 hours_type: str = straight_time):
         """
         A booking code.
         :param project: The project code, e.g. STGA00001.
@@ -42,6 +50,8 @@ class Code:
         :param start: The project's start date. Use the start of the current FY if not provided or starts earlier.
         :param end: The project's end date. Use the end of the current FY if not provided or finishes later.
         :param priority: The project's priority level.
+        :param project_key: The project key number, intended for copy-pasting within Fusion.
+        :param task_key: The project key number, intended for copy-pasting within Fusion.
         :param hours_type: The project's hours type. Defaults to 'Labour - Straight Time'.
         """
         self.project = project
@@ -51,17 +61,38 @@ class Code:
         self.start = max(start, fy_start)
         self.end = min(end, fy_end)
         self.priority = priority
+        self.project_key = project_key
+        self.task_key = task_key
         self.hours_type = hours_type
 
     def __repr__(self):
         return f'{self.project} {self.task}'
 
+    def project_cell(self):
+        """A representation of the project code that can be pasted into Fusion."""
+        if not self.project_key:
+            return ''
+        return table_cell(self.project_key, f"{self.project} - {self.fusion_name}")
+
+    def task_cell(self):
+        """A representation of the task code that can be pasted into Fusion."""
+        if not self.task_key:
+            return ''
+        return table_cell(self.task_key, f"{self.task} - {self.project}")
+
+    def hours_cell(self):
+        """A representation of the hours type that can be pasted into Fusion."""
+        key = {
+            straight_time: '300000012241990',
+            unproductive: '',
+        }[self.hours_type]
+        return table_cell(key, self.hours_type)
 
 # What to book various types of leave to? These are specific ASTeC codes
-unproductive = 'Unproductive - Straight Time'
 annual_leave, special_paid_leave, parental_leave, sick_leave = [
     Code('STRA00009', f'01.{i + 1:02d}',  # 01.01, 01.02, 01.03, 01.04
-         fusion_name='ASTeC Non-Productive Time', hours_type=unproductive)
+         fusion_name='ASTeC Non-Productive Time', hours_type=unproductive,
+         project_key='300000105495142')
     for i in range(4)]
 unpaid = Code('(no booking)', 'N/A',
               hours_type=unproductive)  # TODO: need to deal with when we move to automated bookings

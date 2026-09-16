@@ -24,7 +24,7 @@ def run_otl_calculator(weeks_ahead: int = 0, **kwargs) -> tuple[str, str] | None
     # staff.verbose = True
     cards_to_book = 0
     links_filename = downloads_folder / 'otl_upload_links.html'
-    with open(links_filename, 'w') as links_file:
+    with open(links_filename, 'w', encoding='utf-8') as links_file:
         folder = Path(__file__).parent
         css_filename = folder / 'redwood.css'
         css = css_filename.read_text()
@@ -63,10 +63,11 @@ def run_otl_calculator(weeks_ahead: int = 0, **kwargs) -> tuple[str, str] | None
                         if member.known_as != 'Ben':
                             params |= {'pPersonId': member.person_id, 'userContext': 'LINE_MANAGER'}
                         url = oracle.apps[('home',)] + 'time/timecards/landing-page?' + urlencode(params)
+                        card_body, copy_text = member.otl_upload_page(start)
                         # language=HTML
                         links_file.write(f'''
         <section class="card">
-            <a href="{url}">
+            <a onclick="copyText('{copy_text}')" ondragstart="copyText('{copy_text}')" href="{url}">
                 <header class="card-header">
                     <h1>Time Card</h1>
                 </header>
@@ -89,16 +90,29 @@ def run_otl_calculator(weeks_ahead: int = 0, **kwargs) -> tuple[str, str] | None
                     <div class="value">{hours_needed:.1f}</div>
                 </div>
                 <div class="item">
-                    <div class="label">Upload Link</div>
-                    <div class="value"><a href="{url}">Submit Timecard</a></div>
+                    <div class="value"><button onclick="copyText('{copy_text}')">📋 Copy text</button></div>
                 </div>
             </div>
 ''')
-                        links_file.write(member.otl_upload_page(start))
+                        links_file.write(card_body)
                         links_file.write('        </section>')
                     start += timedelta(days=7)
+        # language=javascript
+        copy_code = '''
+        function copyText(s) {
+                navigator.clipboard.writeText(s.replaceAll(',', '\\t\\t\\t').replaceAll(';', '\\n'));
+            }
+        function copyColumn(s) {
+                navigator.clipboard.writeText(s.replaceAll(';', '\\n'));
+            }
+'''
         # language=HTML
-        links_file.write('    </main>\n</body>\n</html>\n')
+        links_file.write(f'''
+    </main>
+    <script>{copy_code}</script>
+</body>
+</html>
+                         ''')
     if cards_to_book:
         return f'{cards_to_book=}', links_filename
     return None
@@ -246,7 +260,7 @@ def goal_page_urls():
 
 
 if __name__ == '__main__':
-    print(run_otl_calculator(weeks_ahead=2))
+    print(run_otl_calculator(weeks_ahead=1))
     # print(leave_cross_check())
     # print(check_in())
     # list_ftes()

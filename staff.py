@@ -57,6 +57,10 @@ def ymd(when: datetime | date) -> str:
     return when.strftime('%Y%m%d')
 
 
+def escape_quotes(s: str) -> str:
+    """Escape quotes in Javascript strings."""
+    return s.replace('"', '\\x22').replace("'", '\\x27')
+
 class DataIssue(Exception):
     """A problem with data fetched from OBI."""
     pass
@@ -334,44 +338,62 @@ class GroupMember:
                     'CREATE', '', '', ''
                 ])
 
-    def otl_upload_page(self, week_beginning: date) -> str:
+    def otl_upload_page(self, week_beginning: date) -> tuple[str, str]:
         """Return HTML output for the OTL upload page."""
         week_beginning -= timedelta(days=week_beginning.weekday())
         week_bookings = [self.daily_bookings(week_beginning + timedelta(days=day)) for day in range(5)]
         all_codes = set().union(*[daily.keys() for daily in week_bookings])
         week_table = {code: [daily.get(code, 0) for daily in week_bookings] for code in all_codes}
+        sorted_week_table = sorted(week_table.items(), key=lambda item: repr(item))
+        data_grid = []  # collect just the hour numbers to put into a grid for direct copy-pasting into Oracle
+        table_body = ''
+        projects_copy_text = []
+        tasks_copy_text = []
+        hours_copy_text = []
+        for i, (code, hours) in enumerate(sorted_week_table):
+            projects_copy_text.append(code.project_cell())
+            tasks_copy_text.append(code.task_cell())
+            hours_copy_text.append(code.hours_cell())
+            code_display_name = code.project
+            if code.fusion_name:
+                code_display_name += ' - ' + code.fusion_name
+            # language=HTML
+            table_body += f'''
+                                <tr>
+                                    <td>{i + 1}</td>
+                                    <td>{code_display_name}</td>
+                                    <td>{code.task}</td>
+                                    <td>{code.hours_type}</td>
+        '''
+            row = []
+            for hour in hours:
+                table_body += ' ' * 28 + f'<td class="num">{hour:.02f}</td>\n'
+                row.append(f'{hour:.02f}')
+            data_grid.append(','.join(row))  # columns separated by commas
+            copy_text = ';'.join(data_grid)  # rows separated by semicolons
+            table_body += '                        </tr>\n'
+        projects_copy_text = escape_quotes(';'.join(projects_copy_text))
+        tasks_copy_text = escape_quotes(';'.join(tasks_copy_text))
+        hours_copy_text = escape_quotes(';'.join(hours_copy_text))
+
+
         # language=HTML
-        html = '''
+        html = f'''
                <div class="table-wrap">
                    <table role="grid" aria-label="Time card grid">
                        <thead>
                        <tr>
                            <th></th> <!-- blank column for index -->
-                           <th>Project</th>
-                           <th>Task</th>
-                           <th>Hours Type *</th> \
+                           <th><a onclick="copyColumn('{projects_copy_text}')">Project</a></th>
+                           <th><a onclick="copyColumn('{tasks_copy_text}')">Task</a></th>
+                           <th><a onclick="copyColumn('{hours_copy_text}')">Hours Type *</a></th> \
                '''
         for day in range(5):
             entry_date = week_beginning + timedelta(days=day)
             html += ' ' * 28 + entry_date.strftime('<th class="num">%b %d,%a</th>\n')  # e.g. Feb 09,Mon
         html += '                        </tr>\n                    </thead>\n                    <tbody>\n'
-        for i, (code, hours) in enumerate(sorted(week_table.items(), key=lambda item: repr(item))):
-            code_display_name = code.project
-            if code.fusion_name:
-                code_display_name += ' - ' + code.fusion_name
-            # language=HTML
-            html += f'''
-                        <tr>
-                            <td>{i + 1}</td>
-                            <td>{code_display_name}</td>
-                            <td>{code.task}</td>
-                            <td>{code.hours_type}</td>
-'''
-            for hour in hours:
-                html += ' ' * 28 + f'<td class="num">{hour:.02f}</td>\n'
-            html += '                        </tr>\n'
-        html += '                    </tbody>\n                </table>\n            </div>\n'
-        return html
+        html += table_body + '                    </tbody>\n                </table>\n            </div>\n'
+        return html, copy_text
 
 
 def dicts_close(dict1: dict, dict2: dict) -> bool:

@@ -7,11 +7,14 @@ from staff import GroupMember
 magnet_lab = otl.Code('STGA00038', '01', 'Magnet test facility', priority=otl.Priority.BALANCING)
 mars_underpinning = otl.Code('STGA00206', name='MARS Underpinning', priority=otl.Priority.BALANCING)
 clara = otl.Code('STGA00266', name='CLARA Mothball', priority=otl.Priority.AGREED)
-scu = otl.Code('STGA00273', name='Superconducting Undulator', priority=otl.Priority.AGREED)
+scu = otl.Code('STGA00273', name='Superconducting Undulator', priority=otl.Priority.AGREED,
+               project_key='300000105665086', task_key='100000026583506')
 sustainable_accelerators = otl.Code('STGA00298', name='Sustainable Acc (incl CESA and NCF)',
                                     priority=otl.Priority.BALANCING)
-xfel_rnd = otl.Code('STGA00241', name='XFEL R&D', priority=otl.Priority.BALANCING)
-novel_acceleration = otl.Code('STGA00242', name='Novel Acceleration', priority=otl.Priority.BALANCING)
+xfel_rnd = otl.Code('STGA00241', name='XFEL R&D', priority=otl.Priority.BALANCING,
+                    project_key='300000155706667', task_key='300000155706896')
+novel_acceleration = otl.Code('STGA00242', name='Novel Acceleration', priority=otl.Priority.BALANCING,
+                              project_key='300000156820113', task_key='300000156820132')
 ai_ml = otl.Code('STGA00243', name='AI/ML/Data Handling')
 thin_films = otl.Code('STGA00501', name='Cavity SRF Thin Film Preparation & Charact',
                       fusion_name='8Cavity SRF thinfilm prep', priority=otl.Priority.BALANCING)
@@ -19,6 +22,7 @@ novel_neg = otl.Code('STGA00502', name='Novel NEG', priority=otl.Priority.BALANC
 ruedi_new_code = otl.Code('STGA02008', '01', name='RUEDI - Post Bridging (from July 25)',
                           fusion_name='RUEDI 2nd Bridging', priority=otl.Priority.AGREED)
 clepto_pocf = otl.Code('STLA00037', '147', name='CLEPTO POCF', fusion_name='Proof of Concept',
+                       project_key='300000105544652',
                        end=date(2026, 4, 30))
 # numbers from PoCF Williams EUV Effort.xlsx
 # not confirmed by BID yet (Teams message from PHW 2/4)
@@ -26,7 +30,8 @@ beuv_pocf = otl.Code('STLA00037', '151', name='POCF2526-13',
                      fusion_name='Proof of Concept',
                      end=date(2027, 1, 31))
 ukxfel_continuation = otl.Code('STGA00183', '01', name='UK XFEL Design Study - From Oct 25',
-                               fusion_name='UKXFEL ASTeC', priority=otl.Priority.BALANCING)
+                               project_key='300000311968599', task_key='300000311968610',
+                               fusion_name='UKXFEL ASTeC Funded', priority=otl.Priority.BALANCING)
 
 # Cristina to Deepa 19/3/26:
 # You can continue to book [to EPAC] till December 26 at the current level.
@@ -36,7 +41,7 @@ epac = otl.Code('STKA01103', '06.01', name='EPAC', fusion_name='EPAC Capital')
 # Calculations for EPITA: 2025-07-27 INFRA_TECH budget_IFAST2 Permanent Magnets_FINAL.xlsx
 # Task 01: Performance Review & Accelerator Quadrupole Specification
 # Task 02: Modular ZEPTO Product Line Engineering - starts later
-epita = otl.Code('STGA02014', name='EPITA',
+epita = otl.Code('STGA02014', task='1', name='EPITA', project_key='300000563034178', task_key='100000865734592',
                  start=date(2026, 5, 1), end=date(2030, 4, 30))
 
 # LEAPS-TECH: see WP1_INFRA-2025-TECH-02_budget_WP_Sources_v4.xlsx
@@ -58,7 +63,8 @@ liora_phase1b = otl.Code('STGA04018', name='LIORA Phase B',
 new_opps = otl.Code('STGA00300', name='New Opportunities')
 
 # DAE extension to end Sep 2026
-dae = otl.Code('STGA02000', '03', 'ISPF INDIA DAE', end=date(2026, 9, 30))
+dae = otl.Code('STGA02000', '03', 'ISPF INDIA DAE', end=date(2026, 9, 30),
+               project_key='300000105705826', task_key='100000026596483')
 
 
 
