@@ -4,30 +4,35 @@ import otl
 from staff import GroupMember
 
 # Relevant codes for the group
-magnet_lab = otl.Code('STGA00038', '01', 'Magnet test facility', priority=otl.Priority.BALANCING)
+magnet_lab = otl.Code('STGA00038', '01', 'Magnet Test Facility', priority=otl.Priority.BALANCING,
+                      project_key='300000607233456', task_key='300000607233465')
+
 mars_underpinning = otl.Code('STGA00206', name='MARS Underpinning', priority=otl.Priority.BALANCING)
-clara = otl.Code('STGA00266', name='CLARA Mothball', priority=otl.Priority.AGREED)
+clara = otl.Code('STGA00266', name='CLARA Mothball', priority=otl.Priority.AGREED,
+                 project_key='300000566261596', task_key='100000870542018')
 scu = otl.Code('STGA00273', name='Superconducting Undulator', priority=otl.Priority.AGREED,
                project_key='300000105665086', task_key='100000026583506')
 sustainable_accelerators = otl.Code('STGA00298', name='Sustainable Acc (incl CESA and NCF)',
+                                    project_key='300000105665723', task_key='100000026584748',
                                     priority=otl.Priority.BALANCING)
 xfel_rnd = otl.Code('STGA00241', name='XFEL R&D', priority=otl.Priority.BALANCING,
                     project_key='300000155706667', task_key='300000155706896')
 novel_acceleration = otl.Code('STGA00242', name='Novel Acceleration', priority=otl.Priority.BALANCING,
                               project_key='300000156820113', task_key='300000156820132')
-ai_ml = otl.Code('STGA00243', name='AI/ML/Data Handling')
+ai_ml = otl.Code('STGA00243', name='AI/ML/Data Handling', project_key='300000250508299', task_key='300000250508314')
 thin_films = otl.Code('STGA00501', name='Cavity SRF Thin Film Preparation & Charact',
+                      project_key='300000105519807', task_key='100000026535097',
                       fusion_name='8Cavity SRF thinfilm prep', priority=otl.Priority.BALANCING)
-novel_neg = otl.Code('STGA00502', name='Novel NEG', priority=otl.Priority.BALANCING)
 ruedi_new_code = otl.Code('STGA02008', '01', name='RUEDI - Post Bridging (from July 25)',
+                          project_key='300000105559964', task_key='100000026565926',
                           fusion_name='RUEDI 2nd Bridging', priority=otl.Priority.AGREED)
 clepto_pocf = otl.Code('STLA00037', '147', name='CLEPTO POCF', fusion_name='Proof of Concept',
-                       project_key='300000105544652',
+                       project_key='300000105544652', task_key='300000322859558',
                        end=date(2026, 4, 30))
 # numbers from PoCF Williams EUV Effort.xlsx
 # not confirmed by BID yet (Teams message from PHW 2/4)
 beuv_pocf = otl.Code('STLA00037', '151', name='POCF2526-13',
-                     fusion_name='Proof of Concept',
+                     fusion_name='Proof of Concept Fund', project_key='300000105544652', task_key='300000397271350',
                      end=date(2027, 1, 31))
 ukxfel_continuation = otl.Code('STGA00183', '01', name='UK XFEL Design Study - From Oct 25',
                                project_key='300000311968599', task_key='300000311968610',
@@ -36,7 +41,8 @@ ukxfel_continuation = otl.Code('STGA00183', '01', name='UK XFEL Design Study - F
 # Cristina to Deepa 19/3/26:
 # You can continue to book [to EPAC] till December 26 at the current level.
 # I will get back to you next week past that date
-epac = otl.Code('STKA01103', '06.01', name='EPAC', fusion_name='EPAC Capital')
+epac = otl.Code('STKA01103', '06.01', name='EPAC', fusion_name='EPAC Capital Equipment',
+                project_key='300000105555889', task_key='100000026560793')
 
 # Calculations for EPITA: 2025-07-27 INFRA_TECH budget_IFAST2 Permanent Magnets_FINAL.xlsx
 # Task 01: Performance Review & Accelerator Quadrupole Specification
@@ -60,7 +66,7 @@ liora_phase1b = otl.Code('STGA04018', name='LIORA Phase B',
                          # start date: unknown at the moment!
                          start=date(2027, 3, 1), end=date(2027, 3, 31))
 
-new_opps = otl.Code('STGA00300', name='New Opportunities')
+new_opps = otl.Code('STGA00300', name='New Opportunities', project_key='300000564616944', task_key='300000564693950')
 
 # DAE extension to end Sep 2026
 dae = otl.Code('STGA02000', '03', 'ISPF INDIA DAE', end=date(2026, 9, 30),
@@ -125,7 +131,7 @@ members: list[GroupMember] = [
                     otl.Entry(scu),
                     otl.Entry(clepto_pocf, otl.hours_per_day * 5 / otl.hours_per_fte),
                     otl.Entry(epita, 0.2178),
-                    otl.Entry(leaps_tech, 0.25 * 7/19),  # for 27/28: 0.25 * 12/19
+                    otl.Entry(leaps_tech, 0.25 * 7/19),  # for 27/28: 0.25 * 12/19, see comments above
                     otl.Entry(dae, 0.15),
                 ])),
     GroupMember('Amelia Pollard',

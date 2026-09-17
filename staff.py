@@ -224,16 +224,16 @@ class GroupMember:
         # fix when booking to same code over multiple periods (e.g. UKXFEL CDOA vs continuation)
         date_filter = my_bookings['Item Date'] >= pandas.to_datetime(entry.code.start)
         # check how many records match for each filter
-        report(f'{sum(project_filter)=}, {sum(task_filter)=}, {sum(date_filter)=}')
+        report(f' {sum(project_filter)=}, {sum(task_filter)=}, {sum(date_filter)=}')
         code_bookings = my_bookings[project_filter & task_filter & date_filter]
         # self.new_bookings stores bookings added this time
         hours_logged = self.new_bookings[entry.code] + sum(code_bookings['Quantity'])
-        hours_needed = otl.hours_per_day * otl.days_per_fte * entry.annual_fte - hours_logged
-        report(entry.code, f'{hours_logged=:.2f}, {hours_needed=:.2f}')
+        hours_needed = otl.hours_per_fte * entry.annual_fte - hours_logged
         rest_of_year_day_count = self.working_days_in_period(when, entry.end_date)
         if rest_of_year_day_count == 0:  # no more days in bin_period
             return 0.0
         hours_per_day = max(0.0, hours_needed / rest_of_year_day_count)
+        report(f' {hours_logged=:.2f}, {hours_needed=:.2f}, split between {rest_of_year_day_count=}')
         # print(f'{entry.code} {entry.annual_fte=}, {hours_logged=:.2f} {rest_of_year_day_count=} {hours_per_day=:.2f}')
         return hours_per_day
 
@@ -277,14 +277,16 @@ class GroupMember:
                                  if entry.priority == otl.Priority.BALANCING)
         hours_left = working_hours  # keep track of remaining hours for balancing projects
         for entry in current_projects:
+            report(entry.code)
             if entry.priority != otl.Priority.BALANCING:  # higher-priority project
                 # assign correct number of hours to ensure overall booking over the year is correct
                 entry.hours = self.daily_hours(entry, when)
                 hours_left -= entry.hours
             else:  # lower-priority project
                 # apportion balancing hours depending on share of expected booking
+                report(f' {hours_left=:.3f}, this project {entry.annual_fte:.1f} FTE of total {total_low_priority:.1f} FTE lower-priority')
                 entry.hours = keep_in_bounds(hours_left * entry.annual_fte / total_low_priority)
-            report(entry.code, entry.hours)
+            report(f' book {entry.hours:.3f} hours')
 
         # At this point, we might only have priority projects on this list
         # The total is not necessarily exactly 7.4 hours - it might be more or less
@@ -297,12 +299,11 @@ class GroupMember:
             hours = [hrs / prod([self.working_days_in_period(when, entry.end_date),
                                  entry.priority.value + 1])
                      for hrs, entry in zip(hours, current_projects)]
-            report(*hours, sep='\n')
         # Finally scale up or down to match correct number of hours
         scale_factor = sum(hours) / working_hours
         hours = [hrs / scale_factor for hrs in hours]
         hours = fair_round(hours, 0.01)  # Oracle rounds to nearest 0.01 and will complain if sum != 7.4
-        report(*hours, sep='\n')
+        report(*[f'{h:.2f}' for h in hours], end='\n\n')
         assert isclose(sum(hours), working_hours)
 
         # Add up any codes that are identical
@@ -384,9 +385,9 @@ class GroupMember:
                        <thead>
                        <tr>
                            <th></th> <!-- blank column for index -->
-                           <th><a onclick="copyColumn('{projects_copy_text}')">Project</a></th>
-                           <th><a onclick="copyColumn('{tasks_copy_text}')">Task</a></th>
-                           <th><a onclick="copyColumn('{hours_copy_text}')">Hours Type *</a></th> \
+                           <th><button onclick="copyColumn(this, '{projects_copy_text}')">📋 Project</button></th>
+                           <th><button onclick="copyColumn(this, '{tasks_copy_text}')">📋 Task</button></th>
+                           <th><button onclick="copyColumn(this, '{hours_copy_text}')">📋 Hours Type</button></th> \
                '''
         for day in range(5):
             entry_date = week_beginning + timedelta(days=day)

@@ -67,7 +67,7 @@ def run_otl_calculator(weeks_ahead: int = 0, **kwargs) -> tuple[str, str] | None
                         # language=HTML
                         links_file.write(f'''
         <section class="card">
-            <a onclick="copyText('{copy_text}')" ondragstart="copyText('{copy_text}')" href="{url}">
+            <a onclick="copyText(this, '{copy_text}')" ondragstart="copyText(null, '{copy_text}')" href="{url}">
                 <header class="card-header">
                     <h1>Time Card</h1>
                 </header>
@@ -90,7 +90,7 @@ def run_otl_calculator(weeks_ahead: int = 0, **kwargs) -> tuple[str, str] | None
                     <div class="value">{hours_needed:.1f}</div>
                 </div>
                 <div class="item">
-                    <div class="value"><button onclick="copyText('{copy_text}')">📋 Copy text</button></div>
+                    <div class="value"><button onclick="copyText(this, '{copy_text}')">📋 Copy grid</button></div>
                 </div>
             </div>
 ''')
@@ -99,11 +99,23 @@ def run_otl_calculator(weeks_ahead: int = 0, **kwargs) -> tuple[str, str] | None
                     start += timedelta(days=7)
         # language=javascript
         copy_code = '''
-        function copyText(s) {
-                navigator.clipboard.writeText(s.replaceAll(',', '\\t\\t\\t').replaceAll(';', '\\n'));
+        function copyText(button, s) {
+            const originalText = button.textContent;
+            navigator.clipboard.writeText(s.replaceAll(',', '\\t\\t\\t').replaceAll(';', '\\n')).then(() => {
+                button.textContent = "✔️ Copied";
+                setTimeout(() => {
+                    button.textContent = originalText;
+                }, 2000);
+            });
             }
-        function copyColumn(s) {
-                navigator.clipboard.writeText(s.replaceAll(';', '\\n'));
+        function copyColumn(button, s) {
+            const originalText = button.textContent;
+                navigator.clipboard.writeText(s.replaceAll(';', '\\n')).then(() => {
+                button.textContent = "✔️ Copied";
+                setTimeout(() => {
+                    button.textContent = originalText;
+                }, 2000);
+            });
             }
 '''
         # language=HTML
@@ -260,6 +272,7 @@ def goal_page_urls():
 
 
 if __name__ == '__main__':
+    staff.verbose = True
     print(run_otl_calculator(weeks_ahead=1))
     # print(leave_cross_check())
     # print(check_in())
