@@ -33,6 +33,7 @@ def run_otl_calculator(weeks_ahead: int = 0, **kwargs) -> tuple[str, str] | None
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAALNSURBVDiNlZFfSFt3FMc/v3uvofGaaHTxb9qmtrR1raz4onvZy2CMjQ0fdPShqIzChoLt7GiL2A4GQwqFgTjcwyb4IAx0uD/Owf48zK2l1QepTgubJmptOzXJbkzMvbnJzW8Pw04sVPaFwzkczjkcPl/YpWgifeqPtUzyz6j07u4bhvQtPsomwn/JevZIyJebXyTHCJBv177gWrlyRT/c+d6WK7bu7AxlnivX1vo+9pT0D6S8tybTiZAUSNq8D0a/VnDES0AV4HOmQ7o+P49c2vQCvp3ILUY87tlZ1MnZfAS+PI8oklmaAIRZ0zTgWOLdva89S9ltIMNE0d8jr2tafTDkMpPrOV0vRlXz9t3OSUdZMlJp2x3jNmjx/htqykyXGUkLf0kBjx7HORTwEV6OciRY8iQvP4gRqPSxHkmoHrfuQaqCyj4UgMk7Ya73TrC0EuPSB19hxE0uXhsDoLNnDCNu0v3Rd8zMrnGj72emZ1b/cyGSdK5KIXv/DwPLBNtm+Gildk4BGP9xgZaOYe4vbtLY8hlG3OS1s58C8MpbA4zft+j+JUvbuM35b0xu3rHY8VhEks5VO5vtte0sB9wutrctvB43RtykqNDN4IzFSkKluUaj3A3RJAz9brNmZDa+by0q+5fB3TCXP/yW0GqM9sujGFsm57u+IGxI5qIa7zdonPYLfv1tgePlggtnXBimLK37JP6q2nGxp7WsNL+u9vkKDgeKOVldyqFAMceCfpadAvQ8QUOVAkiKnR9YjZZTVqJjpAXzkYymJLaYymUO4C/0k9pSOFhRgRGTVAeqSKXIyV3wDlYVPql3+trC0bzBkyHnITn0p2hnZOlcjP6ELfG4BHbBG9ScgI1NyU9hW7oUdUjsZ1njiPl5ZQFvN9doVORLIknB0JzNrWV7auGCr37fA0gp3vwy/Y4iZZeVkcGklV1PWM7YvXZfJ8A/J+09d4eRGfAAAAAASUVORK5CYII=">
     <title>OTL bookings</title>
     <style>
 {css}
@@ -66,8 +67,8 @@ def run_otl_calculator(weeks_ahead: int = 0, **kwargs) -> tuple[str, str] | None
                         card_body, copy_text = member.otl_upload_page(start)
                         # language=HTML
                         links_file.write(f'''
-        <section class="card">
-            <a onclick="copyText(this, '{copy_text}')" ondragstart="copyText(null, '{copy_text}')" href="{url}">
+        <section class="card" id="card{cards_to_book:02d}">
+            <a onclick="copyText(this.getElementsByTagName('h1')[0], '{copy_text}')" ondragstart="copyText(this.getElementsByTagName('h1')[0], '{copy_text}')" href="{url}">
                 <header class="card-header">
                     <h1>Time Card</h1>
                 </header>
@@ -91,6 +92,9 @@ def run_otl_calculator(weeks_ahead: int = 0, **kwargs) -> tuple[str, str] | None
                 </div>
                 <div class="item">
                     <div class="value"><button onclick="copyText(this, '{copy_text}')">📋 Copy grid</button></div>
+                </div>
+                <div class="item">
+                    <div class="value"><button onclick="document.getElementById('card{cards_to_book:02d}').remove()">☑️ Done</button></div>
                 </div>
             </div>
 ''')

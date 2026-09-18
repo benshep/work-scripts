@@ -180,7 +180,7 @@ class GroupMember:
         """Load off days from cached file, or if that's more than a day old, reload from Outlook and Oracle.
         :param force_reload: Ignore any cached information."""
         cache_file = docs_folder / 'Group Leader' / 'off_days_cache' / f'{self.name}.txt'
-        yesterday = datetime.now() - timedelta(days=1)
+        yesterday = datetime.now() - timedelta(days=2)
         cache_exists = cache_file.exists()
         if force_reload or not cache_exists or datetime.fromtimestamp(cache_file.stat().st_mtime) < yesterday:
             print(f'Fetching Outlook off days for {self.known_as}')
