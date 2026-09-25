@@ -38,6 +38,31 @@ class Priority(IntEnum):
         return 10 ** (3 - self.value)
 
 
+class Profile(IntEnum):
+    """Profile type of a project."""
+    FLAT = 0
+    """Level of effort is expected to be flat through the project."""
+    FRONT_LOADED = 1
+    """Most of the effort at the start."""
+    BACK_LOADED = 2
+    """Most of the effort at the end."""
+    BELL = 3
+    """Low at the start and end, high in the middle."""
+
+    def shape(self, n):
+        """Return the shape of the project given how many months it runs for."""
+        match self.value:
+            case self.FRONT_LOADED:
+                profile = np.linspace(n, 1, n)
+            case self.BACK_LOADED:
+                profile = np.linspace(1, n, n)
+            case self.BELL:
+                profile = np.hanning(n) + 0.1
+            case _:
+                profile = np.ones(n)
+        return profile / profile.sum()  # sum to 1.0
+
+
 def table_cell(key: str, display_value: str) -> str:
     """A representation of a table cell that can be pasted into Fusion."""
     return f'{{"data":"{key}","valueItem":{{"key":"{key}","data":{{"Code":"{key}","DisplayValue":"{display_value}","UnitOfMeasure":"HR"}}}}}}'
@@ -148,7 +173,7 @@ class Entry:
 
     def __init__(self, code: Code, annual_fte: float | None = None,
                  start_date: date | None = None, end_date: date | None = None,
-                 priority: Priority | None = None):
+                 priority: Priority | None = None, profile: Profile = Profile.FLAT):
         self.code = code
         self.annual_fte = annual_fte
         self.start_date = start_date or code.start
@@ -156,6 +181,7 @@ class Entry:
         self.priority = priority or code.priority
         self.hours = 0
         self.monthly_fte = []
+        self.profile = profile
 
     def __repr__(self):
         return f'{self.code}: {self.annual_fte or 0:.2f}, from {self.start_date.strftime("%d/%m/%Y")}-{self.end_date.strftime("%d/%m/%Y")}, priority {self.priority.name}'
@@ -169,6 +195,10 @@ class Entry:
         Supply a date or an integer month (0-11)."""
         when_date = when if isinstance(when, date) else fy_start + relativedelta(months=when)
         return self.start_date <= when_date <= self.end_date
+
+def month_delta(start: date, end: date) -> int:
+    """Return the number of months between start and end date."""
+    return end.year * 12 + end.month - start.year * 12 - start.month
 
 
 class BookingPlan:
@@ -193,13 +223,19 @@ class BookingPlan:
             raise BadDataError(f'Total FTE for plan ({self.total_fte():.4f}) != 1.0, no blank entries')
         # Naive allocation: refine it later
         for entry in self.entries:
-            month_count = entry.end_date.year * 12 + entry.end_date.month - entry.start_date.year * 12 - entry.start_date.month + 1
+            month_count = month_delta(entry.start_date, entry.end_date) + 1
             fte_per_month = entry.annual_fte / month_count
-            entry.monthly_fte = [fte_per_month if entry.is_active_on(m) else 0 for m in range(12)]
+            shape = entry.profile.shape(month_count) * fte_per_month
+            shape = np.pad(shape, (month_delta(fy_start, entry.start_date), month_delta(entry.end_date, fy_end)))
+            entry.monthly_fte = shape
 
     def total_fte(self):
         """Calculate the total FTE across all booking codes."""
         return sum(entry.annual_fte or 0 for entry in self.entries)
+
+    def monthly_total(self):
+        """Calculate the monthly total FTE across all booking codes."""
+        return np.sum(np.array([entry.monthly_fte for entry in self.entries]), axis=0)
 
     def monthly_resource_levelling(self):
         """Set a monthly plan, ensuring all months add up to 100% effort and all projects have the correct allocation
@@ -264,13 +300,20 @@ class BookingPlan:
             entry.monthly_fte = row
 
 
-if __name__ == '__main__':
+def to_percent(x: float) -> str:
+    """0.00% representation of number."""
+    digits = 0 if abs(x) >= 0.1 else 1
+    return (f'{x * 100:.{digits}f}%' if x >= 0.005 else '').ljust(5)
+
+
+def levelling_test():
     words = open('1000-most-common-english-words.txt').read().splitlines()
     n_projects = random.randint(5, 10)
     remaining_fte = 1.0
     projects = []
     min_start = None
     max_end = None
+    max_name_length = 0
     for i in range(n_projects):
         fte = random.random() * remaining_fte if i < n_projects - 1 else remaining_fte
         dates = sorted([random.randint(0, 11), random.randint(0, 11)])
@@ -283,11 +326,30 @@ if __name__ == '__main__':
                 start = fy_start
             if max_end < fy_end:
                 end = fy_end
-        project = Entry(Code(' '.join(random.choice(words).title() for _ in range(3))), fte,
-                        start_date=start, end_date=end, priority=Priority(random.randint(0, 2)))
+        name = ' '.join(random.choice(words).title() for _ in range(3))
+        max_name_length = max(max_name_length, len(name))
+        project = Entry(Code(name), fte, start_date=start, end_date=end, priority=Priority(random.randint(0, 2)))
         remaining_fte -= fte
         projects.append(project)
+
+    projects = [
+        Entry(Code('External-Funded Thing'), 0.3, start_date=date(2026, 8, 1), end_date=date(2026, 12, 31), priority=Priority.EXTERNAL, profile=Profile.FRONT_LOADED),
+        Entry(Code('Important ASTeC Thing'), 0.3, start_date=date(2026, 10, 1), end_date=fy_end, priority=Priority.AGREED, profile=Profile.FRONT_LOADED),
+        Entry(Code('ASTeC Core Task'), 0.4, start_date=fy_start, end_date=fy_end, priority=Priority.BALANCING),
+    ]
+    max_name_length = max([len(entry.code.project) for entry in projects])
+
     bp = BookingPlan(projects)
+    for entry in bp.entries:
+        entry.code.project = entry.code.project.ljust(max_name_length)
+        print(str(entry), *[to_percent(effort * 12) for effort in entry.monthly_fte], f'{sum(entry.monthly_fte):.02f}', sep='\t')
+        l = len(str(entry))
+    print(' ' * l, '', '', *[to_percent(x * 12) for x in bp.monthly_total()], sep='\t')
+    print('')
     bp.convex_levelling()
     for entry in bp.entries:
-        print(str(entry), *[f'{effort * 12 * 100:.2f}%' for effort in entry.monthly_fte], sep='\t')
+        print(str(entry), *[to_percent(effort * 12) for effort in entry.monthly_fte], f'{sum(entry.monthly_fte):.02f}', sep='\t')
+    print(' ' * l, '', '', *[to_percent(x * 12) for x in bp.monthly_total()], sep='\t')
+
+if __name__ == '__main__':
+    levelling_test()
