@@ -401,10 +401,10 @@ class GroupMember:
         first_name, surname = self.name_tuple
         for entry in self.booking_plan.entries:
             print(f'{surname}, {first_name} (STFC,DL,AST)', entry.code.project,
-                  entry.start_date, entry.end_date, entry.annual_fte, sum(entry.monthly_fte),
+                  entry.start_date, entry.end_date, f'{entry.annual_fte:.02f}', f'{sum(entry.monthly_fte):.02f}',
                   sep='\t', end='\t')
             for effort in entry.monthly_fte:
-                print(f'{effort * 12 * 100:.2f}%', end='\t')
+                print(f'{effort * 12 * 100:.0f}%', end='\t')
             print('')
 
 

@@ -189,12 +189,12 @@ class Entry:
     def __str__(self):
         return f'{self.code}\t{self.annual_fte or 0:.2f}\t{self.start_date.strftime("%d/%m/%Y")}\t{self.end_date.strftime("%d/%m/%Y")}\t{self.priority.value}'
 
-
     def is_active_on(self, when: date | int) -> bool:
         """Return True if the entry is active on the given date, False otherwise.
         Supply a date or an integer month (0-11)."""
         when_date = when if isinstance(when, date) else fy_start + relativedelta(months=when)
         return self.start_date <= when_date <= self.end_date
+
 
 def month_delta(start: date, end: date) -> int:
     """Return the number of months between start and end date."""
@@ -224,9 +224,11 @@ class BookingPlan:
         # Naive allocation: refine it later
         for entry in self.entries:
             month_count = month_delta(entry.start_date, entry.end_date) + 1
-            fte_per_month = entry.annual_fte / month_count
-            shape = entry.profile.shape(month_count) * fte_per_month
-            shape = np.pad(shape, (month_delta(fy_start, entry.start_date), month_delta(entry.end_date, fy_end)))
+            shape = entry.profile.shape(month_count) * entry.annual_fte
+            shape = np.pad(shape, (
+                max(0, month_delta(fy_start, entry.start_date)),
+                max(0, month_delta(entry.end_date, fy_end))
+            ))
             entry.monthly_fte = shape
 
     def total_fte(self):
@@ -333,8 +335,10 @@ def levelling_test():
         projects.append(project)
 
     projects = [
-        Entry(Code('External-Funded Thing'), 0.3, start_date=date(2026, 8, 1), end_date=date(2026, 12, 31), priority=Priority.EXTERNAL, profile=Profile.FRONT_LOADED),
-        Entry(Code('Important ASTeC Thing'), 0.3, start_date=date(2026, 10, 1), end_date=fy_end, priority=Priority.AGREED, profile=Profile.FRONT_LOADED),
+        Entry(Code('External-Funded Thing'), 0.3, start_date=date(2026, 8, 1), end_date=date(2026, 12, 31),
+              priority=Priority.EXTERNAL, profile=Profile.FRONT_LOADED),
+        Entry(Code('Important ASTeC Thing'), 0.3, start_date=date(2026, 10, 1), end_date=fy_end,
+              priority=Priority.AGREED, profile=Profile.BACK_LOADED),
         Entry(Code('ASTeC Core Task'), 0.4, start_date=fy_start, end_date=fy_end, priority=Priority.BALANCING),
     ]
     max_name_length = max([len(entry.code.project) for entry in projects])
@@ -342,14 +346,19 @@ def levelling_test():
     bp = BookingPlan(projects)
     for entry in bp.entries:
         entry.code.project = entry.code.project.ljust(max_name_length)
-        print(str(entry), *[to_percent(effort * 12) for effort in entry.monthly_fte], f'{sum(entry.monthly_fte):.02f}', sep='\t')
+        print(str(entry), *[to_percent(effort * 12) for effort in entry.monthly_fte], f'{sum(entry.monthly_fte):.02f}',
+              sep='\t')
         l = len(str(entry))
     print(' ' * l, '', '', *[to_percent(x * 12) for x in bp.monthly_total()], sep='\t')
     print('')
     bp.convex_levelling()
     for entry in bp.entries:
-        print(str(entry), *[to_percent(effort * 12) for effort in entry.monthly_fte], f'{sum(entry.monthly_fte):.02f}', sep='\t')
+        print(str(entry), *[to_percent(effort * 12) for effort in entry.monthly_fte], f'{sum(entry.monthly_fte):.02f}',
+              sep='\t')
     print(' ' * l, '', '', *[to_percent(x * 12) for x in bp.monthly_total()], sep='\t')
 
+
 if __name__ == '__main__':
+    # shape = Profile.FRONT_LOADED.shape(6)
+    # print(shape, sum(shape))
     levelling_test()
