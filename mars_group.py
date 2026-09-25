@@ -1,4 +1,8 @@
-from datetime import date, timedelta, datetime
+from datetime import date
+from math import isclose
+
+from dateutil.relativedelta import relativedelta
+from openpyxl.styles.builtins import percent
 
 import otl
 from staff import GroupMember
@@ -57,9 +61,12 @@ epita = otl.Code('STGA02014', task='1', name='EPITA', project_key='3000005630341
 # Deliverable 1: magnetic design of HiTSUP, due M18 (Feb 2028)
 # Milestone 2: engineering design completed, due M20 (April 2028)
 # Book up to M19 (March 2028)
-leaps_tech = otl.Code('STGA02015', name='LEAPS-TECH',
+leaps_tech = otl.Code('STGA02015', name='LEAPS-TECH',  # task 01 for labour, 02 for travel
                  start=date(2026, 9, 1), end=date(2028, 3, 31))
-eu_xfel = otl.Code('STGA02016', name='European XFEL')
+
+# European XFEL second fan: travel is task 02. Email DAK 23/9/26
+eu_xfel = otl.Code('STGA02017', name='European XFEL', start=date(2026, 9, 1))
+
 liora_phase1a = otl.Code('STGA04017', name='LIORA Phase A', fusion_name='AVO System Completion Study',
                          start=date(2026, 6, 1), end=date(2026, 7, 31))
 liora_phase1b = otl.Code('STGA04018', name='LIORA Phase B',
@@ -108,7 +115,7 @@ members: list[GroupMember] = [
                     otl.Entry(ukxfel_continuation, 0.07),
                     otl.Entry(xfel_rnd, 0.23),
                     otl.Entry(novel_acceleration),
-                    # otl.Entry(eu_xfel, 0.4),  # wait until contract signed
+                    otl.Entry(eu_xfel, 0.4),  # wait until contract signed
                     otl.Entry(beuv_pocf, 243 / otl.hours_per_fte),  # 26/27
                 ])),
     GroupMember('Neil Thompson',
@@ -118,7 +125,7 @@ members: list[GroupMember] = [
                     otl.Entry(epac, 0.05),
                     otl.Entry(ukxfel_continuation, 0.03),
                     otl.Entry(xfel_rnd),
-                    # otl.Entry(eu_xfel, 0.2),  # wait until contract signed
+                    otl.Entry(eu_xfel, 0.2),  # wait until contract signed
                     # otl.Entry(novel_acceleration),
                     otl.Entry(beuv_pocf, 424 / otl.hours_per_fte),  # 26/27
                 ])),
@@ -170,16 +177,19 @@ members: list[GroupMember] = [
                     otl.Entry(magnet_lab, start_date=date(2026, 8, 17)),
                 ]))
 ]
-# if __name__ == '__main__':
+
+if __name__ == '__main__':
 # check_total_ftes(members)
 # print(*[person.name for person in members], sep='\t')
 # person.update_off_days()
 # print(*sorted(list(person.off_days)), sep='\n')
 # print(person.daily_bookings(date.today()))
 # run_otl_calculator()
-#     for entry in member.booking_plan.entries:
-#         print(entry.code, otl.working_days_in_period(entry.start_date, entry.end_date, member.off_days),
-#               entry.daily_hours(member.off_days))
+    for member in members:
+        member.booking_plan.convex_levelling()
+        member.print_workforce_plan()
+        # print(entry.code, otl.working_days_in_period(entry.start_date, entry.end_date, member.off_days),
+        #       entry.daily_hours(member.off_days))
 # hours = me.daily_hours(date(2025, 4, 1))
 # print(*hours, sep='\n')
 # print(sum(h for _, h in hours))

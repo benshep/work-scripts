@@ -216,7 +216,7 @@ class GroupMember:
     def daily_hours(self, entry: otl.Entry, when: date) -> float:
         """Check back through this year's OBI data, and return a number of daily hours to book going forward,
         based on entries so far."""
-        if entry.end_date < when or entry.start_date > when:  # already ended, or not started yet
+        if not entry.is_active_on(when):  # already ended, or not started yet
             return 0.0
         my_bookings = self.get_my_bookings()
         project_filter = my_bookings['Project Number'] == entry.code.project
@@ -395,6 +395,17 @@ class GroupMember:
         html += '                        </tr>\n                    </thead>\n                    <tbody>\n'
         html += table_body + '                    </tbody>\n                </table>\n            </div>\n'
         return html, copy_text
+
+    def print_workforce_plan(self):
+        """Output a monthly workforce plan suitable for pasting into a spreadsheet."""
+        first_name, surname = self.name_tuple
+        for entry in self.booking_plan.entries:
+            print(f'{surname}, {first_name} (STFC,DL,AST)', entry.code.project,
+                  entry.start_date, entry.end_date, entry.annual_fte, sum(entry.monthly_fte),
+                  sep='\t', end='\t')
+            for effort in entry.monthly_fte:
+                print(f'{effort * 12 * 100:.2f}%', end='\t')
+            print('')
 
 
 def dicts_close(dict1: dict, dict2: dict) -> bool:
