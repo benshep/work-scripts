@@ -1,8 +1,4 @@
 from datetime import date
-from math import isclose
-
-from dateutil.relativedelta import relativedelta
-from openpyxl.styles.builtins import percent
 
 import otl
 from staff import GroupMember
@@ -62,10 +58,12 @@ epita = otl.Code('STGA02014', task='1', name='EPITA', project_key='3000005630341
 # Milestone 2: engineering design completed, due M20 (April 2028)
 # Book up to M19 (March 2028)
 leaps_tech = otl.Code('STGA02015', name='LEAPS-TECH',  # task 01 for labour, 02 for travel
-                 start=date(2026, 9, 1), end=date(2028, 3, 31))
+                      start=date(2026, 9, 1), end=date(2028, 3, 31),
+                      project_key='300000795470244', task_key='100001237986101')
 
 # European XFEL second fan: travel is task 02. Email DAK 23/9/26
-eu_xfel = otl.Code('STGA02017', name='European XFEL', start=date(2026, 9, 1))
+eu_xfel = otl.Code('STGA02017', name='European XFEL', start=date(2026, 9, 1),
+                   project_key='300000795587679', task_key='300000795587689')
 
 liora_phase1a = otl.Code('STGA04017', name='LIORA Phase A', fusion_name='AVO System Completion Study',
                          start=date(2026, 6, 1), end=date(2026, 7, 31))
@@ -78,8 +76,6 @@ new_opps = otl.Code('STGA00300', name='New Opportunities', project_key='30000056
 # DAE extension to end Sep 2026
 dae = otl.Code('STGA02000', '03', 'ISPF INDIA DAE', end=date(2026, 9, 30),
                project_key='300000105705826', task_key='100000026596483')
-
-
 
 members: list[GroupMember] = [
     GroupMember('Ben Shepherd', 207835,
@@ -104,7 +100,8 @@ members: list[GroupMember] = [
                     otl.Entry(liora_phase1a, 0.02),
                     # otl.Entry(liora_phase1b, 0.01),
                     # PM solenoid design for Kiril & Oleg's plasma deposition experiment
-                    otl.Entry(thin_films, (4 * 5 * otl.hours_per_day) / otl.hours_per_fte, priority=otl.Priority.AGREED),
+                    otl.Entry(thin_films, (4 * 5 * otl.hours_per_day) / otl.hours_per_fte,
+                              priority=otl.Priority.AGREED),
                     otl.Entry(magnet_lab),
                 ])),
     GroupMember('David Dunning',
@@ -138,7 +135,7 @@ members: list[GroupMember] = [
                     otl.Entry(scu),
                     otl.Entry(clepto_pocf, otl.hours_per_day * 5 / otl.hours_per_fte),
                     otl.Entry(epita, 0.2178),
-                    otl.Entry(leaps_tech, 0.25 * 7/19),  # for 27/28: 0.25 * 12/19, see comments above
+                    otl.Entry(leaps_tech, 0.25 * 7 / 19),  # for 27/28: 0.25 * 12/19, see comments above
                     otl.Entry(dae, 0.15),
                 ])),
     GroupMember('Amelia Pollard',
@@ -179,12 +176,12 @@ members: list[GroupMember] = [
 ]
 
 if __name__ == '__main__':
-# check_total_ftes(members)
-# print(*[person.name for person in members], sep='\t')
-# person.update_off_days()
-# print(*sorted(list(person.off_days)), sep='\n')
-# print(person.daily_bookings(date.today()))
-# run_otl_calculator()
+    # check_total_ftes(members)
+    # print(*[person.name for person in members], sep='\t')
+    # person.update_off_days()
+    # print(*sorted(list(person.off_days)), sep='\n')
+    # print(person.daily_bookings(date.today()))
+    # run_otl_calculator()
     for member in members:
         member.booking_plan.convex_levelling()
         member.print_workforce_plan()
