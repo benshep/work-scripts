@@ -1,10 +1,14 @@
 import os
 import tempfile
+import traceback
 from datetime import date, timedelta, datetime
 from itertools import accumulate
 from pathlib import Path
 from time import sleep
 from urllib.parse import urlencode
+
+import pyperclip
+from selenium.webdriver import Keys, ActionChains
 from selenium.webdriver.common.by import By
 
 from dateutil.relativedelta import relativedelta
@@ -14,16 +18,21 @@ import oracle
 import outlook
 import staff
 from mars_group import members
+from oracle_staff_check import get_element_at_point
 from otl import fy_start
 from pushbullet_api_key import api_key  # local file, keep secret!
 from work_folders import downloads_folder, docs_folder
 
 
-def run_otl_calculator(weeks_ahead: int = 0, **kwargs) -> tuple[str, str] | None:
-    """Iterate through staff, listing the hours to upload for new OTL cards required."""
+def run_otl_calculator(weeks_ahead: int = 0, do_cards: bool = False, **kwargs) -> tuple[str, str] | None:
+    """Iterate through staff, listing the hours to upload for new OTL cards required.
+    do_cards = True: attempt to submit cards automatically using selenium.
+    do_cards = False: just output a web page with links to manually submit cards."""
     # staff.verbose = True
     cards_to_book = 0
+    cards_submitted = 0
     links_filename = downloads_folder / 'otl_upload_links.html'
+    web = oracle.go_to_oracle_page('home', show_window=False) if do_cards else None
     with open(links_filename, 'w', encoding='utf-8') as links_file:
         folder = Path(__file__).parent
         css_filename = folder / 'redwood.css'
@@ -59,18 +68,63 @@ def run_otl_calculator(weeks_ahead: int = 0, **kwargs) -> tuple[str, str] | None
                     print(f'{start.strftime("%d/%m/%Y")}: {hours_booked=:.2f}, {hours_needed=:.2f}')
                     end = start + timedelta(days=6)
                     if hours_needed - hours_booked > 0.01:
-                        cards_to_book += 1
                         params = {'calledFromAddTimeCard': 'true', 'pAsofdate': start.strftime('%Y-%m-%d')}
                         if member.known_as != 'Ben':
                             params |= {'pPersonId': member.person_id, 'userContext': 'LINE_MANAGER'}
                         url = oracle.apps[('home',)] + 'time/timecards/landing-page?' + urlencode(params)
-                        card_body, copy_text = member.otl_upload_page(start)
+                        card_body, copy_text, header_columns = member.otl_upload_page(start)
+                        done_card = False
+                        if do_cards and hours_booked == 0:  # only submit a card if there are zero hours booked
+                            try:
+                                web.get('about:blank')  # Fusion will return to the previous page: make it quick!
+                                web.get(url)
+                                while True:  # add rows as necessary
+                                    sleep(5)
+                                    # Find the time boxes: three for each day (start, stop, quantity) x 12 rows
+                                    time_boxes = web.find_elements(By.CLASS_NAME, 'oj-datagrid-cell')
+                                    # Not necessarily in order - sort by y and then x. There's one at (0, 0) too
+                                    x_values = sorted({box.rect['x'] for box in time_boxes} - {0})
+                                    y_values = sorted({box.rect['y'] for box in time_boxes} - {0})
+                                    if len(y_values) >= len(header_columns[0]):
+                                        break
+                                    cell = get_element_at_point(web, x_values[0], y_values[0])
+                                    ActionChains(web).context_click(cell).perform()
+                                    web.find_element(By.XPATH, "//a[text()='Insert Row Above']").click()
+                                for x, column in zip(x_values, header_columns):
+                                    el = get_element_at_point(web, x, y_values[0])
+                                    el.click()
+                                    pyperclip.copy('\n'.join(column))
+                                    el.send_keys(Keys.CONTROL, 'v')
+                                    sleep(2)
+                                el = get_element_at_point(web, x_values[5], y_values[0])  # top left of data grid
+                                el.click()
+                                # Change format to TSV for pasting
+                                pyperclip.copy(copy_text.replace(';', '\n').replace(',', '\t\t\t'))
+                                el.send_keys(Keys.CONTROL, 'v')
+                                if member.known_as == 'Ben':
+                                    web.find_element(By.XPATH, "//span[text()='Submit']").click()
+                                else:  # Submit is in overflow menu for everyone else
+                                    toolbar = web.find_element(By.TAG_NAME, 'oj-toolbar')
+                                    overflow = toolbar.find_element(By.TAG_NAME, 'oj-menu-button')
+                                    overflow.click()
+                                    overflow.find_element(By.XPATH, "//a[text()='Submit']").click()
+                                sleep(5)
+                                assert web.current_url == 'about:blank'  # successful submission: return to blank page
+                                done_card = True
+                                cards_submitted += 1
+                            except Exception as exception:
+                                print('Failed to submit card')
+                                print(traceback.format_exc())
+                                web.get_screenshot_as_file(downloads_folder / f'otl_submit_error_{datetime.now().strftime("%Y-%m-%d-%H%M")}.png')
+                        cards_to_book += not done_card
+                        card_title = 'Time Card ✔️ auto-submitted' if done_card else 'Time Card'
+                        card_class = 'card collapsed' if done_card else 'card'
                         # language=HTML
                         links_file.write(f'''
-        <section class="card" id="card{cards_to_book:02d}">
-            <a onclick="copyText(this.getElementsByTagName('h1')[0], '{copy_text}')" ondragstart="copyText(this.getElementsByTagName('h1')[0], '{copy_text}')" href="{url}">
-                <header class="card-header">
-                    <h1>Time Card</h1>
+        <section class="{card_class}" id="card{cards_to_book:02d}">
+            <a onclick="toggleCard(this)" ondragstart="copyText(this.getElementsByTagName('h1')[0], '{copy_text}')" href="{url}">
+                <header class="card-header collapsible-header">
+                    <h1>{card_title}</h1>
                 </header>
             </a>
             <div class="meta">
@@ -121,6 +175,10 @@ def run_otl_calculator(weeks_ahead: int = 0, **kwargs) -> tuple[str, str] | None
                 }, 2000);
             });
             }
+        function toggleCard(header) {
+            const card = header.closest('.card');
+            card.classList.toggle('collapsed');
+        }
 '''
         # language=HTML
         links_file.write(f'''
@@ -129,8 +187,9 @@ def run_otl_calculator(weeks_ahead: int = 0, **kwargs) -> tuple[str, str] | None
 </body>
 </html>
                          ''')
+    web.quit()
     if cards_to_book:
-        return f'{cards_to_book=}', links_filename
+        return f'{cards_submitted=}\n{cards_to_book=}', links_filename
     return None
 
 
@@ -277,7 +336,7 @@ def goal_page_urls():
 
 if __name__ == '__main__':
     staff.verbose = True
-    print(run_otl_calculator(weeks_ahead=1))
+    print(run_otl_calculator(weeks_ahead=1, do_cards=True))
     # print(leave_cross_check())
     # print(check_in())
     # list_ftes()

@@ -92,6 +92,36 @@ body {
   color: rgba(255,255,255,0.8);
 }
 
+.collapsible-header {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.collapsible-header:hover {
+    background: #8a2434;
+}
+
+.chevron {
+    font-size: 0.9rem;
+    transition: transform 0.2s ease;
+}
+
+.card.collapsed .chevron {
+    transform: rotate(-90deg);
+}
+
+.card-body {
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.card.collapsed .card-body {
+    display: none;
+}
+
 /* Meta row under header */
 .meta {
   display: flex;

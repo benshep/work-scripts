@@ -18,3 +18,4 @@ polling2
 rpyc
 progress
 cvxpy
+pyperclip

@@ -107,20 +107,20 @@ class Code:
     def project_cell(self):
         """A representation of the project code that can be pasted into Fusion."""
         if not self.project_key:
-            return ''
+            raise KeyError(f'Project key not set for {str(self)}')
         return table_cell(self.project_key, f"{self.project} - {self.fusion_name}")
 
     def task_cell(self):
         """A representation of the task code that can be pasted into Fusion."""
         if not self.task_key:
-            return ''
+            raise KeyError(f'Task key not set for {str(self)}')
         return table_cell(self.task_key, f"{self.task} - {self.project}")
 
     def hours_cell(self):
         """A representation of the hours type that can be pasted into Fusion."""
         key = {
             straight_time: '300000012241990',
-            unproductive: '',
+            unproductive: '300000012241995',
         }[self.hours_type]
         return table_cell(key, self.hours_type)
 
@@ -129,8 +129,9 @@ class Code:
 annual_leave, special_paid_leave, parental_leave, sick_leave = [
     Code('STRA00009', f'01.{i + 1:02d}',  # 01.01, 01.02, 01.03, 01.04
          fusion_name='ASTeC Non-Productive Time', hours_type=unproductive,
-         project_key='300000105495142')
+         project_key='300000105495142', task_key=str(100000026512246 + i))
     for i in range(4)]
+
 unpaid = Code('(no booking)', 'N/A',
               hours_type=unproductive)  # TODO: need to deal with when we move to automated bookings
 no_booking = Code('(no booking)', 'N/A', hours_type=unproductive)

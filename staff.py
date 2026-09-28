@@ -339,7 +339,7 @@ class GroupMember:
                     'CREATE', '', '', ''
                 ])
 
-    def otl_upload_page(self, week_beginning: date) -> tuple[str, str]:
+    def otl_upload_page(self, week_beginning: date) -> tuple[str, str, tuple[list[str], list[str], list[str]]]:
         """Return HTML output for the OTL upload page."""
         week_beginning -= timedelta(days=week_beginning.weekday())
         week_bookings = [self.daily_bookings(week_beginning + timedelta(days=day)) for day in range(5)]
@@ -369,13 +369,13 @@ class GroupMember:
             row = []
             for hour in hours:
                 table_body += ' ' * 28 + f'<td class="num">{hour:.02f}</td>\n'
-                row.append(f'{hour:.02f}')
+                row.append('' if isclose(hour, 0) else f'{hour:.02f}')  # use blanks instead of zero otherwise Fusion complains!
             data_grid.append(','.join(row))  # columns separated by commas
-            copy_text = ';'.join(data_grid)  # rows separated by semicolons
             table_body += '                        </tr>\n'
-        projects_copy_text = escape_quotes(';'.join(projects_copy_text))
-        tasks_copy_text = escape_quotes(';'.join(tasks_copy_text))
-        hours_copy_text = escape_quotes(';'.join(hours_copy_text))
+        copy_text = ';'.join(data_grid)  # rows separated by semicolons
+        projects_copy_text_escaped = escape_quotes(';'.join(projects_copy_text))
+        tasks_copy_text_escaped = escape_quotes(';'.join(tasks_copy_text))
+        hours_copy_text_escaped = escape_quotes(';'.join(hours_copy_text))
 
 
         # language=HTML
@@ -385,16 +385,16 @@ class GroupMember:
                        <thead>
                        <tr>
                            <th></th> <!-- blank column for index -->
-                           <th><button onclick="copyColumn(this, '{projects_copy_text}')">📋 Project</button></th>
-                           <th><button onclick="copyColumn(this, '{tasks_copy_text}')">📋 Task</button></th>
-                           <th><button onclick="copyColumn(this, '{hours_copy_text}')">📋 Hours Type</button></th> \
+                           <th><button onclick="copyColumn(this, '{projects_copy_text_escaped}')">📋 Project</button></th>
+                           <th><button onclick="copyColumn(this, '{tasks_copy_text_escaped}')">📋 Task</button></th>
+                           <th><button onclick="copyColumn(this, '{hours_copy_text_escaped}')">📋 Hours Type</button></th> \
                '''
         for day in range(5):
             entry_date = week_beginning + timedelta(days=day)
             html += ' ' * 28 + entry_date.strftime('<th class="num">%b %d,%a</th>\n')  # e.g. Feb 09,Mon
         html += '                        </tr>\n                    </thead>\n                    <tbody>\n'
         html += table_body + '                    </tbody>\n                </table>\n            </div>\n'
-        return html, copy_text
+        return html, copy_text, (projects_copy_text, tasks_copy_text, hours_copy_text)
 
     def print_workforce_plan(self):
         """Output a monthly workforce plan suitable for pasting into a spreadsheet."""

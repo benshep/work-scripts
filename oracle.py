@@ -41,12 +41,12 @@ def go_to_oracle_page(*links: str,
                       browser: Browser = Browser.edge,  # changed from Firefox for SSO
                       manual_login: bool = False,
                       show_window: bool = False) -> WebDriver:
-    """Open a selenium web driver and log in to Oracle e-Business Suite, opening the specified tuple of links.
-    :param browser: Firefox, Edge, Chrome, Ie, or Safari
+    """Open a selenium web driver and log in to Oracle Fusion, opening the specified tuple of links.
+    :param browser: Firefox, Edge, Chrome, IE, or Safari
     :param links: text of links to follow, or 'obi' or 'taleo' to open those sites
     :param manual_login: use the standard profile, and prompt to log in manually
     :param show_window: make the browser window visible
-    :return: web driver instance, so you can do more things with it"""
+    :return: web driver instance, so you can do more things with it."""
 
     # which URL to go to? OBI, Taleo, or just default to Oracle homepage
     url = apps.get(links, fusion_url)
@@ -65,6 +65,7 @@ def go_to_oracle_page(*links: str,
     # probably user data directory is already in use,
     # please specify a unique value for --user-data-dir argument, or don't use --user-data-dir
     edge_options.add_argument('--edge-skip-compat-layer-relaunch')
+    edge_options.add_experimental_option("prefs", {"profile.default_content_setting_values.clipboard": 1})
     if manual_login:
         print(f'This script will now launch a browser window ({browser.name.title()}) to log in to Oracle.')
         print('Return to this screen when you have logged in.')
