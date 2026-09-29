@@ -520,10 +520,6 @@ def submit_timecard_fusion(web: WebDriver, name: str, date_text: str, projects: 
     web.find_element(By.XPATH, "//a[text()='Submit']").click()
 
 
-def get_element_at_point(web: WebDriver, x: float, y: float) -> WebElement:
-    return web.execute_script(f'return document.elementFromPoint({x + 10}, {y})')
-
-
 def fill_in_box(web: WebDriver, box: WebElement, text: str):
     """Enter a value in a project/task/type dropdown box."""
     (ActionChains(web)

@@ -1,10 +1,17 @@
 from collections import Counter
 from datetime import date, timedelta, datetime, time
 from math import isclose, prod
+from time import sleep
 from typing import Generator
+from urllib.parse import urlencode
 
 import pandas
+import pyperclip
+from selenium.webdriver.firefox.webdriver import WebDriver
+from selenium.webdriver import ActionChains, Keys
+from selenium.webdriver.common.by import By
 
+import oracle
 import otl
 import outlook
 from array_round import fair_round
@@ -380,14 +387,14 @@ class GroupMember:
 
         # language=HTML
         html = f'''
-               <div class="table-wrap">
-                   <table role="grid" aria-label="Time card grid">
-                       <thead>
-                       <tr>
-                           <th></th> <!-- blank column for index -->
-                           <th><button onclick="copyColumn(this, '{projects_copy_text_escaped}')">📋 Project</button></th>
-                           <th><button onclick="copyColumn(this, '{tasks_copy_text_escaped}')">📋 Task</button></th>
-                           <th><button onclick="copyColumn(this, '{hours_copy_text_escaped}')">📋 Hours Type</button></th> \
+           <div class="table-wrap card-body">
+               <table role="grid" aria-label="Time card grid">
+                   <thead>
+                   <tr>
+                       <th></th> <!-- blank column for index -->
+                       <th><button onclick="copyText(this, '{projects_copy_text_escaped}')">📋 Project</button></th>
+                       <th><button onclick="copyText(this, '{tasks_copy_text_escaped}')">📋 Task</button></th>
+                       <th><button onclick="copyText(this, '{hours_copy_text_escaped}')">📋 Hours Type</button></th>
                '''
         for day in range(5):
             entry_date = week_beginning + timedelta(days=day)
@@ -395,6 +402,52 @@ class GroupMember:
         html += '                        </tr>\n                    </thead>\n                    <tbody>\n'
         html += table_body + '                    </tbody>\n                </table>\n            </div>\n'
         return html, copy_text, (projects_copy_text, tasks_copy_text, hours_copy_text)
+
+    def timecard_url(self, start: date) -> str:
+        """Return the URL needed to upload a timecard."""
+        params = {'calledFromAddTimeCard': 'true', 'pAsofdate': start.strftime('%Y-%m-%d')}
+        if self.known_as != 'Ben':
+            params |= {'pPersonId': self.person_id, 'userContext': 'LINE_MANAGER'}
+        return oracle.apps[('home',)] + 'time/timecards/landing-page?' + urlencode(params)
+
+    def submit_card(self, web: WebDriver, copy_text: str,
+                    header_columns: tuple[list[str], list[str], list[str]], start: date):
+        """Create and submit a timecard on Fusion."""
+        initial_page = 'about:blank'
+        web.get(initial_page)  # Fusion will return to the previous page: make it quick!
+        web.get(self.timecard_url(start))
+        while True:  # add rows as necessary
+            sleep(10)
+            # Find the time boxes: three for each day (start, stop, quantity) x 12 rows
+            time_boxes = web.find_elements(By.CLASS_NAME, 'oj-datagrid-cell')
+            # Not necessarily in order - sort by y and then x. There's one at (0, 0) too
+            x_values = sorted({box.rect['x'] for box in time_boxes} - {0})
+            y_values = sorted({box.rect['y'] for box in time_boxes} - {0})
+            if len(y_values) >= len(header_columns[0]):  # got enough rows for our data
+                break
+            cell = get_element_at_point(web, x_values[0], y_values[0])
+            ActionChains(web).context_click(cell).perform()  # right-click top-left cell for context menu
+            web.find_element(By.XPATH, "//a[text()='Insert Row Above']").click()
+        # Paste in projects, tasks, hours types
+        for x, column in zip(x_values, header_columns):
+            cell = get_element_at_point(web, x, y_values[0])
+            cell.click()
+            pyperclip.copy('\n'.join(column))
+            cell.send_keys(Keys.CONTROL, 'v')  # paste
+            sleep(2)
+        cell = get_element_at_point(web, x_values[5], y_values[0])  # top left of data grid
+        cell.click()
+        # Change format to TSV for pasting
+        pyperclip.copy(copy_text.replace(';', '\n').replace(',', '\t\t\t'))
+        cell.send_keys(Keys.CONTROL, 'v')
+        if self.known_as == 'Ben':
+            web.find_element(By.XPATH, "//span[text()='Submit']").click()
+        else:  # Submit is in overflow menu for everyone else
+            overflow = web.find_element(By.TAG_NAME, 'oj-toolbar').find_element(By.TAG_NAME, 'oj-menu-button')
+            overflow.click()
+            overflow.find_element(By.XPATH, "//a[text()='Submit']").click()
+        sleep(5)
+        assert web.current_url == initial_page  # successful submission: return to blank page
 
     def print_workforce_plan(self):
         """Output a monthly workforce plan suitable for pasting into a spreadsheet."""
@@ -416,6 +469,10 @@ def dicts_close(dict1: dict, dict2: dict) -> bool:
 
 def check_total_ftes(members: list[GroupMember]):
     print(*[f'{member.known_as}: {member.booking_plan.total_fte()}' for member in members], sep='\n')
+
+
+def get_element_at_point(web: WebDriver, x: float, y: float) -> WebElement:
+    return web.execute_script(f'return document.elementFromPoint({x + 10}, {y})')
 
 
 if __name__ == '__main__':

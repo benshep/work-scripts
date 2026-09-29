@@ -65,6 +65,7 @@ def go_to_oracle_page(*links: str,
     # probably user data directory is already in use,
     # please specify a unique value for --user-data-dir argument, or don't use --user-data-dir
     edge_options.add_argument('--edge-skip-compat-layer-relaunch')
+    # Allow pasting using Ctrl-V
     edge_options.add_experimental_option("prefs", {"profile.default_content_setting_values.clipboard": 1})
     if manual_login:
         print(f'This script will now launch a browser window ({browser.name.title()}) to log in to Oracle.')
