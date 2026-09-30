@@ -1,4 +1,5 @@
 import re
+import warnings
 from datetime import datetime, timedelta
 
 import numpy as np
@@ -9,17 +10,30 @@ from math import radians, sin, cos, sqrt, atan2, copysign
 import airportsdata
 import pandas
 import serpapi
+from unidecode import unidecode
 
 from work_folders import docs_folder
 from work_tools import read_excel
 from google_routing_credentials import api_key
 from serp_credentials import serp_api_key
 
+western_europe = ('GB', 'FR', 'ES', 'BE', 'NL', 'LX', 'DE', 'DK', 'SE', 'CH', 'IT', 'AT')
 iata_pattern = re.compile(r'\b[A-Z]{3}\b(?:/[A-Z]{3}\b)+')
 airports = airportsdata.load('IATA')
 excel_file = docs_folder / 'Sustainability' / 'Travel' / '2026-27 ASTeC spending.xlsx'
-uk_stations = pandas.read_csv(
-    'https://raw.githubusercontent.com/davwheat/uk-railway-stations/refs/heads/main/stations.csv')
+
+github_root = 'https://raw.githubusercontent.com'
+
+uk_stations = pandas.read_csv(f'{github_root}/davwheat/uk-railway-stations/refs/heads/main/stations.csv')
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    eu_stations = pandas.read_csv(f'{github_root}/trainline-eu/stations/refs/heads/master/stations.csv',
+                                  sep=';', true_values=['t'], false_values=['f'])
+# Generic code for each station, filled from national codes
+cols = [col for col in eu_stations.columns if col.endswith('_id') and pandas.api.types.is_string_dtype(eu_stations[col])]
+cols.insert(0, cols.pop(cols.index('atoc_id')))
+eu_stations['code'] = eu_stations[cols].bfill(axis=1).iloc[:, 0]  # prioritise GB ID
+# eu_stations['simple_name'] = eu_stations['name'].apply(lambda s: unidecode(str(s).casefold()))  #
 serp = serpapi.Client(api_key=serp_api_key)
 known_stations = {
     'PARIS ST LAZARE': (48.876944, 2.324444),
@@ -90,7 +104,7 @@ routing_url = 'https://routes.googleapis.com/directions/v2:computeRoutes'
 routing_headers = {
     "Content-Type": "application/json",
     "X-Goog-Api-Key": api_key,
-    "X-Goog-FieldMask": "routes.distanceMeters",
+    "X-Goog-FieldMask": "routes.distanceMeters,routes.polyline.encodedPolyline",
 }
 
 
@@ -138,6 +152,12 @@ def total_flight_distance(row) -> tuple[float, str, float]:
     """Return the total distance in km between the given airports, the haul type (domestic, short, long, international,
     represented as D/S/L/I for each leg), and the emissions in kgCO₂e."""
     codes = row['airport_codes']
+    total_distance, hauls, emissions = flight_distance_from_codes(codes)
+    emissions = copysign(emissions, row['Cost'])  # in case of refunds!
+    return total_distance, hauls, emissions
+
+
+def flight_distance_from_codes(codes: list[str]) -> tuple[float, str, float]:
     total_distance = 0.0
     emissions = 0.0
     hauls = ''
@@ -157,11 +177,10 @@ def total_flight_distance(row) -> tuple[float, str, float]:
         dist_km = haversine(ap_a['lat'], ap_a['lon'], ap_b['lat'], ap_b['lon'])
         total_distance += dist_km
         emissions += conversions[haul] * dist_km
-    emissions = copysign(emissions, row['Cost'])  # in case of refunds!
     return total_distance, hauls, emissions
 
 
-def total_train_distance(row):
+def total_train_distance(row) -> tuple[float, float]:
     """Return the total distance in km between the given stations."""
     stations = row['stations']
     # print(stations)
@@ -172,9 +191,16 @@ def total_train_distance(row):
             continue
         matched = uk_stations[uk_stations['stationName'].str.fullmatch(station, case=False)].squeeze()
         if len(matched):
-            coords.append((matched['lat'], matched['long'], matched['stationName']))
+            coords.append((matched['lat'], matched['long'], matched['crsCode']))
         else:
             print('No match for', station)
+    total_distance, total_emissions, _ = total_train_distance_from_coords(coords, 'International' in row['Comment'])
+    return total_distance, total_emissions
+
+
+def total_train_distance_from_coords(coords: list[tuple[float, float, str]],
+                                     international: bool | None = None) -> tuple[float, float, str]:
+    """Return the total distance in km between the given stations. Supply as a list of coordinates and station codes."""
     total_distance = 0.0
     total_emissions = 0.0
     if len(coords) > 1:
@@ -188,15 +214,20 @@ def total_train_distance(row):
             response = requests.post(routing_url, json=payload, headers=routing_headers).json()
             print(a[2], 'to', b[2], end=' ')
             try:
-                distance = response['routes'][0]['distanceMeters'] / 1000
+                route = response['routes'][0]
+                distance = route['distanceMeters'] / 1000
+                polyline = route['polyline']['encodedPolyline']
                 print(round(distance), 'via Google')
             except (IndexError, KeyError):  # fall back to crow-flight distance + 10%
                 distance = haversine(*a[:2], *b[:2]) * 1.1
                 print(round(distance), 'as the crow flies')
             total_distance += distance
-            rail_type = 'International Rail' if 'International' in row['Comment'] else 'National Rail'
+            if international is None:  # not supplied: try to guess
+                international = len(a[2]) > 3  # UK codes are three letters, EU codes are longer ...?
+            rail_type = 'International Rail' if international else 'National Rail'
+            print(rail_type)
             total_emissions += conversions[rail_type] * distance
-    return total_distance, total_emissions
+    return total_distance, total_emissions, polyline
 
 
 def guess_iata_code(segment: str, airport: bool = True) -> str | None:

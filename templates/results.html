@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>🌳 STFC Travel Carbon: Results</title>
+
+<link rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mapbox/polyline@1.2.1/src/polyline.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet.geodesic"></script>
+    <style>
+
+body {
+    font-family: Arial, sans-serif;
+    max-width: 800px;
+    margin: auto;
+    padding: 2rem;
+}
+
+.result {
+    background: #f4f4f4;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.total {
+    font-size: 2em;
+    font-weight: bold;
+}
+
+.alternative-info {
+    margin-top: 1rem;
+    padding: 1rem 1.25rem;
+    border-left: 5px solid #00703c;
+    border-radius: 4px;
+    background: #e6f4ea;
+    color: #163d27;
+    font-size: 1.1rem;
+    line-height: 1.5;
+}
+</style>
+
+</head>
+
+<body>
+
+<h1>🌳 STFC Travel Carbon: Results</h1>
+
+<div class="result">
+
+    <p>
+        {{'🚅' if trip.mode == 'rail' else '✈️'}} Travel emissions:
+        <strong>{{ result.travel }}</strong>
+        kgCO₂e
+    </p>
+
+    <p>
+        🛏️ Hotel emissions:
+        <strong>{{ result.hotel }}</strong>
+        kgCO₂e
+    </p>
+
+    <hr>
+
+    <p class="total">
+        👣 Total:
+        {{ result.total }}
+        kgCO₂e
+    </p>
+
+    {% if result.alt_total %}
+        <div class="alternative-info">
+            <strong>⚠️ Rail alternative available:</strong>
+                The equivalent journey by rail would produce approximately
+            <strong>{{ result.alt_total }}&nbsp;kgCO₂e</strong>, a reduction of <strong>{{ result.reduction_percent }}</strong>%.
+        </div>
+    {% endif %}
+
+</div>
+
+<h2>Journey Details</h2>
+
+<ul>
+    <li>Mode: <strong>{{ trip.mode }}</strong></li>
+    <li>Origin: <strong>{{ trip.origin.name }}</strong></li>
+    <li>Destination: <strong>{{ trip.destination.name }}</strong></li>
+    <li>Round-trip distance: <strong>{{ trip.total_distance }} km</strong></li>
+    <li>Hotel country: <strong>{{ trip.hotel_country }}</strong></li>
+    <li>Hotel nights: <strong>{{ trip.hotel_nights }}</strong></li>
+</ul>
+
+<div class="result-card">
+    <h2>Route Map</h2>
+    <div id="map" style="height: 500px; width: 100%;"></div>
+</div>
+
+<p>
+    <a href="/">Calculate another trip</a>
+</p>
+
+<script>
+    const map = L.map('map').setView([53.45, -2.74], 6);
+    L.tileLayer(
+        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        {
+            attribution: '&copy; OpenStreetMap contributors'
+        }
+    ).addTo(map);
+    const coordinates = polyline.decode({{ rail_polyline|tojson }});
+    const line = L.polyline(
+        coordinates.map(c => [c[0], c[1]]),
+        {
+            color: 'blue',
+            weight: 5
+        }
+    ).addTo(map);
+
+    const points = {{ flight_pairs|tojson }};
+    for (let i = 0; i < points.length - 1; i++) {
+
+        const origin = points[i];
+        const destination = points[i + 1];
+
+        new L.Geodesic(
+            [origin, destination],
+            {
+                color: 'red',
+                weight: 5,
+            }
+        ).addTo(map);
+    }
+
+    const bounds = L.latLngBounds();
+
+    // Add individual coordinate markers
+    if (coordinates && coordinates.length) {
+        coordinates.forEach(coord => {
+            bounds.extend(coord);
+        });
+    }
+
+    // Add route points
+    if (points && points.length) {
+        points.forEach(point => {
+            bounds.extend(point);
+        });
+    }
+
+    // Zoom if we have at least one point
+    if (bounds.isValid()) {
+        map.fitBounds(bounds, {
+            padding: [20, 20]
+        });
+    }
+    map.fitBounds(line.getBounds());
+
+</script>
+</body>
+</html>

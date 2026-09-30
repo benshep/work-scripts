@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <title>🌳 STFC Travel Carbon Calculator</title>
+
+    <style>
+        :root {
+            --primary: #005a9c;
+            --primary-dark: #004578;
+            --border: #b8b8b8;
+            --background: #f5f6f7;
+            --chip: #e5f1fb;
+            --chip-border: #8ab8dc;
+            --error: #b10e1e;
+            --muted: #666;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            max-width: 850px;
+            margin: 0 auto;
+            padding: 2rem;
+            font-family: Arial, sans-serif;
+            line-height: 1.5;
+            color: #222;
+        }
+
+        h1 {
+            margin-top: 0;
+        }
+
+        fieldset {
+            margin: 0 0 1.5rem;
+            padding: 0;
+            border: 0;
+        }
+
+        legend,
+        .field-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+
+        .mode-options {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .mode-option {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+        }
+
+        .route-help,
+        .field-help {
+            margin: 0.3rem 0 0.6rem;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .route-editor {
+            position: relative;
+        }
+
+        .route-input-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            min-height: 48px;
+            padding: 0.45rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: white;
+        }
+
+        .route-input-container:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgb(0 90 156 / 20%);
+        }
+
+        .location-chip {
+            display: inline-flex;
+            align-items: center;
+            max-width: 100%;
+            border: 1px solid var(--chip-border);
+            border-radius: 16px;
+            background: var(--chip);
+            overflow: hidden;
+        }
+
+        .chip-edit,
+        .chip-remove {
+            border: 0;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        .chip-edit {
+            max-width: 100%;
+            padding: 0.35rem 0.25rem 0.35rem 0.65rem;
+            color: #222;
+            text-align: left;
+        }
+
+        .chip-edit:hover {
+            text-decoration: underline;
+        }
+
+        .chip-code {
+            font-weight: bold;
+        }
+
+        .chip-name {
+            margin-left: 0.3rem;
+            color: #444;
+        }
+
+        .chip-remove {
+            padding: 0.35rem 0.6rem;
+            color: #444;
+            font-size: 1rem;
+        }
+
+        .chip-remove:hover {
+            color: var(--error);
+        }
+
+        #location-search {
+            flex: 1;
+            min-width: 190px;
+            padding: 0.35rem;
+            border: 0;
+            outline: 0;
+            font: inherit;
+        }
+
+        .autocomplete {
+            position: absolute;
+            z-index: 10;
+            top: calc(100% + 4px);
+            right: 0;
+            left: 0;
+            display: none;
+            max-height: 260px;
+            margin: 0;
+            padding: 0;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: white;
+            box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+            list-style: none;
+        }
+
+        .autocomplete.open {
+            display: block;
+        }
+
+        .autocomplete button {
+            display: block;
+            width: 100%;
+            padding: 0.7rem;
+            border: 0;
+            border-bottom: 1px solid #eee;
+            background: white;
+            color: #222;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .autocomplete button:hover,
+        .autocomplete button.active {
+            background: var(--background);
+        }
+
+        .autocomplete-code {
+            display: inline-block;
+            min-width: 4rem;
+            font-weight: bold;
+        }
+
+        .empty-result {
+            padding: 0.7rem;
+            color: var(--muted);
+        }
+
+        .journey-summary {
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            border-radius: 6px;
+            background: var(--background);
+        }
+
+        .row {
+            margin-bottom: 1.25rem;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 0.65rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font: inherit;
+        }
+
+        input[type="number"] {
+            max-width: 10rem;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+
+        .error {
+            display: none;
+            margin-top: 0.5rem;
+            color: var(--error);
+            font-weight: bold;
+        }
+
+        .error.visible {
+            display: block;
+        }
+
+        button[type="submit"] {
+            padding: 0.8rem 1.4rem;
+            border: 0;
+            border-radius: 6px;
+            background: var(--primary);
+            color: white;
+            font: inherit;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button[type="submit"]:hover {
+            background: var(--primary-dark);
+        }
+
+        hr {
+            margin: 2rem 0;
+            border: 0;
+            border-top: 1px solid #ddd;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 1rem;
+            }
+
+            .mode-options {
+                flex-direction: column;
+                gap: 0.6rem;
+            }
+
+            .chip-name {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>🌳 STFC Travel Carbon Calculator</h1>
+
+    <form method="post" action="/calculate">
+        <fieldset>
+            <legend>Travel mode</legend>
+
+            <div class="mode-options">
+                <label class="mode-option">
+                    <input
+                        type="radio"
+                        name="mode"
+                        value="flight"
+                        checked
+                    >
+                    ✈️ Flight
+                </label>
+
+                <label class="mode-option">
+                    <input
+                        type="radio"
+                        name="mode"
+                        value="rail"
+                    >
+                    🚅 Rail
+                </label>
+            </div>
+        </fieldset>
+
+        <div class="row">
+            <label class="field-label" for="location-search">
+                Route
+            </label>
+
+            <p class="route-help" id="route-help">
+                Enter each airport in journey order. Search by airport code,
+                city or airport name.
+            </p>
+
+            <div class="route-editor">
+                <div
+                    class="route-input-container"
+                    id="route-input-container"
+                    role="group"
+                    aria-labelledby="route-help"
+                >
+                    <div id="selected-locations"></div>
+
+                    <input
+                        type="text"
+                        id="location-search"
+                        placeholder="Type an airport code or name"
+                        autocomplete="off"
+                        role="combobox"
+                        aria-autocomplete="list"
+                        aria-expanded="false"
+                        aria-controls="autocomplete-results"
+                    >
+                </div>
+
+                <ul
+                    id="autocomplete-results"
+                    class="autocomplete"
+                    role="listbox"
+                ></ul>
+            </div>
+
+            <div
+                id="journey-summary"
+                class="journey-summary"
+                hidden
+            ></div>
+
+            <p id="route-error" class="error">
+                Add at least two locations to define the journey.
+            </p>
+
+            <!-- Submitted as JSON to Flask. -->
+            <input
+                type="hidden"
+                id="locations"
+                name="locations"
+                value="[]"
+            >
+        </div>
+
+        <div class="row">
+            <label class="checkbox-label">
+                <input
+                    type="checkbox"
+                    id="return_same"
+                    name="return_same"
+                    checked
+                >
+                Include the return journey
+            </label>
+        </div>
+
+        <hr>
+
+        <h2>🛏️ Hotel</h2>
+
+        <div class="row">
+            <label class="field-label" for="hotel_country">
+                Hotel country
+            </label>
+
+            <input
+                type="text"
+                id="hotel_country"
+                name="hotel_country"
+                list="hotel-country-options"
+                placeholder="Start typing a country"
+                autocomplete="off"
+            >
+
+            <datalist id="hotel-country-options">
+                {% for country in hotel_countries %}
+                    <option value="{{ country }}"></option>
+                {% endfor %}
+            </datalist>
+
+            <p class="field-help">
+                Filled automatically from the final destination. Start typing to
+                choose a different country.
+            </p>
+
+            <p id="hotel-country-error" class="error">
+                Select a country from the available list.
+            </p>
+        </div>
+
+        <div class="row">
+            <label class="field-label" for="hotel_nights">
+                Nights
+            </label>
+
+            <input
+                type="number"
+                id="hotel_nights"
+                name="hotel_nights"
+                min="0"
+                value="3"
+            >
+        </div>
+
+        <button type="submit">
+            Calculate footprint
+        </button>
+    </form>
+
+    <script>
+        const hotelCountryInput =
+            document.getElementById("hotel_country");
+
+        const hotelCountryError =
+            document.getElementById("hotel-country-error");
+
+        const validHotelCountries = new Set(
+            Array.from(
+                document.querySelectorAll(
+                    "#hotel-country-options option"
+                )
+            ).map(option => option.value)
+        );
+        const form = document.getElementById("trip-form");
+        const searchInput = document.getElementById("location-search");
+        const selectedContainer =
+            document.getElementById("selected-locations");
+        const resultsList =
+            document.getElementById("autocomplete-results");
+        const hiddenLocations = document.getElementById("locations");
+        const hotelCountry = document.getElementById("hotel_country");
+        const routeError = document.getElementById("route-error");
+        const journeySummary =
+            document.getElementById("journey-summary");
+        const routeHelp = document.getElementById("route-help");
+
+        let locations = [];
+        let searchTimer = null;
+        let activeResultIndex = -1;
+        let currentResults = [];
+        let editingIndex = null;
+
+        function getMode() {
+            return document.querySelector(
+                'input[name="mode"]:checked'
+            ).value;
+        }
+
+        function escapeHtml(value) {
+            const element = document.createElement("div");
+            element.textContent = value;
+            return element.innerHTML;
+        }
+
+        function updateHiddenValue() {
+            hiddenLocations.value = JSON.stringify(locations);
+        }
+
+        function updateJourneySummary() {
+            if (locations.length < 2) {
+                journeySummary.hidden = true;
+                journeySummary.textContent = "";
+                return;
+            }
+
+            const route = locations
+                .map(location => location.code)
+                .join(" → ");
+
+            const includeReturn =
+                document.getElementById("return_same").checked;
+
+            journeySummary.textContent = includeReturn
+                ? `${route} → ${locations[0].code}`
+                : route;
+
+            journeySummary.hidden = false;
+        }
+
+        function updateHotelCountry() {
+            if (locations.length === 0) {
+                hotelCountryInput.value = "";
+                return;
+            }
+
+            const destination = locations[locations.length - 1];
+
+            if (destination.country && validHotelCountries.has(destination.country)) {
+                hotelCountryInput.value = destination.country;
+                hotelCountryError.classList.remove('visible');
+            } else {
+                hotelCountryInput.value = '';
+            }
+        }
+
+        function renderLocations() {
+            selectedContainer.innerHTML = "";
+
+            locations.forEach((location, index) => {
+                const chip = document.createElement("span");
+                chip.className = "location-chip";
+
+                const editButton = document.createElement("button");
+                editButton.type = "button";
+                editButton.className = "chip-edit";
+                editButton.title = "Change this location";
+                editButton.setAttribute(
+                    "aria-label",
+                    `Change ${location.name}`
+                );
+
+                editButton.innerHTML = `
+                    <span class="chip-code">
+                        ${escapeHtml(location.code)}
+                    </span>
+                    <span class="chip-name">
+                        ${escapeHtml(location.name)} ${location.countryFlag}
+                    </span>
+                `;
+
+                editButton.addEventListener("click", () => {
+                    editLocation(index);
+                });
+
+                const removeButton = document.createElement("button");
+                removeButton.type = "button";
+                removeButton.className = "chip-remove";
+                removeButton.textContent = "×";
+                removeButton.title = "Remove this location";
+                removeButton.setAttribute(
+                    "aria-label",
+                    `Remove ${location.name}`
+                );
+
+                removeButton.addEventListener("click", () => {
+                    removeLocation(index);
+                });
+
+                chip.appendChild(editButton);
+                chip.appendChild(removeButton);
+                selectedContainer.appendChild(chip);
+            });
+
+            updateHiddenValue();
+            updateJourneySummary();
+            updateHotelCountry();
+
+            if (locations.length >= 2) {
+                routeError.classList.remove("visible");
+            }
+        }
+
+        function addLocation(location) {
+            const normalisedLocation = {
+                code: location.code,
+                name: location.name,
+                latitude: location.latitude,
+                longitude: location.longitude,
+                country: location.country || "",
+                countryCode: location.countryCode || "",
+                countryFlag: location.countryFlag || ""
+            };
+
+            if (editingIndex === null) {
+                locations.push(normalisedLocation);
+            } else {
+                locations[editingIndex] = normalisedLocation;
+                editingIndex = null;
+            }
+
+            searchInput.value = "";
+            closeAutocomplete();
+            renderLocations();
+            searchInput.focus();
+        }
+
+        function removeLocation(index) {
+            locations.splice(index, 1);
+
+            if (editingIndex === index) {
+                editingIndex = null;
+                searchInput.value = "";
+            } else if (
+                editingIndex !== null &&
+                editingIndex > index
+            ) {
+                editingIndex -= 1;
+            }
+
+            renderLocations();
+            searchInput.focus();
+        }
+
+        function editLocation(index) {
+            const location = locations[index];
+
+            editingIndex = index;
+            searchInput.value = location.code;
+            searchInput.focus();
+            searchInput.select();
+            runSearch();
+        }
+
+        function closeAutocomplete() {
+            resultsList.innerHTML = "";
+            resultsList.classList.remove("open");
+            searchInput.setAttribute("aria-expanded", "false");
+            activeResultIndex = -1;
+            currentResults = [];
+        }
+
+        function renderAutocomplete(results) {
+            resultsList.innerHTML = "";
+            activeResultIndex = -1;
+            currentResults = results;
+
+            if (results.length === 0) {
+                const emptyItem = document.createElement("li");
+                emptyItem.className = "empty-result";
+                emptyItem.textContent = "No matching locations found";
+                resultsList.appendChild(emptyItem);
+            } else {
+                results.forEach((location, index) => {
+                    const item = document.createElement("li");
+                    item.setAttribute("role", "option");
+
+                    const button = document.createElement("button");
+                    button.type = "button";
+
+                    button.innerHTML = `
+                        <span class="autocomplete-code">
+                            ${escapeHtml(location.code)}
+                        </span>
+                        <span>
+                            ${escapeHtml(location.name)}${location.country ?`, ${escapeHtml(location.country)}` : ""}
+                        </span>
+                    `;
+
+                    button.addEventListener("mousedown", event => {
+                        event.preventDefault();
+                        addLocation(location);
+                    });
+
+                    item.appendChild(button);
+                    resultsList.appendChild(item);
+                });
+            }
+
+            resultsList.classList.add("open");
+            searchInput.setAttribute("aria-expanded", "true");
+        }
+
+        async function runSearch() {
+            const query = searchInput.value.trim();
+
+            if (query.length < 2) {
+                closeAutocomplete();
+                return;
+            }
+
+            try {
+                const parameters = new URLSearchParams({
+                    mode: getMode(),
+                    q: query
+                });
+
+                const response = await fetch(
+                    `/locations?${parameters.toString()}`
+                );
+
+                if (!response.ok) {
+                    throw new Error(
+                        `Location lookup failed: ${response.status}`
+                    );
+                }
+
+                const results = await response.json();
+                renderAutocomplete(results);
+            } catch (error) {
+                console.error(error);
+                closeAutocomplete();
+            }
+        }
+
+        function setActiveResult(index) {
+            const buttons = resultsList.querySelectorAll("button");
+
+            buttons.forEach(button => {
+                button.classList.remove("active");
+            });
+
+            if (buttons.length === 0) {
+                return;
+            }
+
+            activeResultIndex =
+                (index + buttons.length) % buttons.length;
+
+            buttons[activeResultIndex].classList.add("active");
+            buttons[activeResultIndex].scrollIntoView({
+                block: "nearest"
+            });
+        }
+
+        function validateHotelCountry() {
+            const country = hotelCountryInput.value.trim();
+
+            if (
+                country !== "" &&
+                !validHotelCountries.has(country)
+            ) {
+                hotelCountryError.classList.add("visible");
+                return false;
+            }
+
+            hotelCountryError.classList.remove("visible");
+            return true;
+        }
+
+        hotelCountryInput.addEventListener(
+            "change",
+            validateHotelCountry
+        );
+
+        searchInput.addEventListener("input", () => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(runSearch, 200);
+        });
+
+        searchInput.addEventListener("keydown", event => {
+            if (event.key === "ArrowDown") {
+                event.preventDefault();
+                setActiveResult(activeResultIndex + 1);
+            }
+
+            if (event.key === "ArrowUp") {
+                event.preventDefault();
+                setActiveResult(activeResultIndex - 1);
+            }
+
+            if (
+                event.key === "Enter" &&
+                activeResultIndex >= 0
+            ) {
+                event.preventDefault();
+                addLocation(currentResults[activeResultIndex]);
+            }
+
+            if (event.key === "Escape") {
+                closeAutocomplete();
+                editingIndex = null;
+                searchInput.value = "";
+            }
+
+            if (
+                event.key === "Backspace" &&
+                searchInput.value === "" &&
+                locations.length > 0
+            ) {
+                removeLocation(locations.length - 1);
+            }
+        });
+
+        document.addEventListener("click", event => {
+            if (!event.target.closest(".route-editor")) {
+                closeAutocomplete();
+            }
+        });
+
+        document
+            .querySelectorAll('input[name="mode"]')
+            .forEach(radio => {
+                radio.addEventListener("change", () => {
+                    locations = [];
+                    editingIndex = null;
+                    searchInput.value = "";
+                    closeAutocomplete();
+                    renderLocations();
+
+                    if (getMode() === "flight") {
+                        routeHelp.textContent =
+                            "Enter each airport in journey order. " +
+                            "Search by airport code, city or airport name.";
+
+                        searchInput.placeholder =
+                            "Type an airport code or name";
+                    } else {
+                        routeHelp.textContent =
+                            "Enter each station in journey order. " +
+                            "Search by CRS code or station name.";
+
+                        searchInput.placeholder =
+                            "Type a station code or name";
+                    }
+                });
+            });
+
+        document
+            .getElementById("return_same")
+            .addEventListener("change", updateJourneySummary);
+
+        form.addEventListener("submit", event => {
+            let valid = true;
+
+            if (locations.length < 2) {
+                routeError.classList.add("visible");
+                searchInput.focus();
+                valid = false;
+            }
+
+            if (!validateHotelCountry()) {
+                if (valid) {
+                    hotelCountryInput.focus();
+                }
+
+                valid = false;
+            }
+
+            if (!valid) {
+                event.preventDefault();
+            }
+        });
+
+        renderLocations();
+    </script>
+
+</body>
+</html>
