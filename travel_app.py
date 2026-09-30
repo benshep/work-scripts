@@ -93,7 +93,7 @@ def calculate():
 
     trip = {'origin': locations[0], 'destination': locations[-1]}
     if include_return:
-        locations.extend(locations[-2:-1])
+        locations.extend(locations[-2::-1])
 
     trip |= {
         "mode": mode,

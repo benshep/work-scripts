@@ -217,10 +217,10 @@ def total_train_distance_from_coords(coords: list[tuple[float, float, str]],
                 route = response['routes'][0]
                 distance = route['distanceMeters'] / 1000
                 polyline = route['polyline']['encodedPolyline']
-                print(round(distance), 'via Google')
+                print(round(distance), 'km via Google')
             except (IndexError, KeyError):  # fall back to crow-flight distance + 10%
                 distance = haversine(*a[:2], *b[:2]) * 1.1
-                print(round(distance), 'as the crow flies')
+                print(round(distance), 'km as the crow flies')
             total_distance += distance
             if international is None:  # not supplied: try to guess
                 international = len(a[2]) > 3  # UK codes are three letters, EU codes are longer ...?
