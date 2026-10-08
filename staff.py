@@ -10,6 +10,7 @@ import pyperclip
 from selenium.webdriver.firefox.webdriver import WebDriver
 from selenium.webdriver import ActionChains, Keys
 from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webelement import WebElement
 
 import oracle
 import otl
@@ -67,6 +68,7 @@ def ymd(when: datetime | date) -> str:
 def escape_quotes(s: str) -> str:
     """Escape quotes in Javascript strings."""
     return s.replace('"', '\\x22').replace("'", '\\x27')
+
 
 class DataIssue(Exception):
     """A problem with data fetched from OBI."""
@@ -291,7 +293,8 @@ class GroupMember:
                 hours_left -= entry.hours
             else:  # lower-priority project
                 # apportion balancing hours depending on share of expected booking
-                report(f' {hours_left=:.3f}, this project {entry.annual_fte:.1f} FTE of total {total_low_priority:.1f} FTE lower-priority')
+                report(
+                    f' {hours_left=:.3f}, this project {entry.annual_fte:.1f} FTE of total {total_low_priority:.1f} FTE lower-priority')
                 entry.hours = keep_in_bounds(hours_left * entry.annual_fte / total_low_priority)
             report(f' book {entry.hours:.3f} hours')
 
@@ -376,14 +379,14 @@ class GroupMember:
             row = []
             for hour in hours:
                 table_body += ' ' * 28 + f'<td class="num">{hour:.02f}</td>\n'
-                row.append('' if isclose(hour, 0) else f'{hour:.02f}')  # use blanks instead of zero otherwise Fusion complains!
+                row.append('' if isclose(hour,
+                                         0) else f'{hour:.02f}')  # use blanks instead of zero otherwise Fusion complains!
             data_grid.append(','.join(row))  # columns separated by commas
             table_body += '                        </tr>\n'
         copy_text = ';'.join(data_grid)  # rows separated by semicolons
         projects_copy_text_escaped = escape_quotes(';'.join(projects_copy_text))
         tasks_copy_text_escaped = escape_quotes(';'.join(tasks_copy_text))
         hours_copy_text_escaped = escape_quotes(';'.join(hours_copy_text))
-
 
         # language=HTML
         html = f'''
@@ -411,7 +414,7 @@ class GroupMember:
         return oracle.apps[('home',)] + 'time/timecards/landing-page?' + urlencode(params)
 
     def submit_card(self, web: WebDriver, copy_text: str,
-                    header_columns: tuple[list[str], list[str], list[str]], start: date):
+                    header_columns: tuple[list[str], list[str], list[str]], start: date, interactive: bool = False):
         """Create and submit a timecard on Fusion."""
         initial_page = 'about:blank'
         web.get(initial_page)  # Fusion will return to the previous page: make it quick!
@@ -419,15 +422,19 @@ class GroupMember:
         while True:  # add rows as necessary
             sleep(10)
             # Find the time boxes: three for each day (start, stop, quantity) x 12 rows
-            time_boxes = web.find_elements(By.CLASS_NAME, 'oj-datagrid-cell')
+            # Exclude the read-only cells (annual leave)
+            time_boxes = web.find_elements(By.XPATH,  # language=xpath
+                                           "//div[contains(concat(' ', normalize-space(@class), ' '), ' oj-datagrid-cell ') "
+                                           "and not(contains(concat(' ', normalize-space(@class), ' '), ' oj-read-only '))]")
             # Not necessarily in order - sort by y and then x. There's one at (0, 0) too
             x_values = sorted({box.rect['x'] for box in time_boxes} - {0})
             y_values = sorted({box.rect['y'] for box in time_boxes} - {0})
             if len(y_values) >= len(header_columns[0]):  # got enough rows for our data
                 break
-            cell = get_element_at_point(web, x_values[0], y_values[0])
-            ActionChains(web).context_click(cell).perform()  # right-click top-left cell for context menu
-            web.find_element(By.XPATH, "//a[text()='Insert Row Above']").click()
+            cell = get_element_at_point(web, x_values[0], y_values[-1])
+            ActionChains(web).context_click(cell).perform()  # right-click bottom-left cell for context menu
+            web.find_element(By.XPATH,  # language=xpath
+                             "//a[text()='Insert Row Above']").click()
         # Paste in projects, tasks, hours types
         for x, column in zip(x_values, header_columns):
             cell = get_element_at_point(web, x, y_values[0])
@@ -440,14 +447,17 @@ class GroupMember:
         # Change format to TSV for pasting
         pyperclip.copy(copy_text.replace(';', '\n').replace(',', '\t\t\t'))
         cell.send_keys(Keys.CONTROL, 'v')
-        if self.known_as == 'Ben':
-            web.find_element(By.XPATH, "//span[text()='Submit']").click()
-        else:  # Submit is in overflow menu for everyone else
+        if self.known_as != 'Ben':  # Submit is in overflow menu for everyone else
             overflow = web.find_element(By.TAG_NAME, 'oj-toolbar').find_element(By.TAG_NAME, 'oj-menu-button')
             overflow.click()
-            overflow.find_element(By.XPATH, "//a[text()='Submit']").click()
+        web.find_element(By.XPATH,  # language=xpath
+                         "//span[text()='Submit']").click()
         sleep(5)
-        assert web.current_url == initial_page  # successful submission: return to blank page
+        if web.current_url != initial_page:
+            if interactive:
+                input('Submit card manually and press ENTER to continue...')
+            else:
+                raise RuntimeError('Card submission unsuccessful')
 
     def print_workforce_plan(self):
         """Output a monthly workforce plan suitable for pasting into a spreadsheet."""
@@ -457,7 +467,7 @@ class GroupMember:
                   entry.start_date, entry.end_date, f'{entry.annual_fte:.02f}', f'{sum(entry.monthly_fte):.02f}',
                   sep='\t', end='\t')
             for effort in entry.monthly_fte:
-                print(f'{effort * 12 * 100:.0f}%', end='\t')
+                print(f'{effort * 12 * 100:.2f}%', end='\t')
             print('')
 
 

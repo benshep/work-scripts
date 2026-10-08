@@ -19,7 +19,7 @@ from pushbullet_api_key import api_key  # local file, keep secret!
 from work_folders import downloads_folder, docs_folder
 
 
-def run_otl_calculator(weeks_ahead: int = 0, do_cards: bool = True, **kwargs) -> tuple[str, str] | None:
+def run_otl_calculator(weeks_ahead: int = 0, do_cards: bool = True, show_window: bool = False, **kwargs) -> tuple[str, str] | None:
     """Iterate through staff, listing the hours to upload for new OTL cards required.
     do_cards = True: attempt to submit cards automatically using selenium.
     do_cards = False: just output a web page with links to manually submit cards."""
@@ -27,7 +27,12 @@ def run_otl_calculator(weeks_ahead: int = 0, do_cards: bool = True, **kwargs) ->
     cards_to_book = 0
     cards_submitted = 0
     links_filename = downloads_folder / 'otl_upload_links.html'
-    web = oracle.go_to_oracle_page('home', show_window=False) if do_cards else None
+    if do_cards:
+        web = oracle.go_to_oracle_page('home', show_window=show_window)
+        previous_cards = oracle.get_all_timecards(web)
+    else:
+        web = None
+        previous_cards = []
     with open(links_filename, 'w', encoding='utf-8') as links_file:
         folder = Path(__file__).parent
         css_filename = folder / 'redwood.css'
@@ -55,18 +60,21 @@ def run_otl_calculator(weeks_ahead: int = 0, do_cards: bool = True, **kwargs) ->
             # wait until Thu to do current week
             while start + timedelta(days=3) <= date.today() + weeks_ahead * timedelta(days=7):
             # for _ in range(7):
-                member.prev_bookings = {}  # reset in case this has already run
-                hours_booked = member.hours_for_week(start)
+                hours_booked = member.hours_for_week(start) or sum([
+                    card.total_hours for card in previous_cards
+                    if card.name == member.name and card.week_beginning == start
+                       and card.status in ('Approved', 'Submitted')
+                ])
                 hours_needed = sum(member.hours_needed(start + timedelta(days=day)) for day in range(5))
                 print(f'{start.strftime("%d/%m/%Y")}: {hours_booked=:.2f}, {hours_needed=:.2f}')
                 end = start + timedelta(days=6)
                 if hours_needed - hours_booked > 0.01:
-                    url = member.timecard_url(start)
                     card_body, copy_text, header_columns = member.otl_upload_page(start)
                     done_card = False
-                    if do_cards and hours_booked == 0:  # only submit a card if there are zero hours booked
+                    # only submit a card if there are zero hours booked
+                    if do_cards and hours_booked == 0:
                         try:
-                            member.submit_card(web, copy_text, header_columns, start)
+                            member.submit_card(web, copy_text, header_columns, start, interactive=show_window)
                             done_card = True
                             cards_submitted += 1
                             failure_screenshot = None
@@ -114,7 +122,7 @@ def run_otl_calculator(weeks_ahead: int = 0, do_cards: bool = True, **kwargs) ->
 ''')
                     links_file.write(card_body)
                     if failure_screenshot:
-                        links_file.write(f'            <img class="card-body" src="{failure_screenshot}" />')
+                        links_file.write(f'            <img class="card-body" src="{failure_screenshot}" width="100%" />')
                     links_file.write('        </section>')
                 start += timedelta(days=7)
         # language=javascript
@@ -145,7 +153,7 @@ def run_otl_calculator(weeks_ahead: int = 0, do_cards: bool = True, **kwargs) ->
 </html>
                          ''')
     web.quit()
-    if cards_to_book:
+    if cards_submitted or cards_to_book:
         return f'{cards_submitted=}\n{cards_to_book=}', links_filename
     return None
 
@@ -291,9 +299,16 @@ def goal_page_urls():
             print('', goal_title.text)
 
 
+def workforce_planning():
+    for member in members:
+        member.booking_plan.convex_levelling()
+        member.print_workforce_plan()
+
+
 if __name__ == '__main__':
-    staff.verbose = True
-    print(run_otl_calculator(weeks_ahead=1, do_cards=True))
+    # staff.verbose = True
+    print(run_otl_calculator(weeks_ahead=0, do_cards=True, show_window=True))
+    # workforce_planning()
     # print(leave_cross_check())
     # print(check_in())
     # list_ftes()

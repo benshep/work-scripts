@@ -4,6 +4,7 @@ from enum import Enum
 from pathlib import Path
 from time import sleep
 from urllib.parse import quote, urlencode
+from datetime import date, datetime
 
 import pythoncom
 import win32com.client as win32
@@ -26,12 +27,8 @@ apps: dict[tuple[str, ...], str] = {
     ('obi',): f'https://obi.ssc.rcuk.ac.uk/analytics/saw.dll?dashboard&PortalPath={quoted_path}',  # TODO: update?
     ('taleo',): "https://careersportal.taleo.net/enterprise/fluid?isNavigationCompleted=true",
     ('absences',): fusion_url + 'absences/existing-absences/view-summary',
-    ('my_timecards',): fusion_url + 'time/timecards/add-timecard?userContext=WORKER',
-    ('team_timecards',): fusion_url + 'human-resources/feature/launch?' + \
-                         urlencode({'vbFlowStringKey': 'addTimeCard', 'action': 'MyTeam_AddTimeCardTLM',
-                                    'context': 'MyTeam', 'useSessionStoredFilters': 'true', 'vbAppUi': 'time',
-                                    'vbcsFlow': 'timecards', 'vbPage': 'add-timecard',
-                                    'vbPageParams': 'pCurrent=false#userContext=LINE_MANAGER'}),
+    ('my_timecards',): fusion_url + 'time/existing-timecards/view-summary',
+    ('team_timecards',): fusion_url + 'time/timecards/search?context=lineMgr',
     ('payslips',): fusion_url + 'payslips/payslips/launch',
     ('home',): fusion_url
 }
@@ -166,8 +163,39 @@ def convert_obi_files():
     return True
 
 
+class Timecard:
+    name: str
+    week_beginning: date
+    status: str
+    total_hours: float
+
+    def __init__(self, name: str, week_beginning: date, status: str, total_hours: float):
+        self.name = name
+        self.week_beginning = week_beginning
+        self.status = status
+        self.total_hours = total_hours
+
+def get_all_timecards(web: WebDriver | None = None) -> list[Timecard]:
+    if web is None:
+        web = go_to_oracle_page('team_timecards')
+    return get_team_cards(web, True) + get_team_cards(web, False)
+
+def get_team_cards(web: WebDriver, mine: bool) -> list[Timecard]:
+    web.get(apps[('my_timecards' if mine else 'team_timecards',)])
+    sleep(10)
+    cells = web.find_elements(By.CLASS_NAME, 'oj-table-data-cell')
+    offset = int(not mine)
+    # 11 cells in each row for team, otherwise 10 for me
+    cards = [Timecard(name='Ben Shepherd' if mine else cells[i].text,
+                      week_beginning=datetime.strptime(cells[i + offset].text, '%d/%m/%Y').date(),
+                      status=cells[i + 2 + offset].text, total_hours=float(cells[i + 6 + offset].text), ) for i in
+             range(0, len(cells), 10 if mine else 11)]
+    print(f'Got {len(cards)} cards, {mine=}')
+    return cards
+
 if __name__ == '__main__':
     # web = go_to_oracle_page('absences', show_window=True)
     # sleep(100)
     # web.quit()
-    convert_obi_files()
+    # convert_obi_files()
+    print(*get_all_timecards(), sep='\n')

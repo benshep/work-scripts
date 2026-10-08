@@ -14,12 +14,13 @@ scu = otl.Code('STGA00273', name='Superconducting Undulator', priority=otl.Prior
                project_key='300000105665086', task_key='100000026583506')
 sustainable_accelerators = otl.Code('STGA00298', name='Sustainable Acc (incl CESA and NCF)',
                                     project_key='300000105665723', task_key='100000026584748',
-                                    priority=otl.Priority.BALANCING)
+                                    priority=otl.Priority.AGREED)
 xfel_rnd = otl.Code('STGA00241', name='XFEL R&D', priority=otl.Priority.BALANCING,
                     project_key='300000155706667', task_key='300000155706896')
 novel_acceleration = otl.Code('STGA00242', name='Novel Acceleration', priority=otl.Priority.BALANCING,
                               project_key='300000156820113', task_key='300000156820132')
-ai_ml = otl.Code('STGA00243', name='AI/ML/Data Handling', project_key='300000250508299', task_key='300000250508314')
+ai_ml = otl.Code('STGA00243', name='AI/ML/Data Handling', priority=otl.Priority.AGREED,
+                 project_key='300000250508299', task_key='300000250508314')
 thin_films = otl.Code('STGA00501', name='Cavity SRF Thin Film Preparation & Charact',
                       project_key='300000105519807', task_key='100000026535097',
                       fusion_name='8Cavity SRF thinfilm prep', priority=otl.Priority.BALANCING)
@@ -95,7 +96,7 @@ members: list[GroupMember] = [
                 booking_plan=otl.BookingPlan([
                     otl.Entry(epac, 0.15),
                     otl.Entry(ruedi_new_code, 0.3),
-                    otl.Entry(clara, 0.07),
+                    # otl.Entry(clara, 0.07),
                     otl.Entry(epita, 0.09),
                     otl.Entry(liora_phase1a, 0.02),
                     # otl.Entry(liora_phase1b, 0.01),
@@ -152,17 +153,17 @@ members: list[GroupMember] = [
                 title='Mr',
                 person_id=100000020413933, assignment_id=300000117929802,
                 booking_plan=otl.BookingPlan([
-                    otl.Entry(clara, 0.5),
+                    otl.Entry(clara, 0.1),
                     otl.Entry(ai_ml, 0.35),
-                    otl.Entry(new_opps, 0.15),
+                    otl.Entry(new_opps),
                 ])),
     GroupMember('Nasiq Ziyan',
                 207521,
                 title='Mr',
                 person_id=100000020417760, assignment_id=300000117981407,
                 booking_plan=otl.BookingPlan([
-                    otl.Entry(clara, 0.35),
-                    otl.Entry(new_opps, 0.65),
+                    otl.Entry(ai_ml, 0.35),
+                    otl.Entry(new_opps),
                 ])),
     GroupMember('Thomas Smith',  # starts 2026-08-17
                 304560,
@@ -176,15 +177,13 @@ members: list[GroupMember] = [
 ]
 
 if __name__ == '__main__':
+    pass
     # check_total_ftes(members)
     # print(*[person.name for person in members], sep='\t')
     # person.update_off_days()
     # print(*sorted(list(person.off_days)), sep='\n')
     # print(person.daily_bookings(date.today()))
     # run_otl_calculator()
-    for member in members:
-        member.booking_plan.convex_levelling()
-        member.print_workforce_plan()
         # print(entry.code, otl.working_days_in_period(entry.start_date, entry.end_date, member.off_days),
         #       entry.daily_hours(member.off_days))
 # hours = me.daily_hours(date(2025, 4, 1))
