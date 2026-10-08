@@ -10,7 +10,6 @@ import pyperclip
 from selenium.webdriver.firefox.webdriver import WebDriver
 from selenium.webdriver import ActionChains, Keys
 from selenium.webdriver.common.by import By
-from selenium.webdriver.remote.webelement import WebElement
 
 import oracle
 import otl
@@ -450,14 +449,20 @@ class GroupMember:
         if self.known_as != 'Ben':  # Submit is in overflow menu for everyone else
             overflow = web.find_element(By.TAG_NAME, 'oj-toolbar').find_element(By.TAG_NAME, 'oj-menu-button')
             overflow.click()
-        web.find_element(By.XPATH,  # language=xpath
-                         "//span[text()='Submit']").click()
+            tag = 'a'
+        else:
+            tag = 'span'
+        web.find_element(By.XPATH,f"//{tag}[text()='Submit']").click()
         sleep(5)
-        if web.current_url != initial_page:
-            if interactive:
-                input('Submit card manually and press ENTER to continue...')
-            else:
-                raise RuntimeError('Card submission unsuccessful')
+        if web.current_url == initial_page:
+            return
+        if interactive:
+            input('Submit card manually and press ENTER to continue...')
+            return
+        # try doing the 'reason for audited change' bit
+        web.find_element(By.CLASS_NAME, 'oj-searchselect-arrow').click()
+        web.find_elements(By.CLASS_NAME, 'oj-listview-cell-element')[2].click()  # New Time Entry
+        web.find_element(By.XPATH, '//oj-c-button[@title="Submit"]').click()
 
     def print_workforce_plan(self):
         """Output a monthly workforce plan suitable for pasting into a spreadsheet."""
