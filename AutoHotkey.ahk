@@ -7,6 +7,7 @@ GroupAdd, terminal, ahk_exe WindowsTerminal.exe ; Add Terminal windows to this g
 GroupAdd, terminal, ahk_exe pycharm64.exe ; Add PyCharm windows to this group.
 GroupAdd, powerpoint, ahk_class PPTFrameClass ; Add PyCharm windows to this group.
 GroupAdd, typora, ahk_exe Typora.exe
+GroupAdd, teams, ahk_class TeamsWebView
 
 ProgramFilesX86 = C:\Program Files (x86)
 SetTitleMatchMode, 2
@@ -51,7 +52,7 @@ Esc::!F4
 #IfWinExist ahk_exe Typora.exe
 #+n::GroupActivate, typora, r
 #IfWinExist ahk_class TeamsWebView
-#!c::WinActivate
+#!c::GroupActivate, teams, r
 #IfWinExist ahk_class ApplicationFrameWindow
 #+a::WinActivate
 #IfWinExist ahk_class Notepad++
