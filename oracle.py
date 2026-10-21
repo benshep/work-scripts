@@ -1,6 +1,6 @@
 import os
 import time
-from enum import Enum
+from enum import Enum, IntEnum
 from pathlib import Path
 from time import sleep
 from urllib.parse import quote, urlencode
@@ -14,11 +14,18 @@ from selenium.webdriver.remote.webdriver import WebDriver
 
 from work_folders import budget_folder, user_profile
 
-class Browser(Enum):
+class Browser(IntEnum):
     firefox = 0
     edge = 1
     chrome = 2
     safari = 4
+
+
+class Visibility(IntEnum):
+    HIDDEN = 0
+    MINIMIZED = 1
+    NORMAL = 2
+    MAXIMIZED = 3
 
 
 quoted_path = quote('/shared/STFC Shared/_portal/STFC Projects', safe='')
@@ -37,7 +44,7 @@ apps: dict[tuple[str, ...], str] = {
 def go_to_oracle_page(*links: str,
                       browser: Browser = Browser.edge,  # changed from Firefox for SSO
                       manual_login: bool = False,
-                      show_window: bool = False) -> WebDriver:
+                      show_window: bool | Visibility = Visibility.HIDDEN) -> WebDriver:
     """Open a selenium web driver and log in to Oracle Fusion, opening the specified tuple of links.
     :param browser: Firefox, Edge, Chrome, IE, or Safari
     :param links: text of links to follow, or 'obi' or 'taleo' to open those sites
@@ -49,6 +56,8 @@ def go_to_oracle_page(*links: str,
     url = apps.get(links, fusion_url)
     firefox_options = webdriver.FirefoxOptions()
     firefox_options.add_argument('--MOZ_LOG=')  # try to silence errors
+    # Instruct Firefox to allow asynchronous clipboard reading without prompt flags
+    firefox_options.set_preference("dom.events.testing.asyncClipboard", True)
     edge_options = webdriver.EdgeOptions()
     edge_options.add_argument('--log-level=3')  # try to silence errors
     chrome_options = webdriver.ChromeOptions()
@@ -63,7 +72,11 @@ def go_to_oracle_page(*links: str,
     # please specify a unique value for --user-data-dir argument, or don't use --user-data-dir
     edge_options.add_argument('--edge-skip-compat-layer-relaunch')
     # Allow pasting using Ctrl-V
-    edge_options.add_experimental_option("prefs", {"profile.default_content_setting_values.clipboard": 1})
+    edge_options.add_experimental_option("prefs", {
+        "profile.default_content_setting_values.clipboard": 1,
+        "profile.content_settings.exceptions.clipboard": {"[*.],*": {"setting": 1}  # 1 = Allow explicitly across all domains
+    }
+    })
     if manual_login:
         print(f'This script will now launch a browser window ({browser.name.title()}) to log in to Oracle.')
         print('Return to this screen when you have logged in.')
@@ -94,6 +107,10 @@ def go_to_oracle_page(*links: str,
 
     web.implicitly_wait(10)  # add an automatic wait to the browser handling
     web.set_window_size(1920, 1080)  # make it big so all elements are displayed - maximize doesn't work for Edge
+    if show_window == Visibility.MAXIMIZED:
+        web.maximize_window()
+    elif show_window == Visibility.MINIMIZED:
+        web.minimize_window()
     web.get(url)  # go to the URL
     # sleep(2)
     for _ in range(10):  # try a few times

@@ -2,9 +2,11 @@ import os
 import tempfile
 import traceback
 from datetime import date, timedelta, datetime
+from enum import IntEnum
 from itertools import accumulate
 from pathlib import Path
 from time import sleep
+from tempfile import mkdtemp
 
 from dateutil.relativedelta import relativedelta
 from pushbullet import Pushbullet
@@ -18,8 +20,14 @@ from otl import fy_start
 from pushbullet_api_key import api_key  # local file, keep secret!
 from work_folders import downloads_folder, docs_folder
 
+class DebugLevel(IntEnum):
+    NORMAL = 0
+    SCREENSHOTS = 1
+    SHOW_WINDOW = 2
 
-def run_otl_calculator(weeks_ahead: int = 0, do_cards: bool = True, show_window: bool = False, **kwargs) -> tuple[str, str] | None:
+
+def run_otl_calculator(weeks_ahead: int = 0, do_cards: bool = True, debug_level: DebugLevel = DebugLevel.NORMAL,
+                       which_members: list[str] | None = None, **kwargs) -> tuple[str, str] | None:
     """Iterate through staff, listing the hours to upload for new OTL cards required.
     do_cards = True: attempt to submit cards automatically using selenium.
     do_cards = False: just output a web page with links to manually submit cards."""
@@ -27,9 +35,13 @@ def run_otl_calculator(weeks_ahead: int = 0, do_cards: bool = True, show_window:
     cards_to_book = 0
     cards_submitted = 0
     links_filename = downloads_folder / 'otl_upload_links.html'
+    screenshot_folder = ''
     if do_cards:
-        web = oracle.go_to_oracle_page('home', show_window=show_window)
+        web = oracle.go_to_oracle_page('home', show_window=oracle.Visibility.MAXIMIZED, browser=oracle.Browser.edge)
         previous_cards = oracle.get_all_timecards(web)
+        if debug_level == DebugLevel.SCREENSHOTS:
+            screenshot_folder = mkdtemp(prefix='otl_calc_')
+            print(screenshot_folder)
     else:
         web = None
         previous_cards = []
@@ -52,6 +64,8 @@ def run_otl_calculator(weeks_ahead: int = 0, do_cards: bool = True, show_window:
     <main class="app">
 ''')
         for member in members:
+            if which_members is not None and member.known_as not in which_members:
+                continue
             print('\n', member.name)
             member.update_off_days(force_reload=False)
             start = date.today()
@@ -74,7 +88,9 @@ def run_otl_calculator(weeks_ahead: int = 0, do_cards: bool = True, show_window:
                     # only submit a card if there are zero hours booked
                     if do_cards and hours_booked == 0:
                         try:
-                            member.submit_card(web, copy_text, header_columns, start, interactive=show_window)
+                            member.submit_card(web, copy_text, header_columns, start,
+                                               interactive=debug_level >= DebugLevel.SHOW_WINDOW,
+                                               screenshot_folder=screenshot_folder)
                             done_card = True
                             cards_submitted += 1
                             failure_screenshot = None
@@ -307,7 +323,7 @@ def workforce_planning():
 
 if __name__ == '__main__':
     # staff.verbose = True
-    print(run_otl_calculator(weeks_ahead=0, do_cards=True, show_window=True))
+    print(run_otl_calculator(weeks_ahead=0, do_cards=True, debug_level=DebugLevel.SCREENSHOTS, which_members=['Matt']))
     # workforce_planning()
     # print(leave_cross_check())
     # print(check_in())

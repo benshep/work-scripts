@@ -1,6 +1,7 @@
 from collections import Counter
 from datetime import date, timedelta, datetime, time
 from math import isclose, prod
+from pathlib import Path
 from time import sleep
 from typing import Generator
 from urllib.parse import urlencode
@@ -10,6 +11,7 @@ import pyperclip
 from selenium.webdriver.firefox.webdriver import WebDriver
 from selenium.webdriver import ActionChains, Keys
 from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webelement import WebElement
 
 import oracle
 import otl
@@ -413,7 +415,8 @@ class GroupMember:
         return oracle.apps[('home',)] + 'time/timecards/landing-page?' + urlencode(params)
 
     def submit_card(self, web: WebDriver, copy_text: str,
-                    header_columns: tuple[list[str], list[str], list[str]], start: date, interactive: bool = False):
+                    header_columns: tuple[list[str], list[str], list[str]], start: date,
+                    interactive: bool = False, screenshot_folder: str = ''):
         """Create and submit a timecard on Fusion."""
         initial_page = 'about:blank'
         web.get(initial_page)  # Fusion will return to the previous page: make it quick!
@@ -434,18 +437,22 @@ class GroupMember:
             ActionChains(web).context_click(cell).perform()  # right-click bottom-left cell for context menu
             web.find_element(By.XPATH,  # language=xpath
                              "//a[text()='Insert Row Above']").click()
+            screenshot(web, screenshot_folder)
         # Paste in projects, tasks, hours types
         for x, column in zip(x_values, header_columns):
             cell = get_element_at_point(web, x, y_values[0])
             cell.click()
             pyperclip.copy('\n'.join(column))
             cell.send_keys(Keys.CONTROL, 'v')  # paste
-            sleep(2)
+            sleep(3)
+            screenshot(web, screenshot_folder)
         cell = get_element_at_point(web, x_values[5], y_values[0])  # top left of data grid
         cell.click()
+        screenshot(web, screenshot_folder)
         # Change format to TSV for pasting
         pyperclip.copy(copy_text.replace(';', '\n').replace(',', '\t\t\t'))
         cell.send_keys(Keys.CONTROL, 'v')
+        screenshot(web, screenshot_folder)
         if self.known_as != 'Ben':  # Submit is in overflow menu for everyone else
             overflow = web.find_element(By.TAG_NAME, 'oj-toolbar').find_element(By.TAG_NAME, 'oj-menu-button')
             overflow.click()
@@ -459,10 +466,14 @@ class GroupMember:
         if interactive:
             input('Submit card manually and press ENTER to continue...')
             return
+        screenshot(web, screenshot_folder)
         # try doing the 'reason for audited change' bit
         web.find_element(By.CLASS_NAME, 'oj-searchselect-arrow').click()
         web.find_elements(By.CLASS_NAME, 'oj-listview-cell-element')[2].click()  # New Time Entry
+        screenshot(web, screenshot_folder)
         web.find_element(By.XPATH, '//oj-c-button[@title="Submit"]').click()
+        sleep(5)
+        assert web.current_url == initial_page
 
     def print_workforce_plan(self):
         """Output a monthly workforce plan suitable for pasting into a spreadsheet."""
@@ -489,6 +500,10 @@ def check_total_ftes(members: list[GroupMember]):
 def get_element_at_point(web: WebDriver, x: float, y: float) -> WebElement:
     return web.execute_script(f'return document.elementFromPoint({x + 10}, {y})')
 
+
+def screenshot(web: WebDriver, screenshot_folder: str = ''):
+    if str:
+        web.save_screenshot(Path(screenshot_folder) / datetime.now().strftime('%Y-%m-%d %H%M%S.png'))
 
 if __name__ == '__main__':
     print(*sorted(site_holidays.keys()), sep='\n')

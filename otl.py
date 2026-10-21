@@ -3,7 +3,6 @@ from datetime import date, datetime
 from enum import IntEnum
 from math import isclose
 
-import cvxpy
 import numpy as np
 from dateutil.relativedelta import relativedelta
 
@@ -264,6 +263,7 @@ class BookingPlan:
     def convex_levelling(self):
         """Set a monthly plan, ensuring all months add up to 100% effort and all projects have the correct allocation
         for the year, respecting time boundaries and priorities. Use cvxpy to do it with MATHS."""
+        import cvxpy  # seeing crash on dlast0156 - just import when necessary
         n_projects = len(self.entries)
         allocation_matrix = cvxpy.Variable(shape=(n_projects, months), nonneg=True)
         shortfall = cvxpy.Variable(n_projects, nonneg=True)
