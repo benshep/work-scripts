@@ -1,11 +1,11 @@
-from __future__ import annotations  # forward definitions for type-hinting classes we haven't defined yet
-
 import os
 import re
+import subprocess
 import sys
 from datetime import date, datetime, timedelta
 from enum import IntEnum
 from math import ceil
+from pathlib import Path
 from time import sleep
 from typing import Protocol, Callable
 
@@ -961,9 +961,7 @@ def get_calendar(user: str = 'me') -> Folder:
 
 
 def get_outlook() -> OutlookApplication:
-    """Return a reference to the Outlook application.
-    :param dismiss_reminders: Dismiss all reminders on opening the application reference.
-    """
+    """Return a reference to the Outlook application."""
     pythoncom.CoInitialize()  # try to combat the "CoInitialize has not been called" error
     application: OutlookApplication = win32com.client.Dispatch('Outlook.Application')
     return application
@@ -1202,14 +1200,19 @@ def get_dl_ral_holidays(year: int = datetime.now().year, whole_days: bool = True
 
 def clear_reminders():
     """Clear all the pending Outlook reminders."""
-    reminders = get_outlook().Reminders
-    with IncrementalBar('Clearing reminders', max=reminders.Count) as bar:
-        for i in range(reminders.Count, 0, -1):  # one-based, go backwards through them
-            bar.next()
-            reminder = reminders.Item(i)
-            if reminder.IsVisible:
-                report(reminder.Caption)
-                reminder.Dismiss()
+    # New approach: just dismiss reminder window!
+    subprocess.run([
+        Path(os.environ['ProgramFiles']) / 'AutoHotKey' / 'AutoHotKeyU64.exe',
+        "dismiss_reminders.ahk"
+    ], cwd=Path(__file__).parent)
+    # reminders = get_outlook().Reminders
+    # with IncrementalBar('Clearing reminders', max=reminders.Count) as bar:
+    #     for i in range(reminders.Count, 0, -1):  # one-based, go backwards through them
+    #         bar.next()
+    #         reminder = reminders.Item(i)
+    #         if reminder.IsVisible:
+    #             report(reminder.Caption)
+    #             reminder.Dismiss()
 
 
 def inspect_events():
@@ -1303,7 +1306,8 @@ if __name__ == '__main__':
         # change THIS BIT for testing!
         # verbose = True
         # print(*sorted(list(get_dl_ral_holidays())), sep='\n')
-        print(*get_away_dates(end=1, user='thomas.smith2@stfc.ac.uk'), sep='\n')
+        # print(*get_away_dates(end=1, user='thomas.smith2@stfc.ac.uk'), sep='\n')
+        clear_reminders()
         # events = get_current_events(min_count=-1)
         # print(len(events))
         # print(*[event.Subject for event in events], sep='\n')
