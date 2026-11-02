@@ -187,7 +187,12 @@ class Entry:
         return f'{self.code}: {self.annual_fte or 0:.2f}, from {self.start_date.strftime("%d/%m/%Y")}-{self.end_date.strftime("%d/%m/%Y")}, priority {self.priority.name}'
 
     def __str__(self):
-        return f'{self.code}\t{self.annual_fte or 0:.2f}\t{self.start_date.strftime("%d/%m/%Y")}\t{self.end_date.strftime("%d/%m/%Y")}\t{self.priority.value}'
+        return '\t'.join([str(self.code),
+                          f'{self.annual_fte or 0:.2f}',
+                          self.start_date.strftime("%d/%m/%Y"),
+                          self.end_date.strftime("%d/%m/%Y"),
+                          self.priority.name.ljust(max(len(x.name) for x in Priority)),
+                          self.profile.name.ljust(max(len(x.name) for x in Profile))])
 
     def is_active_on(self, when: date | int) -> bool:
         """Return True if the entry is active on the given date, False otherwise.
@@ -309,7 +314,8 @@ def to_percent(x: float) -> str:
     return (f'{x * 100:.{digits}f}%' if x >= 0.005 else '').ljust(5)
 
 
-def levelling_test():
+def invent_fake_projects() -> list[Entry]:
+    """Randomly generate some project names, priorities, and start and end dates."""
     words = open('1000-most-common-english-words.txt').read().splitlines()
     n_projects = random.randint(5, 10)
     remaining_fte = 1.0
@@ -319,7 +325,10 @@ def levelling_test():
     max_name_length = 0
     for i in range(n_projects):
         fte = random.random() * remaining_fte if i < n_projects - 1 else remaining_fte
-        dates = sorted([random.randint(0, 11), random.randint(0, 11)])
+        months = 0
+        while months < fte * 12:
+            dates = sorted([random.randint(0, 11), random.randint(0, 11)])
+            months = dates[1] - dates[0] + 1
         start = fy_start + relativedelta(months=dates[0])
         end = fy_start + relativedelta(months=dates[1] + 1, days=-1)
         min_start = start if min_start is None else min(min_start, start)
@@ -331,10 +340,16 @@ def levelling_test():
                 end = fy_end
         name = ' '.join(random.choice(words).title() for _ in range(3))
         max_name_length = max(max_name_length, len(name))
-        project = Entry(Code(name), fte, start_date=start, end_date=end, priority=Priority(random.randint(0, 2)))
+        project = Entry(Code(name), fte, start_date=start, end_date=end,
+                        priority=Priority(random.randint(0, len(Priority) - 1)),
+                        profile=Profile(random.randint(0, len(Profile) - 1)))
         remaining_fte -= fte
         projects.append(project)
+    return projects
 
+def levelling_test():
+    """Run a demo to test the convex levelling algorithm."""
+    # Some made-up projects.
     projects = [
         Entry(Code('External-Funded Thing'), 0.3, start_date=date(2026, 8, 1), end_date=date(2026, 12, 31),
               priority=Priority.EXTERNAL, profile=Profile.FRONT_LOADED),
@@ -342,21 +357,29 @@ def levelling_test():
               priority=Priority.AGREED, profile=Profile.BACK_LOADED),
         Entry(Code('ASTeC Core Task'), 0.4, start_date=fy_start, end_date=fy_end, priority=Priority.BALANCING),
     ]
+    # Some randomly-generated projects to give the algorithm a bit more of a hard time!
+    projects = invent_fake_projects()
     max_name_length = max([len(entry.code.project) for entry in projects])
 
     bp = BookingPlan(projects)
+    print('## Naive allocation')
+    headings = '\t'.join(['Project name'.ljust(max_name_length), '  ', 'FTE ', 'Start date', 'End date  ', 'Priority', 'Profile     ',
+          *[f'M{i + 1}'.ljust(4) for i in range(12)], 'Total FTE'])
+    print(headings)
     for entry in bp.entries:
         entry.code.project = entry.code.project.ljust(max_name_length)
         print(str(entry), *[to_percent(effort * 12) for effort in entry.monthly_fte], f'{sum(entry.monthly_fte):.02f}',
               sep='\t')
         l = len(str(entry))
-    print(' ' * l, '', '', *[to_percent(x * 12) for x in bp.monthly_total()], sep='\t')
+    print('Monthly totals'.ljust(l + 3), '', '', *[to_percent(x * 12) for x in bp.monthly_total()], sep='\t')
     print('')
     bp.convex_levelling()
+    print('## Convex levelling')
+    print(headings)
     for entry in bp.entries:
         print(str(entry), *[to_percent(effort * 12) for effort in entry.monthly_fte], f'{sum(entry.monthly_fte):.02f}',
               sep='\t')
-    print(' ' * l, '', '', *[to_percent(x * 12) for x in bp.monthly_total()], sep='\t')
+    print('Monthly totals'.ljust(l + 3), '', '', *[to_percent(x * 12) for x in bp.monthly_total()], sep='\t')
 
 
 if __name__ == '__main__':
