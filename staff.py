@@ -173,13 +173,14 @@ class GroupMember:
         outlook_days -= site_holidays.keys()  # don't include bank holidays
         oracle_days = {day for day, (absence_type, hrs) in self.get_oracle_leave_dates().items()
                        if start <= day <= end and absence_type in ('Annual Leave', 'Special Leave - Paid')}
-        output = f'{self.known_as}\n\t\tOutlook\tOracle\n\n'
+        url = oracle.apps[('add_absences',)] if self.known_as == 'Ben' else ''
+        output = f'{self.known_as} {url}\n\t\tOutlook\tOracle\n\n'
         in_either = outlook_days | oracle_days
         for day in sorted(in_either):
             output += '\t'.join((day.strftime('%d/%m/%Y'),
                                  '✔️  ' if day in outlook_days else '🔵  ' if day in self.ignore_days else '❌  ',
                                  '✔️  ' if day in oracle_days else '🔵  ' if day in self.ignore_days else '❌  '))
-            output += '\n'
+            output += '\n\n'
         print(output)
         # count of symmetric difference - i.e. days that are only in one set but not both (and not ignored)
         return (len(outlook_days - oracle_days - self.ignore_days),

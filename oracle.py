@@ -34,6 +34,7 @@ apps: dict[tuple[str, ...], str] = {
     ('obi',): f'https://obi.ssc.rcuk.ac.uk/analytics/saw.dll?dashboard&PortalPath={quoted_path}',  # TODO: update?
     ('taleo',): "https://careersportal.taleo.net/enterprise/fluid?isNavigationCompleted=true",
     ('absences',): fusion_url + 'absences/existing-absences/view-summary',
+    ('add_absences',): fusion_url + 'absences/manage-absences/view-add-absences',
     ('my_timecards',): fusion_url + 'time/existing-timecards/view-summary',
     ('team_timecards',): fusion_url + 'time/timecards/search?context=lineMgr',
     ('payslips',): fusion_url + 'payslips/payslips/launch',
