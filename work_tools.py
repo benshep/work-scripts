@@ -7,6 +7,7 @@ from tempfile import mkstemp
 from typing import Callable
 
 import pandas
+import pyperclip
 
 
 def read_excel(excel_filename: Path, func: Callable = pandas.read_excel, **kwargs):
@@ -55,3 +56,13 @@ def floor_date(date: datetime, **kwargs) -> datetime:
     """Round a datetime down to the nearest given increment. kwargs are passed to datetime.timedelta."""
     secs = timedelta(**kwargs).total_seconds()
     return datetime.fromtimestamp(date.timestamp() - date.timestamp() % secs)
+
+@contextlib.contextmanager
+def temp_copy(text: str):
+    """Context manager for a temporary clipboard. Restores original clipboard text afterward."""
+    previous_clipboard = pyperclip.paste()
+    try:
+        pyperclip.copy(text)
+        yield
+    finally:
+        pyperclip.copy(previous_clipboard)
