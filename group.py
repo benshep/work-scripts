@@ -1,4 +1,3 @@
-import ctypes
 import os
 import tempfile
 import traceback
@@ -32,11 +31,6 @@ def run_otl_calculator(weeks_ahead: int = 0, do_cards: bool = True, debug_level:
     do_cards = True: attempt to submit cards automatically using selenium.
     do_cards = False: just output a web page with links to manually submit cards."""
     # staff.verbose = True
-    # Needs a window to be actually displayed. Only run on a locked workstation to avoid clashes with user input
-    user32 = ctypes.windll.User32
-    locked = user32.GetForegroundWindow() % 10 == 0
-    if not locked:
-        return datetime.now() + timedelta(minutes=30)
     for member in members:
         if which_members is None or member.known_as in which_members:
             member.update_off_days(force_reload=False)
@@ -111,7 +105,7 @@ def run_otl_calculator(weeks_ahead: int = 0, do_cards: bool = True, debug_level:
                     # language=HTML
                     links_file.write(f'''
         <section class="{card_class}" id="card{cards_to_book + cards_submitted:02d}">
-            <a onclick="toggleCard(this)" ondragstart="copyText(this.getElementsByTagName('h1')[0], '{copy_text}', true)" href="#">
+            <a onclick="toggleCard(this)" ondragstart="copyText(this.getElementsByTagName('h1')[0], '{copy_text}', true)" href="{member.timecard_url(start)}">
                 <header class="card-header collapsible-header">
                     <h1>{card_title}</h1>
                     <span class="chevron">▼</span>
@@ -329,9 +323,8 @@ def workforce_planning():
 
 if __name__ == '__main__':
     staff.verbose = True
-    sleep(5)
-    print(run_otl_calculator(weeks_ahead=1, do_cards=True, debug_level=DebugLevel.SCREENSHOTS,
-                             which_members=['Ben'],
+    print(run_otl_calculator(weeks_ahead=0, do_cards=True, debug_level=DebugLevel.SCREENSHOTS,
+                             # which_members=['Alex B'],
                              ))
     # workforce_planning()
     # print(leave_cross_check())

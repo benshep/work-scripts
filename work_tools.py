@@ -4,6 +4,7 @@ from datetime import timedelta, datetime
 from pathlib import Path
 from shutil import copy2
 from tempfile import mkstemp
+from time import sleep
 from typing import Callable
 
 import pandas
@@ -61,8 +62,21 @@ def floor_date(date: datetime, **kwargs) -> datetime:
 def temp_copy(text: str):
     """Context manager for a temporary clipboard. Restores original clipboard text afterward."""
     previous_clipboard = pyperclip.paste()
+    print(text)
     try:
         pyperclip.copy(text)
         yield
     finally:
         pyperclip.copy(previous_clipboard)
+
+
+if __name__ == '__main__':
+    for i in range(100):
+        sleep(2)
+        print(i)
+        try:
+            pyperclip.copy(str(i))
+        except pyperclip.PyperclipWindowsException as e:
+            print(e.args)
+            print(e)
+            break

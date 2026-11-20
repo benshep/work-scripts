@@ -7,6 +7,7 @@ from urllib.parse import quote, urlencode
 from datetime import date, datetime
 
 import pythoncom
+import screeninfo
 import win32com.client as win32
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -26,6 +27,7 @@ class Visibility(IntEnum):
     MINIMIZED = 1
     NORMAL = 2
     MAXIMIZED = 3
+    OFF_SCREEN = 4
 
 
 quoted_path = quote('/shared/STFC Shared/_portal/STFC Projects', safe='')
@@ -112,6 +114,8 @@ def go_to_oracle_page(*links: str,
         web.maximize_window()
     elif show_window == Visibility.MINIMIZED:
         web.minimize_window()
+    elif show_window == Visibility.OFF_SCREEN:
+        web.set_window_position(max([mon.x + mon.width for mon in screeninfo.get_monitors()]), 0)
     web.get(url)  # go to the URL
     # sleep(2)
     for _ in range(10):  # try a few times
@@ -201,6 +205,10 @@ def get_all_timecards(web: WebDriver | None = None) -> list[Timecard]:
 def get_team_cards(web: WebDriver, mine: bool) -> list[Timecard]:
     web.get(apps[('my_timecards' if mine else 'team_timecards',)])
     sleep(10)
+    # clear filters
+    next(button for button in web.find_elements(By.TAG_NAME, 'oj-c-button')
+          if button.text.startswith('Clear')).click()
+    sleep(2)
     cells = web.find_elements(By.CLASS_NAME, 'oj-table-data-cell')
     offset = int(not mine)
     # 11 cells in each row for team, otherwise 10 for me
