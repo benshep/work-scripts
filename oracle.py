@@ -1,19 +1,22 @@
 import os
 import time
-from enum import Enum, IntEnum
+from datetime import date, datetime, timedelta
+from enum import IntEnum
+from functools import partial
 from pathlib import Path
 from time import sleep
-from urllib.parse import quote, urlencode
-from datetime import date, datetime
+from typing import Protocol, runtime_checkable
+from urllib.parse import quote
 
 import pythoncom
+import requests
 import screeninfo
 import win32com.client as win32
-from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from work_folders import budget_folder, user_profile
+
 
 class Browser(IntEnum):
     firefox = 0
@@ -30,8 +33,19 @@ class Visibility(IntEnum):
     OFF_SCREEN = 4
 
 
+@runtime_checkable
+class WebDriverWithAuth(Protocol):
+    """WebDriver instance with authentication string added manually."""
+    auth: str
+
+
 quoted_path = quote('/shared/STFC Shared/_portal/STFC Projects', safe='')
-fusion_url = 'https://fa-evzn-saasfaukgovprod1.fa.ocs.oraclecloud.com/fscmUI/redwood/'
+oracle_server = 'fa-evzn-saasfaukgovprod1.fa.ocs.oraclecloud.com'
+fusion_url = f'https://{oracle_server}/fscmUI/redwood/'
+rest_ip = '11.13.18.05'
+rest_url = f'https://{oracle_server}/hcmRestApi/rest/rv:64e03fef-143a-4f25-a5e4-b1c27ad4efea/en/{rest_ip}:9'
+rest_url_2 = f'https://{oracle_server}/hcmRestApi/rest/rv:1b5925c3-22f9-4649-a548-b23343089110/en/{rest_ip}:9'
+rest_url_alt = f'https://{oracle_server}/hcmRestApi/redwood/{rest_ip}'
 apps: dict[tuple[str, ...], str] = {
     ('obi',): f'https://obi.ssc.rcuk.ac.uk/analytics/saw.dll?dashboard&PortalPath={quoted_path}',  # TODO: update?
     ('taleo',): "https://careersportal.taleo.net/enterprise/fluid?isNavigationCompleted=true",
@@ -44,16 +58,30 @@ apps: dict[tuple[str, ...], str] = {
 }
 
 
+def get_auth(web, request):
+    """Intercept requests and find one with authorisation, to save in the driver object."""
+    if (auth := request.headers['Authorization']) and oracle_server in request.url:
+        web.auth = auth
+        del web.request_interceptor  # no need to keep intercepting!
+        web.include_urls = ['^$']  # stop intercepting requests entirely
+
+
 def go_to_oracle_page(*links: str,
                       browser: Browser = Browser.edge,  # changed from Firefox for SSO
-                      manual_login: bool = False,
-                      show_window: bool | Visibility = Visibility.HIDDEN) -> WebDriver:
+                      manual_login: bool = False, wired: bool = False,
+                      show_window: bool | Visibility = Visibility.HIDDEN) -> WebDriver | WebDriverWithAuth:
     """Open a selenium web driver and log in to Oracle Fusion, opening the specified tuple of links.
     :param browser: Firefox, Edge, Chrome, IE, or Safari
     :param links: text of links to follow, or 'obi' or 'taleo' to open those sites
     :param manual_login: use the standard profile, and prompt to log in manually
     :param show_window: make the browser window visible
+    :param wired: use selenium-wire to capture requests
     :return: web driver instance, so you can do more things with it."""
+
+    if wired:
+        from seleniumwire2 import webdriver
+    else:
+        from selenium import webdriver
 
     # which URL to go to? OBI, Taleo, or just default to Oracle homepage
     url = apps.get(links, fusion_url)
@@ -77,8 +105,7 @@ def go_to_oracle_page(*links: str,
     # Allow pasting using Ctrl-V
     edge_options.add_experimental_option("prefs", {
         "profile.default_content_setting_values.clipboard": 1,
-        "profile.content_settings.exceptions.clipboard": {"[*.],*": {"setting": 1}  # 1 = Allow explicitly across all domains
-    }
+        "profile.content_settings.exceptions.clipboard": {"[*.],*": {"setting": 1}} # 1 = Allow explicitly across all domains
     })
     if manual_login:
         print(f'This script will now launch a browser window ({browser.name.title()}) to log in to Oracle.')
@@ -107,6 +134,10 @@ def go_to_oracle_page(*links: str,
             web = webdriver.Safari()  # untested
         case _:
             raise ValueError(f'Invalid browser {browser}')
+
+    if wired:  # language=regexp
+        web.include_urls = ['.*oraclecloud.*']  # just capture requests to the Oracle server
+        web.request_interceptor = partial(get_auth, web)
 
     web.implicitly_wait(10)  # add an automatic wait to the browser handling
     web.set_window_size(1920, 1080)  # make it big so all elements are displayed - maximize doesn't work for Edge
@@ -155,6 +186,7 @@ def file_list(files: list):
     def wrapped(f):
         f.file_list = files
         return f
+
     return wrapped
 
 
@@ -180,8 +212,8 @@ def convert_obi_files():
         # done_any = True
     # excel.Application.Quit()
     # if done_any:
-        # trigger a Power Automate flow to run an Office Script to tidy up the files
-        # mkstemp(dir=os.path.join(budget_folder, 'pa_trigger'))
+    # trigger a Power Automate flow to run an Office Script to tidy up the files
+    # mkstemp(dir=os.path.join(budget_folder, 'pa_trigger'))
     return True
 
 
@@ -190,38 +222,77 @@ class Timecard:
     week_beginning: date
     status: str
     total_hours: float
+    id: int
 
-    def __init__(self, name: str, week_beginning: date, status: str, total_hours: float):
+    def __init__(self, name: str, week_beginning: date, status: str, total_hours: float, card_id: int = 0):
         self.name = name
         self.week_beginning = week_beginning
         self.status = status
         self.total_hours = total_hours
+        self.id = card_id
+
+    def __repr__(self):
+        return f'Timecard({self.name}, {self.week_beginning.strftime("%d/%m/%Y")}, {self.status}, {self.total_hours})'
+
 
 def get_all_timecards(web: WebDriver | None = None) -> list[Timecard]:
     if web is None:
         web = go_to_oracle_page('team_timecards')
     return get_team_cards(web, True) + get_team_cards(web, False)
 
+
+def get_timecards_via_requests(auth: str) -> list[Timecard]:
+    """Use requests to get previously-submitted time cards."""
+    url = rest_url_alt + '/timeCardSearches'
+    start = datetime.today() - timedelta(days=30)
+    end = start + timedelta(days=90)
+    mars = 'STFC - ASTeC Magnetics and Radiation Sources'
+    search = {
+        "searchFields": ['department'], "query": mars,
+        "filters": [
+            {"name": "TimePeriod", "rangeStart": start.strftime('%Y-%m-%d'), "rangeEnd": end.strftime('%Y-%m-%d')},
+        ],
+        "displayFields": ["PersonName", "TimePeriodStartDate", "StatusCode", "Exception", "ReportedHours",
+                          'Department'],
+        "offset": 0, 'limit': 500}
+    response = requests.post(url, headers={'Authorization': auth}, json=search)
+    response.raise_for_status()
+    data = response.json()
+    cards = [Timecard(card['personName'], datetime.fromisoformat(card['timePeriodStartDate']).date(),
+                      card['statusCode'], card['reportedHours'], card['id'])
+             for card in data['items'] if card.get('department', '') == mars]
+    dates = sorted(set(card.week_beginning for card in cards))
+    people = set(card.name for card in cards)
+    print(*[d.strftime('%d/%m') for d in dates], sep='\t')
+    for name in people:
+        print(*[(next(('%.0f' % card.total_hours for card in cards
+                       if card.name == name and card.week_beginning == date), '-')).rjust(5)
+                for date in dates], name, sep='\t')
+    return cards
+
+
 def get_team_cards(web: WebDriver, mine: bool) -> list[Timecard]:
     web.get(apps[('my_timecards' if mine else 'team_timecards',)])
     sleep(10)
     # clear filters
-    next(button for button in web.find_elements(By.TAG_NAME, 'oj-c-button')
-          if button.text.startswith('Clear')).click()
-    sleep(2)
+    # next(button for button in web.find_elements(By.TAG_NAME, 'oj-c-button')
+    #       if button.text.startswith('Clear')).click()
+    # sleep(2)
     cells = web.find_elements(By.CLASS_NAME, 'oj-table-data-cell')
     offset = int(not mine)
     # 11 cells in each row for team, otherwise 10 for me
     cards = [Timecard(name='Ben Shepherd' if mine else cells[i].text,
                       week_beginning=datetime.strptime(cells[i + offset].text, '%d/%m/%Y').date(),
-                      status=cells[i + 2 + offset].text, total_hours=float(cells[i + 6 + offset].text), ) for i in
-             range(0, len(cells), 10 if mine else 11)]
+                      status=cells[i + 2 + offset].text, total_hours=float(cells[i + 6 + offset].text))
+             for i in range(0, len(cells), 10 if mine else 11)]
     print(f'Got {len(cards)} cards, {mine=}')
     return cards
 
+
 if __name__ == '__main__':
-    # web = go_to_oracle_page('absences', show_window=True)
-    # sleep(100)
+    # web = go_to_oracle_page('team_timecards', wired=True)
+    # print(web.auth)
+    sleep(100)
     # web.quit()
     # convert_obi_files()
-    print(*get_all_timecards(), sep='\n')
+    # print(*get_all_timecards(), sep='\n')

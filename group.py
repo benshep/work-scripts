@@ -19,6 +19,7 @@ from otl import fy_start
 from pushbullet_api_key import api_key  # local file, keep secret!
 from work_folders import downloads_folder, docs_folder
 
+
 class DebugLevel(IntEnum):
     NORMAL = 0
     SCREENSHOTS = 1
@@ -39,8 +40,9 @@ def run_otl_calculator(weeks_ahead: int = 0, do_cards: bool = True, debug_level:
     links_filename = downloads_folder / 'otl_upload_links.html'
     screenshot_folder = None
     if do_cards:
-        web = oracle.go_to_oracle_page('home', show_window=oracle.Visibility.MAXIMIZED, browser=oracle.Browser.edge)
-        previous_cards = oracle.get_all_timecards(web)
+        web = oracle.go_to_oracle_page('team_timecards', show_window=oracle.Visibility.HIDDEN,
+                                       browser=oracle.Browser.edge, wired=True)
+        previous_cards = oracle.get_timecards_via_requests(web.auth)
         if debug_level == DebugLevel.SCREENSHOTS:
             screenshot_folder = Path(tempfile.mkdtemp(prefix='otl_calc_'))
             print(screenshot_folder)
@@ -70,34 +72,35 @@ def run_otl_calculator(weeks_ahead: int = 0, do_cards: bool = True, debug_level:
                 continue
             start = date.today()
             start -= timedelta(days=start.weekday())  # Monday of current week
-            start -= timedelta(days=7*4)  # check last few weeks
+            start -= timedelta(days=7 * 4)  # check last few weeks
             # wait until Thu to do current week
             while start + timedelta(days=3) <= date.today() + weeks_ahead * timedelta(days=7):
-            # for _ in range(7):
-                hours_booked = member.hours_for_week(start) or sum([
-                    card.total_hours for card in previous_cards
-                    if card.name == member.name and card.week_beginning == start
-                       and card.status in ('Approved', 'Submitted')
-                ])
+                # for _ in range(7):
+                submitted_card = next((card for card in previous_cards
+                                       if card.name == member.name and card.week_beginning == start
+                                       and card.status.casefold() in ('approved', 'submitted')),
+                                      oracle.Timecard(member.name, start, 'blank', 0.0))  # dummy card
+                hours_booked = member.hours_for_week(start) or submitted_card.total_hours
                 hours_needed = sum(member.hours_needed(start + timedelta(days=day)) for day in range(5))
                 if hours_needed - hours_booked > 0.01:
-                    print(f'{start.strftime("%d/%m/%Y")}: {hours_booked=:.2f}, {hours_needed=:.2f}')
+                    print(f'{member.known_as} {start.strftime("%d/%m/%Y")}: {hours_booked=:.2f}, {hours_needed=:.2f}')
                     card_body, copy_text, header_columns = member.otl_upload_page(start)
                     done_card = False
                     # only submit a card if there are zero hours booked
                     if do_cards and hours_booked == 0:
+                        week_table = member.weekly_bookings(start)
+                        for code, hours in week_table:
+                            print(code, *['%.2f' % h for h in hours], sep='\t')
                         try:
-                            member.submit_card(web, copy_text, header_columns, start,
-                                               interactive=debug_level >= DebugLevel.SHOW_WINDOW,
-                                               screenshot_folder=screenshot_folder)
+                            member.submit_card_via_requests(web.auth, start, week_table, submitted_card.id)
                             done_card = True
                             cards_submitted += 1
-                            failure_screenshot = None
+                            # failure_screenshot = None
                         except Exception:
-                            print(f'Failed to submit card for {member.known_as}, w/b {start}')
+                            print('Failed to submit card for', member.known_as, start)
                             traceback.print_exc()
-                            failure_screenshot = f'otl_submit_error_{datetime.now().strftime("%Y-%m-%d-%H%M")}.png'
-                            web.get_screenshot_as_file(downloads_folder / failure_screenshot)
+                            # failure_screenshot = f'otl_submit_error_{datetime.now().strftime("%Y-%m-%d-%H%M")}.png'
+                            # web.get_screenshot_as_file(downloads_folder / failure_screenshot)
                     cards_to_book += not done_card
                     card_title = '✔️ Submitted' if done_card else '📅 Time Card'
                     card_class = 'card collapsed' if done_card else 'card'
@@ -137,30 +140,31 @@ def run_otl_calculator(weeks_ahead: int = 0, do_cards: bool = True, debug_level:
             </div>
 ''')
                     links_file.write(card_body)
-                    if failure_screenshot:
-                        links_file.write(f'            <img class="card-body" src="{failure_screenshot}" width="100%" />')
+                    # if failure_screenshot:
+                    #     links_file.write(  # language=html
+                    #         f'            <img class="card-body" src="{failure_screenshot}" width="100%" />')
                     links_file.write('        </section>')
                 start += timedelta(days=7)
         # language=javascript
         copy_code = '''
-        function copyText(button, s, grid = false) {
-            const originalText = button.textContent;
-            var text = s.replaceAll(';', '\\n');
-            if (grid) {
-                text = text.replaceAll(',', '\\t\\t\\t');
-            }
-            navigator.clipboard.writeText(text).then(() => {
-                button.textContent = "✔️ Copied";
-                setTimeout(() => {
-                    button.textContent = originalText;
-                }, 2000);
-            });
-        }
-        function toggleCard(header) {
-            const card = header.closest('.card');
-            card.classList.toggle('collapsed');
-        }
-'''
+                    function copyText(button, s, grid = false) {
+                        const originalText = button.textContent;
+                        var text = s.replaceAll(';', '\\n');
+                        if (grid) {
+                            text = text.replaceAll(',', '\\t\\t\\t');
+                        }
+                        navigator.clipboard.writeText(text).then(() => {
+                            button.textContent = "✔️ Copied";
+                            setTimeout(() => {
+                                button.textContent = originalText;
+                            }, 2000);
+                        });
+                    }
+                    function toggleCard(header) {
+                        const card = header.closest('.card');
+                        card.classList.toggle('collapsed');
+                    } \
+                    '''
         # language=HTML
         links_file.write(f'''
     </main>
@@ -299,7 +303,7 @@ def list_ftes():
                 '',
                 *[entry.annual_fte if entry.start_date <= fy_start + relativedelta(months=+i) <= entry.end_date else 0
                   for i in range(12)],
-            sep='\t')
+                sep='\t')
 
 
 def goal_page_urls():
@@ -322,8 +326,8 @@ def workforce_planning():
 
 
 if __name__ == '__main__':
-    staff.verbose = True
-    print(run_otl_calculator(weeks_ahead=0, do_cards=True, debug_level=DebugLevel.SCREENSHOTS,
+    # staff.verbose = True
+    print(run_otl_calculator(weeks_ahead=1, do_cards=True,
                              # which_members=['Alex B'],
                              ))
     # workforce_planning()

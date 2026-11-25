@@ -18,6 +18,10 @@ fy_end = date(fy + 1, 3, 31)
 
 unproductive = 'Unproductive - Straight Time'
 straight_time = 'Labour - Straight Time'
+hours_keys = {
+    straight_time: '300000012241990',
+    unproductive: '300000012241995',
+}
 
 
 # Classes used for OTL bookings
@@ -117,11 +121,7 @@ class Code:
 
     def hours_cell(self):
         """A representation of the hours type that can be pasted into Fusion."""
-        key = {
-            straight_time: '300000012241990',
-            unproductive: '300000012241995',
-        }[self.hours_type]
-        return table_cell(key, self.hours_type)
+        return table_cell(hours_keys[self.hours_type], self.hours_type)
 
 
 # What to book various types of leave to? These are specific ASTeC codes

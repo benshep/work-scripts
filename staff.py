@@ -1,24 +1,26 @@
 from collections import Counter
-from datetime import date, timedelta, datetime, time
+from datetime import date, timedelta, datetime, time, timezone
 from math import isclose, prod
 from pathlib import Path
+from random import randint
 from time import sleep
 from typing import Generator
-from urllib.parse import urlencode
+from urllib.parse import urlencode, quote
 
 import pandas
-import pyperclip
-from selenium.webdriver.firefox.webdriver import WebDriver
+import requests
 from selenium.webdriver import ActionChains, Keys
 from selenium.webdriver.common.by import By
+from selenium.webdriver.firefox.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 
 import oracle
 import otl
 import outlook
 from array_round import fair_round
+from otl import Code
 from work_folders import docs_folder, budget_folder
-from work_tools import StoredData
+from work_tools import StoredData, temp_copy
 
 site_holidays = outlook.get_dl_ral_holidays(otl.fy, whole_days=False)
 try:
@@ -353,20 +355,13 @@ class GroupMember:
 
     def otl_upload_page(self, week_beginning: date) -> tuple[str, str, tuple[list[str], list[str], list[str]]]:
         """Return HTML output for the OTL upload page."""
-        week_beginning -= timedelta(days=week_beginning.weekday())
-        week_bookings = [self.daily_bookings(week_beginning + timedelta(days=day)) for day in range(5)]
-        all_codes = set().union(*[daily.keys() for daily in week_bookings])
-        week_table = {code: [daily.get(code, 0) for daily in week_bookings] for code in all_codes}
-        sorted_week_table = sorted(week_table.items(), key=lambda item: repr(item))
+        sorted_week_table = self.weekly_bookings(week_beginning)
         data_grid = []  # collect just the hour numbers to put into a grid for direct copy-pasting into Oracle
         table_body = ''
-        projects_copy_text = []
-        tasks_copy_text = []
-        hours_copy_text = []
+        projects_copy_text = [code.project_cell() for (code, _) in sorted_week_table]
+        tasks_copy_text = [code.task_cell() for (code, _) in sorted_week_table]
+        hours_copy_text = [code.hours_cell() for (code, _) in sorted_week_table]
         for i, (code, hours) in enumerate(sorted_week_table):
-            projects_copy_text.append(code.project_cell())
-            tasks_copy_text.append(code.task_cell())
-            hours_copy_text.append(code.hours_cell())
             code_display_name = code.project
             if code.fusion_name:
                 code_display_name += ' - ' + code.fusion_name
@@ -381,8 +376,7 @@ class GroupMember:
             row = []
             for hour in hours:
                 table_body += ' ' * 28 + f'<td class="num">{hour:.02f}</td>\n'
-                row.append('' if isclose(hour,
-                                         0) else f'{hour:.02f}')  # use blanks instead of zero otherwise Fusion complains!
+                row.append('' if isclose(hour, 0) else f'{hour:.02f}')  # use blanks instead of zero otherwise Fusion complains!
             data_grid.append(','.join(row))  # columns separated by commas
             table_body += '                        </tr>\n'
         copy_text = ';'.join(data_grid)  # rows separated by semicolons
@@ -408,6 +402,15 @@ class GroupMember:
         html += table_body + '                    </tbody>\n                </table>\n            </div>\n'
         return html, copy_text, (projects_copy_text, tasks_copy_text, hours_copy_text)
 
+    def weekly_bookings(self, week_beginning: date) -> list[tuple[Code, list[float]]]:
+        """Return a table of bookings for the given week. Each entry is a Code followed by a list of five floats,
+        corresponding to hours booked to that code on Monday-Friday. Entries are ordered alphabetically."""
+        week_bookings = [self.daily_bookings(week_beginning + timedelta(days=day)) for day in range(5)]
+        all_codes: set[otl.Code] = set().union(*[daily.keys() for daily in week_bookings])
+        week_table = {code: [daily.get(code, 0) for daily in week_bookings] for code in all_codes}
+        sorted_week_table = sorted(week_table.items(), key=lambda item: repr(item))
+        return sorted_week_table
+
     def timecard_url(self, start: date) -> str:
         """Return the URL needed to upload a timecard."""
         params = {'calledFromAddTimeCard': 'true', 'pAsofdate': start.strftime('%Y-%m-%d')}
@@ -415,12 +418,94 @@ class GroupMember:
             params |= {'pPersonId': self.person_id, 'userContext': 'LINE_MANAGER'}
         return oracle.apps[('home',)] + 'time/timecards/landing-page?' + urlencode(params)
 
+    def submit_card_via_requests(self, auth: str, start: date,
+                                 bookings: list[tuple[Code, list[float]]], time_card_id: int = 0):
+        """Submit a timecard to Fusion, using a direct POST request rather than browser interaction.
+        :param auth: Authorization header gleaned from a selenium-wire instance.
+        :param start: start date (Monday) of the timecard.
+        :param bookings: list of entries: each is a Code followed by a list of five floats,
+        corresponding to hours booked to that code on Monday-Friday.
+        :param time_card_id: id of an existing timecard.
+        :return:
+        """
+        current_version = -1
+        headers = {'Authorization': auth,
+                   "Content-Type": "application/vnd.oracle.adf.resourceitem+json"}
+        if time_card_id:  # this might not work!
+            print('Checking timecard version with id', time_card_id)
+            fields = quote(','.join(['timeCards', 'timeCardLayouts.timeCardFields', 'timeCards.timeEntries']))
+            finder = quote(
+                f'findByPersonIdAndDate;UserContext=WORKER,PersonId={self.person_id},AsOfDate={start.isoformat()},IncludeTimeCardLayoutsFlag=true,IncludeBlankTimeCardsFlag=true')
+            url = oracle.rest_url_2 + f'/timeCardEntryDetails?expand={fields}&finder={finder}&limit=5000&onlyData=true'
+            response = requests.get(url, headers=headers)
+            data = response.json()
+            try:
+                current_version = next((card['TimeCardVersion'] for card in data['items'][0]['timeCards']['items']
+                                        if card['TimeCardId'] == str(time_card_id)), -1)
+            except KeyError:
+                pass
+            # print('Current version:', current_version)
+        print('Submitting timecard for', self.known_as, start)
+        # web.get(self.timecard_url(start))
+        # cookies = web.get_cookies()
+        # cookies_dict = {cookie["name"]: cookie["value"] for cookie in cookies}
+
+        start_time = datetime.combine(start, datetime.min.time(), timezone.utc)
+        end_time = start_time + timedelta(days=7) - timedelta(milliseconds=1)
+        time_entries = []
+        for day in range(5):
+            for code, hours in bookings:
+                time_entry_id = randint(10 ** 15, 10 ** 16 - 1)  # random ID number: ensure 16 digits
+
+                def field_value_dict(x: int, value: str) -> dict[str, str]:
+                    """Build field value dict including sequential field id."""
+                    return {"TimeCardFieldId": str(300000012272500 + x),
+                            "TimeEntryId": str(time_entry_id),
+                            "Value": value}
+
+                entry: dict[str, int | str | None] = {
+                    "EntryDate": (start_time + timedelta(days=day)).replace(tzinfo=None).isoformat(),
+                    "TimeEntryId": str(time_entry_id), "TimeEntryVersion": 0,
+                    "UnitOfMeasure": "HR", "Measure": hours[day],
+                    "timeCardFieldValues": [
+                        field_value_dict(49, str(self.assignment_id)),
+                        field_value_dict(51, code.project_key),
+                        field_value_dict(53, "300000011742838"),
+                        field_value_dict(55, code.task_key),
+                        field_value_dict(39, otl.hours_keys[otl.straight_time]),
+                        field_value_dict(47, 'ST'),
+                        field_value_dict(45, "300000011746182")  # always the same
+                    ]
+                }
+                if time_card_id:
+                    entry["Comments"] = None
+                time_entries.append(entry)
+
+        params = {
+            "TimeCardId": str(time_card_id),
+            "TimeCardVersion": current_version + 1, "PersonId": str(self.person_id),
+            "StartDate": start_time.isoformat(), "StopDate": end_time.isoformat(timespec='milliseconds'),
+            "ProcessMode": "TIME_SUBMIT", "timeEntries": time_entries,
+            "UserContext": "LINE_MANAGER", "IgnoreWarningsFlag": True
+        }
+        if time_card_id:  # card already exists: need to give reason for change (reason is "Data Correction")
+            params["changeAuditReasons"] = [{"ChangeAuditReasonCodeForAllChanges": "SHARP_DATA_C"}]
+
+        url = oracle.rest_url + '/timeCards'
+        response = requests.post(url, headers=headers, json=params)
+        # print(url)
+        # print(params)
+        if not response.ok:
+            print(response.json())
+            response.raise_for_status()
+
     def submit_card(self, web: WebDriver, copy_text: str,
                     header_columns: tuple[list[str], list[str], list[str]], start: date,
-                    interactive: bool = False, screenshot_folder: str = ''):
+                    interactive: bool = False, screenshot_folder: Path | None = None):
         """Create and submit a timecard on Fusion."""
         initial_page = 'about:blank'
-        web.get(initial_page)  # Fusion will return to the previous page: make it quick!
+        print('Submitting timecard for', self.known_as, start.strftime('%d/%m/%Y'))
+        web.get(initial_page)  # Fusion will go to the previous page in the browser history: make it quick!
         web.get(self.timecard_url(start))
         while True:  # add rows as necessary
             sleep(10)
@@ -432,35 +517,41 @@ class GroupMember:
             # Not necessarily in order - sort by y and then x. There's one at (0, 0) too
             x_values = sorted({box.rect['x'] for box in time_boxes} - {0})
             y_values = sorted({box.rect['y'] for box in time_boxes} - {0})
-            if len(y_values) >= len(header_columns[0]):  # got enough rows for our data
+            rows_needed = len(header_columns[0])
+            if len(y_values) >= rows_needed:  # got enough rows for our data
                 break
+            report('Inserting extra row - need at least', rows_needed)
             cell = get_element_at_point(web, x_values[0], y_values[-1])
             ActionChains(web).context_click(cell).perform()  # right-click bottom-left cell for context menu
             web.find_element(By.XPATH,  # language=xpath
                              "//a[text()='Insert Row Above']").click()
             screenshot(web, screenshot_folder)
         # Paste in projects, tasks, hours types
-        for x, column in zip(x_values, header_columns):
+        for x, column, name in zip(x_values, header_columns, ['project', 'task', 'hours type']):
+            report('Pasting in', name, 'column')
             cell = get_element_at_point(web, x, y_values[0])
             cell.click()
-            pyperclip.copy('\n'.join(column))
-            cell.send_keys(Keys.CONTROL, 'v')  # paste
+            sleep(1)
+            with temp_copy('\n'.join(column)):
+                cell.send_keys(Keys.CONTROL, 'v')  # paste
             sleep(3)
             screenshot(web, screenshot_folder)
         cell = get_element_at_point(web, x_values[5], y_values[0])  # top left of data grid
         cell.click()
         screenshot(web, screenshot_folder)
         # Change format to TSV for pasting
-        pyperclip.copy(copy_text.replace(';', '\n').replace(',', '\t\t\t'))
-        cell.send_keys(Keys.CONTROL, 'v')
+        report('Pasting time values in main grid')
+        with temp_copy(copy_text.replace(';', '\n').replace(',', '\t\t\t')):
+            cell.send_keys(Keys.CONTROL, 'v')
         screenshot(web, screenshot_folder)
+        report('Submitting card')
         if self.known_as != 'Ben':  # Submit is in overflow menu for everyone else
             overflow = web.find_element(By.TAG_NAME, 'oj-toolbar').find_element(By.TAG_NAME, 'oj-menu-button')
             overflow.click()
             tag = 'a'
         else:
             tag = 'span'
-        web.find_element(By.XPATH,f"//{tag}[text()='Submit']").click()
+        web.find_element(By.XPATH, f"//{tag}[text()='Submit']").click()
         sleep(5)
         if web.current_url == initial_page:
             return
@@ -469,12 +560,15 @@ class GroupMember:
             return
         screenshot(web, screenshot_folder)
         # try doing the 'reason for audited change' bit
+        report('Entering change reason')
         web.find_element(By.CLASS_NAME, 'oj-searchselect-arrow').click()
+        sleep(5)
         web.find_elements(By.CLASS_NAME, 'oj-listview-cell-element')[2].click()  # New Time Entry
         screenshot(web, screenshot_folder)
         web.find_element(By.XPATH, '//oj-c-button[@title="Submit"]').click()
         sleep(5)
         assert web.current_url == initial_page
+        report('Submitted card successfully')
 
     def print_workforce_plan(self):
         """Output a monthly workforce plan suitable for pasting into a spreadsheet."""
@@ -502,9 +596,10 @@ def get_element_at_point(web: WebDriver, x: float, y: float) -> WebElement:
     return web.execute_script(f'return document.elementFromPoint({x + 10}, {y})')
 
 
-def screenshot(web: WebDriver, screenshot_folder: str = ''):
+def screenshot(web: WebDriver, screenshot_folder: Path | None = None):
     if str:
-        web.save_screenshot(Path(screenshot_folder) / datetime.now().strftime('%Y-%m-%d %H%M%S.png'))
+        web.save_screenshot(screenshot_folder / datetime.now().strftime('%Y-%m-%d %H%M%S.png'))
+
 
 if __name__ == '__main__':
     print(*sorted(site_holidays.keys()), sep='\n')
