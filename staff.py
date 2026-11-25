@@ -419,30 +419,29 @@ class GroupMember:
         return oracle.apps[('home',)] + 'time/timecards/landing-page?' + urlencode(params)
 
     def submit_card_via_requests(self, auth: str, start: date,
-                                 bookings: list[tuple[Code, list[float]]], time_card_id: int = 0):
+                                 bookings: list[tuple[Code, list[float]]], card_id: int = 0):
         """Submit a timecard to Fusion, using a direct POST request rather than browser interaction.
         :param auth: Authorization header gleaned from a selenium-wire instance.
         :param start: start date (Monday) of the timecard.
         :param bookings: list of entries: each is a Code followed by a list of five floats,
         corresponding to hours booked to that code on Monday-Friday.
-        :param time_card_id: id of an existing timecard.
+        :param card_id: id of an existing timecard.
         :return:
         """
         current_version = -1
         headers = {'Authorization': auth,
                    "Content-Type": "application/vnd.oracle.adf.resourceitem+json"}
-        if time_card_id:  # this might not work!
-            print('Checking timecard version with id', time_card_id)
-            fields = quote(','.join(['timeCards', 'timeCardLayouts.timeCardFields', 'timeCards.timeEntries']))
-            finder = quote(
-                f'findByPersonIdAndDate;UserContext=WORKER,PersonId={self.person_id},AsOfDate={start.isoformat()},IncludeTimeCardLayoutsFlag=true,IncludeBlankTimeCardsFlag=true')
+        if card_id:  # this might not work!
+            print('Checking timecard version with id', card_id)
+            fields = quote('timeCards,timeCardLayouts.timeCardFields,timeCards.timeEntries')
+            finder = quote(f'findByTimeCardId;UserContext=LINE_MANAGER,TimeCardId={card_id},AsOfDate={start.isoformat()},')
             url = oracle.rest_url_2 + f'/timeCardEntryDetails?expand={fields}&finder={finder}&limit=5000&onlyData=true'
             response = requests.get(url, headers=headers)
             data = response.json()
             try:
-                current_version = next((card['TimeCardVersion'] for card in data['items'][0]['timeCards']['items']
-                                        if card['TimeCardId'] == str(time_card_id)), -1)
-            except KeyError:
+                current_version = next(card['TimeCardVersion'] for card in data['items'][0]['timeCards']['items']
+                                       if card['TimeCardId'] == str(card_id))
+            except KeyError, IndexError, StopIteration:
                 pass
             # print('Current version:', current_version)
         print('Submitting timecard for', self.known_as, start)
@@ -477,18 +476,18 @@ class GroupMember:
                         field_value_dict(45, "300000011746182")  # always the same
                     ]
                 }
-                if time_card_id:
+                if card_id:
                     entry["Comments"] = None
                 time_entries.append(entry)
 
         params = {
-            "TimeCardId": str(time_card_id),
+            "TimeCardId": str(card_id),
             "TimeCardVersion": current_version + 1, "PersonId": str(self.person_id),
             "StartDate": start_time.isoformat(), "StopDate": end_time.isoformat(timespec='milliseconds'),
             "ProcessMode": "TIME_SUBMIT", "timeEntries": time_entries,
             "UserContext": "LINE_MANAGER", "IgnoreWarningsFlag": True
         }
-        if time_card_id:  # card already exists: need to give reason for change (reason is "Data Correction")
+        if card_id:  # card already exists: need to give reason for change (reason is "Data Correction")
             params["changeAuditReasons"] = [{"ChangeAuditReasonCodeForAllChanges": "SHARP_DATA_C"}]
 
         url = oracle.rest_url + '/timeCards'
