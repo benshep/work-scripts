@@ -325,11 +325,23 @@ def workforce_planning():
         member.print_workforce_plan()
 
 
+def check_keys():
+    """Check project and task keys for all booking projects."""
+    web = oracle.go_to_oracle_page('team_timecards', wired=True)
+    codes = set()
+    for member in members:
+        codes |= set(entry.code for entry in member.booking_plan.entries)
+    for code in codes:
+        project_key, task_key = oracle.key_lookup(web.auth, code.project, code.task)
+        print(code, project_key, task_key, code.project_key == project_key, code.task_key == task_key)
+
+
 if __name__ == '__main__':
     # staff.verbose = True
-    print(run_otl_calculator(weeks_ahead=1, do_cards=True,
-                             # which_members=['Alex B'],
-                             ))
+    check_keys()
+    # print(run_otl_calculator(weeks_ahead=1, do_cards=True,
+    #                          which_members=['Alex B'],
+                             # ))
     # workforce_planning()
     # print(leave_cross_check())
     # print(check_in())

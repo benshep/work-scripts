@@ -289,10 +289,43 @@ def get_team_cards(web: WebDriver, mine: bool) -> list[Timecard]:
     return cards
 
 
+def key_lookup(auth, project: str, task: str = '') -> tuple[str | None, str | None]:
+    """Given a project and task code, return their key values from Fusion.
+    :param auth: authentication string from WebDriverWithAuth
+    :param project: project code to search for
+    :param task: task code to search for (optional)
+    :return:
+    """
+    query = f'findByWord;SearchTerm={project},TcfId=300000012272551,UserType=LINE_MANAGER,PersonId=100000020417760,StartDate=2026-10-26,EndDate=2026-11-01,BindTcfId1=300000012272549,BindTcf1Value=300000117981407'
+    url = f'{rest_url}/timeCardFieldValues?onlyData=true&offset=0&limit=25&finder=' + quote(query)
+    response = requests.get(url, headers={'Authorization': auth})
+    data = response.json()
+    for item in data['items']:
+        if item['DisplayValue'].startswith(project):
+            # print(item['DisplayValue'])
+            project_key = item['Code']
+            break
+    else:
+        return None, None
+
+    # search for a task code starting with 01 from project code STGA00243 (project key = 300000250508299)
+    query = f'findByWord;SearchTerm={task},TcfId=300000012272555,UserType=LINE_MANAGER,PersonId=100000020417760,StartDate=2026-10-26,EndDate=2026-11-01,BindTcfId1=300000012272551,BindTcfId2=300000012272549,BindTcf1Value={project_key},BindTcf2Value=300000117981407'
+    url = f'{rest_url}/timeCardFieldValues?onlyData=true&offset=0&limit=25&finder=' + quote(query)
+    response = requests.get(url, headers={'Authorization': auth})
+    data = response.json()
+    for item in data['items']:
+        if item['DisplayValue'].startswith(task):
+            # print(item['DisplayValue'])
+            task_key = item['Code']
+            return project_key, task_key
+    else:
+        return project_key, None
+
 if __name__ == '__main__':
-    # web = go_to_oracle_page('team_timecards', wired=True)
+    web = go_to_oracle_page('team_timecards', wired=True)
+    print(key_lookup(web, 'STGA00243', '01'))
     # print(web.auth)
-    sleep(100)
+    # sleep(100)
     # web.quit()
     # convert_obi_files()
     # print(*get_all_timecards(), sep='\n')
