@@ -1,5 +1,4 @@
 import os
-import time
 from datetime import date, datetime, timedelta
 from enum import IntEnum
 from functools import partial
@@ -139,6 +138,7 @@ def go_to_oracle_page(*links: str,
         case _:
             raise ValueError(f'Invalid browser {browser}')
 
+    web.auth = ''
     if wired:  # language=regexp
         web.include_urls = ['.*oraclecloud.*']  # just capture requests to the Oracle server
         web.request_interceptor = partial(get_auth, web)
@@ -155,7 +155,6 @@ def go_to_oracle_page(*links: str,
     progress.next(5)
     progress.suffix = 'Logging in, target page: ' + ', '.join(links)
     web.get(url)  # go to the URL
-    # sleep(2)
     progress.suffix = 'Attempting UKRI login'
     for _ in range(10):  # try a few times
         progress.next()
@@ -166,9 +165,14 @@ def go_to_oracle_page(*links: str,
         else:  # no login button found
             continue
         break
+
     # 'Pick an account' screen
     progress.suffix = 'Waiting for account screen'
     for _ in range(20):
+        if web.current_url == url and (not wired or web.auth):  # already logged in!
+            progress.goto(progress.max)
+            progress.finish()
+            return web
         progress.next()
         sleep(.25)
     # to get my name (needed if others using script!)
@@ -344,7 +348,7 @@ def key_lookup(auth, project: str, task: str = '') -> tuple[str | None, str | No
         return project_key, None
 
 if __name__ == '__main__':
-    web = go_to_oracle_page('team_timecards', wired=True)
+    web = go_to_oracle_page('team_timecards', wired=True, show_window=Visibility.MAXIMIZED)
     print(key_lookup(web.auth, 'STGA00243', '01'))
     web.quit()
     # print(web.auth)
