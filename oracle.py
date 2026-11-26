@@ -12,6 +12,7 @@ import pythoncom
 import requests
 import screeninfo
 import win32com.client as win32
+from progress.bar import IncrementalBar
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
@@ -78,6 +79,7 @@ def go_to_oracle_page(*links: str,
     :param wired: use selenium-wire to capture requests
     :return: web driver instance, so you can do more things with it."""
 
+    progress = IncrementalBar('Opening Fusion', max=48 + 40 * int(manual_login))
     if wired:
         from seleniumwire2 import webdriver
     else:
@@ -112,6 +114,8 @@ def go_to_oracle_page(*links: str,
         print('Return to this screen when you have logged in.')
         input('Press ENTER to start browser, or Ctrl-C to exit: ')
 
+    progress.suffix = 'Opening browser: ' + browser.name.title()
+    progress.next(5)
     match browser:
         case Browser.firefox:
             if not manual_login:
@@ -147,9 +151,14 @@ def go_to_oracle_page(*links: str,
         web.minimize_window()
     elif show_window == Visibility.OFF_SCREEN:
         web.set_window_position(max([mon.x + mon.width for mon in screeninfo.get_monitors()]), 0)
+
+    progress.next(5)
+    progress.suffix = 'Logging in, target page: ' + ', '.join(links)
     web.get(url)  # go to the URL
     # sleep(2)
+    progress.suffix = 'Attempting UKRI login'
     for _ in range(10):  # try a few times
+        progress.next()
         for login_button in web.find_elements(By.CLASS_NAME, 'oj-button-text'):
             if login_button.text == 'UKRI':
                 login_button.click()
@@ -158,16 +167,24 @@ def go_to_oracle_page(*links: str,
             continue
         break
     # 'Pick an account' screen
-    sleep(5)
+    progress.suffix = 'Waiting for account screen'
+    for _ in range(20):
+        progress.next()
+        sleep(.25)
     # to get my name (needed if others using script!)
     # name = subprocess.check_output('net user "%USERNAME%" /domain | FIND /I "Full Name"', shell=True)
     # full_name = name.replace(b"Full Name", b"").strip().decode('utf-8')
+    full_name = 'Shepherd, Ben'
+    progress.suffix = 'Logging in as ' + full_name
     for cell in web.find_elements(By.CLASS_NAME, 'table-cell'):
-        if cell.text.startswith('Shepherd, Ben'):  # full_name
+        progress.next()
+        if cell.text.startswith(full_name):
             cell.click()
             break
     if manual_login:
-        time.sleep(10)  # wait for error messages to appear
+        for _ in range(40):
+            progress.next()
+            sleep(.25)  # wait for error messages to appear
         print('\nBrowser started.')
         input('Press ENTER after logging in to Oracle, or Ctrl-C to exit: ')
 
@@ -178,7 +195,12 @@ def go_to_oracle_page(*links: str,
     #     web.set_permissions('clipboard-read', 'denied')  # allow
     elif links == 'obi':  # open STFC Projects dashboard
         web.find_element(By.LINK_TEXT, 'STFC Projects - Transactions').click()
-    time.sleep(2)
+    progress.suffix = 'Opening target page: ' + ', '.join(links)
+    for _ in range(8):
+        progress.next()
+        sleep(.25)
+    progress.goto(progress.max)
+    progress.finish()
     return web
 
 
@@ -323,7 +345,8 @@ def key_lookup(auth, project: str, task: str = '') -> tuple[str | None, str | No
 
 if __name__ == '__main__':
     web = go_to_oracle_page('team_timecards', wired=True)
-    print(key_lookup(web, 'STGA00243', '01'))
+    print(key_lookup(web.auth, 'STGA00243', '01'))
+    web.quit()
     # print(web.auth)
     # sleep(100)
     # web.quit()
