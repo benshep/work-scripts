@@ -89,7 +89,7 @@ def get_payslips(only_latest: bool = True, test_mode: bool = False, **kwargs) ->
 def run_download(web: WebDriver) -> Path:
     """Click the download button, and return the name of the downloaded file."""
     old_files = set(downloads_folder.iterdir())
-    web.find_element(By.CLASS_NAME, 'oj-ux-ico-download').click()  # download button
+    web.find_element(By.CLASS_NAME, 'oj-ux-ico-export').click()  # download button
     time.sleep(5)
     new_file = (set(downloads_folder.iterdir()) - old_files).pop()
     return new_file
@@ -114,7 +114,7 @@ def payslip_items(filename: Path) -> dict[str, float]:
 
 
 if __name__ == '__main__':
-    print(get_payslips(test_mode=True, only_latest=False))
+    print(get_payslips(test_mode=True, only_latest=True))
     # print(income_pre_tax(2024))
     # os.chdir(os.path.join(misc_folder, 'Money', 'Payslips'))
     # payments_this_month = payslip_items('25-07.pdf')
