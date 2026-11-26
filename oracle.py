@@ -45,6 +45,7 @@ fusion_url = f'https://{oracle_server}/fscmUI/redwood/'
 rest_ip = '11.13.18.05'
 rest_url = f'https://{oracle_server}/hcmRestApi/rest/rv:64e03fef-143a-4f25-a5e4-b1c27ad4efea/en/{rest_ip}:9'
 rest_url_2 = f'https://{oracle_server}/hcmRestApi/rest/rv:1b5925c3-22f9-4649-a548-b23343089110/en/{rest_ip}:9'
+rest_url_3 = f'https://{oracle_server}/hcmRestApi/rest/rv:176fdae0-8f76-4022-b204-e2d7e7c5fbbd/en/{rest_ip}:9'
 rest_url_alt = f'https://{oracle_server}/hcmRestApi/redwood/{rest_ip}'
 apps: dict[tuple[str, ...], str] = {
     ('obi',): f'https://obi.ssc.rcuk.ac.uk/analytics/saw.dll?dashboard&PortalPath={quoted_path}',  # TODO: update?

@@ -1,19 +1,17 @@
-import time
 import re
-from collections import Counter
-from datetime import datetime, timedelta, date
+from base64 import b64decode
 from calendar import monthrange
-from pathlib import Path
-from shutil import move
-from zipfile import ZipFile
+from collections import Counter
+from datetime import datetime, timedelta
+from urllib.parse import quote
 
-from selenium.webdriver.common.by import By
-from pypdf import PdfReader
+import requests
 from govuk_bank_holidays.bank_holidays import BankHolidays
-from selenium.webdriver.remote.webdriver import WebDriver
+from pypdf import PdfReader
 
-from oracle import go_to_oracle_page
-from work_folders import misc_folder, downloads_folder
+import oracle
+from mars_group import members
+from work_folders import misc_folder
 
 payslips_folder = misc_folder / 'Money' / 'Payslips'
 
@@ -33,84 +31,53 @@ def income_pre_tax(year: int) -> float:
     return total_payments.total()
 
 
-def get_payslips(only_latest: bool = True, test_mode: bool = False, **kwargs) -> str | datetime:
+def get_payslips(test_mode: bool = False, **kwargs) -> str | datetime:
     """Download all my payslips, or just the latest."""
-    web = go_to_oracle_page('payslips', show_window=test_mode)
-    # On page load, shows latest slip
-
     # Get list of payslips we already have
     existing_files = list(payslips_folder.glob('*.pdf'))
     output = ''
 
-    if only_latest:
-        # Latest date
-        title = web.find_element(By.CLASS_NAME, 'oj-sp-detail-panel-title').text
-        slip_date = datetime.strptime(title, '%A, %d/%m/%Y')  # e.g. Monday, 28/07/2025
-        downloaded_file = run_download(web)
-        new_filename = payslips_folder / slip_date.strftime('%y-%m.pdf')
-        if new_filename in existing_files:
-            print(f'Already got payslip for {slip_date.strftime("%b %Y")}')
-            # When do we expect to get next one? Paid on second-to-last working day, should see payslip day before
-            today = datetime.now()
-            _, days_in_month = monthrange(today.year, today.month)
-            rest_of_month = [today + timedelta(days=d) for d in range(1, days_in_month - today.day + 1)]
-            bank_holidays = [bh['date'] for bh in BankHolidays().get_holidays(division=BankHolidays.ENGLAND_AND_WALES)]
-            working_days = [day for day in rest_of_month if day.weekday() < 5 and day.date() not in bank_holidays]
-            return working_days[-3] if len(working_days) > 2 else today + timedelta(days=1)
-
-        move(downloaded_file, new_filename)
-        payments_this_month = payslip_items(new_filename)
-        last_month = slip_date - timedelta(days=31)
-        last_month_filename = payslips_folder / last_month.strftime('%y-%m.pdf')
-        payments_last_month = payslip_items(last_month_filename)
-        for description, amount in payments_this_month.items():
-            prev_amount = payments_last_month.get(description, None)
-            symbol = '⭐' if prev_amount is None else \
-                '🔺' if amount > prev_amount else \
-                    '🔻' if amount < prev_amount else '➖'
-            output += f'{description}: £{amount:.02f} {symbol}\n'
-
-    else:  # get all
-        # maybe doesn't work...
-        web.find_element(By.XPATH, '//input[@aria-label="select all"]').click()
-        archive = ZipFile(run_download(web))
-        for filename in archive.namelist():
-            # list like ['1_2025-07-28_GBP Payslip.pdf', '2_2025-06-27_GBP Payslip.pdf']
-            slip_date = datetime.strptime(filename.split('_')[1], '%Y-%m-%d')
-            new_filename = payslips_folder / slip_date.strftime('%y-%m.pdf')
-            if new_filename not in existing_files:
-                archive.extract(filename, payslips_folder)
-                (payslips_folder / filename).rename(new_filename)
-                output += new_filename + '\n'
+    web = oracle.go_to_oracle_page('payslips', show_window=test_mode, wired=True)
+    auth = web.auth
     web.quit()
+    query = quote(f'PersonId={members[0].person_id}')
+    headers = {'Authorization': auth, 'Content-Type': 'application/vnd.oracle.adf.resourcecollection+json'}
+    response = requests.get(oracle.rest_url_3 + f'/payslips?onlyData=true&q={query}&totalResults=true', headers=headers)
+    payslips = response.json()
+    latest_slip, previous_slip = payslips['items'][:2]
+    slip_date = datetime.strptime(latest_slip['PaymentDate'], '%Y-%m-%d')
+    new_filename = payslips_folder / slip_date.strftime('%y-%m.pdf')
+    if new_filename in existing_files:
+        print(f'Already got payslip for {slip_date.strftime("%b %Y")}')
+        # When do we expect to get next one? Paid on second-to-last working day, should see payslip day before
+        today = datetime.now()
+        _, days_in_month = monthrange(today.year, today.month)
+        rest_of_month = [today + timedelta(days=d) for d in range(1, days_in_month - today.day + 1)]
+        bank_holidays = [bh['date'] for bh in BankHolidays().get_holidays(division=BankHolidays.ENGLAND_AND_WALES)]
+        working_days = [day for day in rest_of_month if day.weekday() < 5 and day.date() not in bank_holidays]
+        return working_days[-3] if len(working_days) > 2 else today + timedelta(days=1)
+
+    slip_id = latest_slip['DocumentsOfRecordId']
+    response = requests.get(oracle.rest_url_3 + f'/payslips/{slip_id}/child/PayslipBalances', headers=headers)
+    this_payslip = response.json()
+    prev_id = previous_slip['DocumentsOfRecordId']
+    response = requests.get(oracle.rest_url_3 + f'/payslips/{prev_id}/child/PayslipBalances', headers=headers)
+    prev_payslip = response.json()
+    for line in this_payslip['items']:
+        name = line['ReportingName']
+        amount = float(line['Amount'] or 0)
+        if amount == 0:
+            continue
+        prev_amount = next((float(prev_line['Amount'] or 0) for prev_line in prev_payslip['items']
+                            if prev_line['BaseBalanceName'] == line['BaseBalanceName']), 0)
+        symbol = '⭐' if prev_amount == 0 else '🔺' if amount > prev_amount else '🔻' if amount < prev_amount else '➖'
+        output += f'{name}: £{amount:.02f} {symbol}\n'
+        print(name, amount, symbol)
+
+    response = requests.post(oracle.rest_url_3 + '/payslips/action/downloadAttachments', json={"dorIDList": [slip_id]},
+                             headers={'Authorization': auth, 'Content-Type': 'application/vnd.oracle.adf.action+json'})
+    open(new_filename, 'wb').write(b64decode(response.json()['result']['data']))
     return output
-
-
-def run_download(web: WebDriver) -> Path:
-    """Click the download button, and return the name of the downloaded file."""
-    old_files = set(downloads_folder.iterdir())
-    web.find_element(By.CLASS_NAME, 'oj-ux-ico-export').click()  # download button
-    time.sleep(5)
-    new_file = (set(downloads_folder.iterdir()) - old_files).pop()
-    return new_file
-
-
-def payslip_items(filename: Path) -> dict[str, float]:
-    """Read a payslip PDF and return net pay and each payment line in a dict."""
-    # read amounts from the payslip
-    payslip_content = PdfReader(filename).pages[0].extract_text()
-    net_pay = re.findall(r'NET PAY ([\d,]+\.\d\d)', payslip_content)[0]
-    return_dict = {'Net pay': float(net_pay.replace(',', ''))}
-    # payments and deductions are both preceded by these headers
-    headers = 'Description Reference Amount YTD'
-    payments = re.findall(f'{headers}\n(.*){headers}\n(.*)\n   Total Payments',
-                          payslip_content, re.MULTILINE + re.DOTALL)
-    payments = ''.join(payments[0])  # join payments and deductions
-    payments = payments.replace('\n', ' ').replace('  ', ' ')
-    items = re.findall(r'(.*?) ?([\d,]+\.\d\d) ([\d,]+\.\d\d)', payments)
-    for description, amount, _ in items:
-        return_dict[description.strip()] = float(amount.replace(',', ''))
-    return return_dict
 
 
 if __name__ == '__main__':
