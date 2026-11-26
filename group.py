@@ -2,7 +2,6 @@ import os
 import tempfile
 import traceback
 from datetime import date, timedelta, datetime
-from enum import IntEnum
 from itertools import accumulate
 from pathlib import Path
 from time import sleep
@@ -20,13 +19,7 @@ from pushbullet_api_key import api_key  # local file, keep secret!
 from work_folders import downloads_folder, docs_folder
 
 
-class DebugLevel(IntEnum):
-    NORMAL = 0
-    SCREENSHOTS = 1
-    SHOW_WINDOW = 2
-
-
-def run_otl_calculator(weeks_ahead: int = 0, do_cards: bool = True, debug_level: DebugLevel = DebugLevel.NORMAL,
+def run_otl_calculator(weeks_ahead: int = 0, do_cards: bool = True,
                        which_members: list[str] | None = None, **kwargs) -> tuple[str, str] | datetime | None:
     """Iterate through staff, listing the hours to upload for new OTL cards required.
     do_cards = True: attempt to submit cards automatically using selenium.
@@ -38,16 +31,13 @@ def run_otl_calculator(weeks_ahead: int = 0, do_cards: bool = True, debug_level:
     cards_to_book = 0
     cards_submitted = 0
     links_filename = downloads_folder / 'otl_upload_links.html'
-    screenshot_folder = None
     if do_cards:
-        web = oracle.go_to_oracle_page('team_timecards', show_window=oracle.Visibility.HIDDEN,
-                                       browser=oracle.Browser.edge, wired=True)
-        previous_cards = oracle.get_timecards_via_requests(web.auth)
-        if debug_level == DebugLevel.SCREENSHOTS:
-            screenshot_folder = Path(tempfile.mkdtemp(prefix='otl_calc_'))
-            print(screenshot_folder)
+        web = oracle.go_to_oracle_page('team_timecards', wired=True)
+        auth = web.auth
+        web.quit()  # we only need it for the auth code
+        previous_cards = oracle.get_timecards_via_requests(auth)
     else:
-        web = None
+        auth = ''
         previous_cards = []
     with open(links_filename, 'w', encoding='utf-8') as links_file:
         folder = Path(__file__).parent
@@ -92,10 +82,9 @@ def run_otl_calculator(weeks_ahead: int = 0, do_cards: bool = True, debug_level:
                         for code, hours in week_table:
                             print(code, *['%.2f' % h for h in hours], sep='\t')
                         try:
-                            member.submit_card_via_requests(web.auth, start, week_table, submitted_card.id)
+                            member.submit_card_via_requests(auth, start, week_table, submitted_card.id)
                             done_card = True
                             cards_submitted += 1
-                            # failure_screenshot = None
                         except Exception:
                             print('Failed to submit card for', member.known_as, start)
                             traceback.print_exc()
@@ -140,9 +129,6 @@ def run_otl_calculator(weeks_ahead: int = 0, do_cards: bool = True, debug_level:
             </div>
 ''')
                     links_file.write(card_body)
-                    # if failure_screenshot:
-                    #     links_file.write(  # language=html
-                    #         f'            <img class="card-body" src="{failure_screenshot}" width="100%" />')
                     links_file.write('        </section>')
                 start += timedelta(days=7)
         # language=javascript
@@ -172,7 +158,6 @@ def run_otl_calculator(weeks_ahead: int = 0, do_cards: bool = True, debug_level:
 </body>
 </html>
                          ''')
-    web.quit()
     if cards_submitted or cards_to_book:
         return f'{cards_submitted=}\n{cards_to_book=}', links_filename
     return None
@@ -338,10 +323,10 @@ def check_keys():
 
 if __name__ == '__main__':
     # staff.verbose = True
-    check_keys()
-    # print(run_otl_calculator(weeks_ahead=1, do_cards=True,
-    #                          which_members=['Alex B'],
-                             # ))
+    # check_keys()
+    print(run_otl_calculator(weeks_ahead=1, do_cards=True,
+                             which_members=['Alex B'],
+                             ))
     # workforce_planning()
     # print(leave_cross_check())
     # print(check_in())
